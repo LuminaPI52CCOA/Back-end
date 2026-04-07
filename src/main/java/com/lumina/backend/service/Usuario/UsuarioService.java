@@ -1,4 +1,4 @@
-package com.lumina.backend.service;
+package com.lumina.backend.service.Usuario;
 
 import com.lumina.backend.dto.usuario.UsuarioRequest;
 import com.lumina.backend.exception.EntidadeNaoEncontrada;

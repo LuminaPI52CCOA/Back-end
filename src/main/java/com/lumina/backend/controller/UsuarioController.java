@@ -4,7 +4,7 @@ import com.lumina.backend.dto.usuario.UsuarioMapper;
 import com.lumina.backend.dto.usuario.UsuarioRequest;
 import com.lumina.backend.dto.usuario.UsuarioResponse;
 import com.lumina.backend.model.Usuario;
-import com.lumina.backend.service.UsuarioService;
+import com.lumina.backend.service.Usuario.UsuarioService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
