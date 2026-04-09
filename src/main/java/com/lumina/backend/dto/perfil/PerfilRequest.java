@@ -1,13 +1,15 @@
 package com.lumina.backend.dto.perfil;
 
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.validation.constraints.NotBlank;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(description = "Dados de entrada para cadastro e atualizacao de perfil")
 public class PerfilRequest {
+    @Schema(description = "Identificador unico do perfil", example = "1", type = "integer", format = "int32")
     private Integer idPerfil;
+
     @NotBlank
+    @Schema(description = "Nome do perfil de acesso", example = "ADMIN", type = "string")
     private String nome;
 
     public PerfilRequest(Integer idPerfil, String nome) {

@@ -1,13 +1,31 @@
 package com.lumina.backend.dto.usuario;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(description = "Dados de resposta de usuario")
 public class UsuarioResponse {
+    @Schema(description = "Identificador unico do usuario", example = "1", type = "integer", format = "int32")
     private Integer idUsuario;
+
+    @Schema(description = "Nome completo do usuario", example = "Ana Maria Souza", type = "string")
     private String nome;
+
+    @Schema(description = "CPF do usuario contendo apenas numeros", example = "12345678901", type = "string")
     private String cpf;
+
+    @Schema(description = "Email de contato do usuario", example = "ana.souza@lumina.com", type = "string", format = "email")
     private String email;
+
+    @Schema(description = "Senha do usuario conforme retorno atual da API", example = "Senha@123", type = "string")
     private String senha;
+
+    @Schema(description = "Identificador do perfil vinculado ao usuario", example = "2", type = "integer", format = "int32")
     private Integer fkPerfil;
+
+    @Schema(description = "Codigo CRO do profissional", example = "SP-CD-12345", type = "string")
     private String cro;
+
+    @Schema(description = "Indica se o usuario esta ativo no sistema", example = "true", type = "boolean")
     private Boolean ativo;
 
     public UsuarioResponse(){
@@ -89,8 +107,12 @@ public class UsuarioResponse {
         this.ativo = ativo;
     }
 
+    @Schema(description = "Resumo de perfil associado ao usuario")
     public static class UsuarioPerfil{
+        @Schema(description = "Identificador do perfil", example = "2", type = "integer", format = "int32")
         private Integer id;
+
+        @Schema(description = "Nome do perfil", example = "ADMIN", type = "string")
         private String nome;
 
         public Integer getId() {
