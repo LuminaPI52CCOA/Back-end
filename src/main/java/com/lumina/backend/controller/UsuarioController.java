@@ -1,16 +1,19 @@
 package com.lumina.backend.controller;
 
-import com.lumina.backend.dto.usuario.UsuarioMapper;
-import com.lumina.backend.dto.usuario.UsuarioRequest;
-import com.lumina.backend.dto.usuario.UsuarioResponse;
+import com.lumina.backend.dto.usuario.*;
 import com.lumina.backend.model.Usuario;
 import com.lumina.backend.service.Usuario.UsuarioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,6 +21,12 @@ import java.util.Optional;
 @RequestMapping("/usuarios")
 @Tag(name = "Usuarios", description = "Endpoints para cadastro e gestao de usuarios do sistema Lumina")
 public class UsuarioController {
+
+    // Nome do cookie — definido em um só lugar para evitar typos
+    public static final String COOKIE_NOME = "authToken";
+
+    @Value("${jwt.validity}")
+    private long jwtValidity;
 
     private final UsuarioService service;
 
@@ -40,6 +49,47 @@ public class UsuarioController {
         return ResponseEntity
                 .status(201)
                 .body(UsuarioMapper.toDto(usuariosCadastrados));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<UsuarioSessaoDto> login(
+            @RequestBody UsuarioLoginDto usuarioLoginDto,
+            HttpServletResponse response) {
+
+        final Usuario usuario = UsuarioMapper.of(usuarioLoginDto);
+
+        // autenticar() gera o token internamente — precisamos dele apenas para o cookie
+        UsuarioTokenDto autenticado = this.service.autenticar(usuario);
+
+        // Token vai para o cookie HttpOnly — inacessível ao JavaScript (proteção XSS)
+        ResponseCookie cookie = ResponseCookie.from(COOKIE_NOME, autenticado.getToken())
+                .httpOnly(true)                          // inacessível ao JavaScript
+                .secure(false)                           // true em produção (exige HTTPS)
+                .sameSite("Strict")                      // bloqueia envio cross-site (mitiga CSRF)
+                .path("/")                               // valido para toda a aplicacao
+                .maxAge(Duration.ofSeconds(jwtValidity)) // expira junto com o token JWT
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        // Body retorna apenas dados de sessão — sem o token
+        UsuarioSessaoDto sessao = UsuarioMapper.ofSessao(autenticado);
+        return ResponseEntity.ok(sessao);
+    }
+    
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletResponse response) {
+        ResponseCookie cookie = ResponseCookie.from(COOKIE_NOME, "")
+                .httpOnly(true)
+                .secure(false)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(0)  // maxAge=0 instrui o browser a deletar o cookie imediatamente
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping
