@@ -76,7 +76,7 @@ public class UsuarioController {
         UsuarioSessaoDto sessao = UsuarioMapper.ofSessao(autenticado);
         return ResponseEntity.ok(sessao);
     }
-    
+
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletResponse response) {
         ResponseCookie cookie = ResponseCookie.from(COOKIE_NOME, "")
