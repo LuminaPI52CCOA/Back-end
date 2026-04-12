@@ -79,7 +79,7 @@ public class AutenticacaoFilter extends OncePerRequestFilter {
                 }
             }
         }
-        
+
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             return authHeader.substring(7);
