@@ -1,38 +1,51 @@
 package com.lumina.backend.dto.usuario;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.hibernate.validator.constraints.br.CPF;
 
-@Schema(description = "Dados de resposta de usuario")
-public class UsuarioResponse {
+@Schema(description = "Dados de entrada para cadastro e atualizacao de usuario")
+public class UsuarioRequest {
     @Schema(description = "Identificador unico do usuario", example = "1", type = "integer", format = "int32")
     private Integer idUsuario;
 
+    @NotBlank
     @Schema(description = "Nome completo do usuario", example = "Ana Maria Souza", type = "string")
     private String nome;
 
+    @NotBlank
+    @CPF
     @Schema(description = "CPF do usuario contendo apenas numeros", example = "12345678901", type = "string")
     private String cpf;
 
-    @Schema(description = "Email de contato do usuario", example = "ana.souza@lumina.com", type = "string", format = "email")
+    @NotBlank
+    @Email
+    @Schema(description = "Email valido para acesso do usuario", example = "ana.souza@lumina.com", type = "string", format = "email")
     private String email;
 
-    @Schema(description = "Senha do usuario conforme retorno atual da API", example = "Senha@123", type = "string")
+    @NotBlank
+    @Schema(description = "Senha de acesso do usuario", example = "Senha@123", type = "string")
     private String senha;
 
+    @NotNull
     @Schema(description = "Identificador do perfil vinculado ao usuario", example = "2", type = "integer", format = "int32")
     private Integer fkPerfil;
 
-    @Schema(description = "Codigo CRO do profissional", example = "SP-CD-12345", type = "string")
+    @NotBlank
+    @Schema(description = "Codigo CRO do profissional, quando aplicavel", example = "SP-CD-12345", type = "string")
     private String cro;
 
+    @NotNull
     @Schema(description = "Indica se o usuario esta ativo no sistema", example = "true", type = "boolean")
     private Boolean ativo;
 
-    public UsuarioResponse(){
+    public UsuarioRequest(){
 
     }
 
-    public UsuarioResponse(Integer idUsuario, String nome, String cpf, String email, String senha, Integer fkPerfil, String cro, Boolean ativo) {
+    public UsuarioRequest(Integer idUsuario, String nome, String cpf, String email, String senha, Integer fkPerfil, String cro, Boolean ativo) {
         this.idUsuario = idUsuario;
         this.nome = nome;
         this.cpf = cpf;
@@ -105,31 +118,6 @@ public class UsuarioResponse {
 
     public void setAtivo(Boolean ativo) {
         this.ativo = ativo;
-    }
-
-    @Schema(description = "Resumo de perfil associado ao usuario")
-    public static class UsuarioPerfil{
-        @Schema(description = "Identificador do perfil", example = "2", type = "integer", format = "int32")
-        private Integer id;
-
-        @Schema(description = "Nome do perfil", example = "ADMIN", type = "string")
-        private String nome;
-
-        public Integer getId() {
-            return id;
-        }
-
-        public void setId(Integer id) {
-            this.id = id;
-        }
-
-        public String getNome() {
-            return nome;
-        }
-
-        public void setNome(String nome) {
-            this.nome = nome;
-        }
     }
 
 }
