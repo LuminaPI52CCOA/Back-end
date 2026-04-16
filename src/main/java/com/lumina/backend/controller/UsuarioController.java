@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
@@ -24,14 +25,16 @@ public class UsuarioController {
 
     // Nome do cookie — definido em um só lugar para evitar typos
     public static final String COOKIE_NOME = "authToken";
+    private final PasswordEncoder passwordEncoder;
 
     @Value("${jwt.validity}")
     private long jwtValidity;
 
     private final UsuarioService service;
 
-    public UsuarioController(UsuarioService service) {
+    public UsuarioController(UsuarioService service, PasswordEncoder passwordEncoder) {
         this.service = service;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @PostMapping
@@ -42,7 +45,9 @@ public class UsuarioController {
     public ResponseEntity<UsuarioResponse> cadastrarUsuarios(
             @RequestBody @Valid UsuarioRequest usuario) {
 
+        String senhaNova = passwordEncoder.encode(usuario.getSenha());
         Usuario entidade = UsuarioMapper.toEntity(usuario);
+        entidade.setSenha(senhaNova);
 
         Usuario usuariosCadastrados = service.salvar(entidade);
 
@@ -74,6 +79,7 @@ public class UsuarioController {
 
         // Body retorna apenas dados de sessão — sem o token
         UsuarioSessaoDto sessao = UsuarioMapper.ofSessao(autenticado);
+        System.out.println(autenticado.getToken());
         return ResponseEntity.ok(sessao);
     }
 

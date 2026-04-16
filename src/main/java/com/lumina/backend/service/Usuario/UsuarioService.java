@@ -75,10 +75,10 @@ public class UsuarioService {
 
     public int deletar(Boolean ativo, Integer id){
         Optional<Usuario> usuario = repository.findById(id);
-        if(usuario.isEmpty()){
+        if(usuario.isEmpty()) {
             throw new EntidadeNaoEncontrada("Usuario de id: %d não encontrado".formatted(id));
         }
-        return repository.logicalDelete(ativo, id);
+            return repository.logicalDelete(ativo, id);
     }
     public int atualizar(UsuarioRequest usuarios, Integer id){
 
