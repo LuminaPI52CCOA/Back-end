@@ -1,8 +1,12 @@
 package com.lumina.backend.service.cliente;
 
+import com.lumina.backend.dto.anamnese.AnamneseMapper;
+import com.lumina.backend.dto.anamnese.AnamneseRequest;
 import com.lumina.backend.dto.cliente.ClienteRequest;
 import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.model.Anamnese;
 import com.lumina.backend.model.Cliente;
+import com.lumina.backend.repository.AnamneseRepository;
 import com.lumina.backend.repository.ClienteRepository;
 import org.springframework.stereotype.Service;
 
@@ -12,9 +16,11 @@ import java.util.List;
 public class ClienteService {
 
     private final ClienteRepository repository;
+    private final AnamneseRepository anamneseRepository;
 
-    public ClienteService(ClienteRepository repository) {
+    public ClienteService(ClienteRepository repository, AnamneseRepository anamneseRepository) {
         this.repository = repository;
+        this.anamneseRepository = anamneseRepository;
     }
 
     public List<Cliente> listar(){
@@ -69,5 +75,42 @@ public class ClienteService {
         return repository.save(cliente);
     }
 
+    public List<Anamnese> listarAnamnese(Integer id){
+        List<Anamnese> anamnese = anamneseRepository.findAnamneseByFkCliente_IdCliente(id);
+        if(anamnese.isEmpty()) throw new EntidadeNaoEncontrada("Anamnese não encontrada!") ;
+        return anamnese;
+    }
+
+    public Anamnese cadastrarAnamnese(Integer id, AnamneseRequest request){
+        repository.findById(id)
+                .orElseThrow(() -> new EntidadeNaoEncontrada("Cliente não encontrado!"));
+        Anamnese anamnese = new Anamnese();
+        anamnese.setIdAnamnese(request.getIdAnamnese());
+        anamnese.setDataAnamnese(request.getDataAnamnese());
+        anamnese.setFazendoTratamento(request.getFazendoTratamento());
+        anamnese.setDescricaoTratamento(request.getDescricaoTratamento());
+        anamnese.setDoresCabecaFaceAtm(request.getDoresCabecaFaceAtm());
+        anamnese.setAlergiaMedicamentos(request.getAlergiaMedicamentos());
+        anamnese.setDescricaoAlergiaMedicamentos(request.getDescricaoAlergiaMedicamentos());
+        anamnese.setReacaoAnestesiaLocal(request.getReacaoAnestesiaLocal());
+        anamnese.setSensibilidadeDentaria(request.getSensibilidadeDentaria());
+        anamnese.setBruxismoApertamento(request.getBruxismoApertamento());
+        anamnese.setSangramentoGengival(request.getSangramentoGengival());
+        anamnese.setPossuiHabito(request.getPossuiHabito());
+        anamnese.setDescricaoHabito(request.getDescricaoHabito());
+        anamnese.setHistoricoDiabetes(request.getHistoricoDiabetes());
+        anamnese.setSangramentoExcessivo(request.getSangramentoExcessivo());
+        anamnese.setProblemaCardiaco(request.getProblemaCardiaco());
+        anamnese.setDescricaoProblemaCardiaco(request.getDescricaoProblemaCardiaco());
+        anamnese.setPressaoArterialNormal(request.getPressaoArterialNormal());
+        anamnese.setDescricaoPressaoArterial(request.getDescricaoPressaoArterial());
+        anamnese.setHistoricoDesmaioConvulsao(request.getHistoricoDesmaioConvulsao());
+        anamnese.setGestante(request.getGestante());
+
+        anamneseRepository.save(anamnese);
+
+        return anamnese;
+
+    }
 
 }
