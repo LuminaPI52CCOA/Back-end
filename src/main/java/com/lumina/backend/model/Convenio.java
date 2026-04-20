@@ -12,26 +12,29 @@ public class Convenio {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long idConvenio;
+    private Long id;
 
-    @NotNull
-    @NotBlank
+
     private String nome;
 
     public Convenio() {
     }
 
-    public Convenio(Long idConvenio, String nome) {
-        this.idConvenio = idConvenio;
+    public Convenio(String nome) {
         this.nome = nome;
     }
 
-    public Long getIdConvenio() {
-        return idConvenio;
+    public Convenio(Long id, String nome) {
+        this.id = id;
+        this.nome = nome;
     }
 
-    public void setIdConvenio(Long idConvenio) {
-        this.idConvenio = idConvenio;
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getNome() {

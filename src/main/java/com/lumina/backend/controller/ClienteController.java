@@ -3,7 +3,9 @@ package com.lumina.backend.controller;
 import com.lumina.backend.dto.cliente.ClienteMapper;
 import com.lumina.backend.dto.cliente.ClienteRequest;
 import com.lumina.backend.dto.cliente.ClienteResponse;
+import com.lumina.backend.dto.convenio.ConvenioResponse;
 import com.lumina.backend.model.Cliente;
+import com.lumina.backend.service.Convenio.ConvenioService;
 import com.lumina.backend.service.cliente.ClienteService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -16,9 +18,12 @@ import java.util.List;
 public class ClienteController {
 
     private final ClienteService service;
+    private final ConvenioService convenioService
 
-    public ClienteController(ClienteService service){
+    public ClienteController(ClienteService service,
+                             ConvenioService convenioService){
         this.service = service;
+        this.convenioService = convenioService;
     }
 
     @GetMapping
@@ -52,5 +57,10 @@ public class ClienteController {
         Cliente cliente = service.atualizar(request, id);
         ClienteResponse response = ClienteMapper.toDto(cliente);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/convenios")
+    public ResponseEntity<List<ConvenioResponse>> listarConvenios(@PathVariable Integer id) {
+        return ResponseEntity.status(200).body(convenioService.);
     }
 }
