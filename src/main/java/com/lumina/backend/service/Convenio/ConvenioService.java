@@ -57,6 +57,6 @@ public class ConvenioService {
             throw new EntidadeNaoEncontrada("Cliente não encontrado!");
         }
 
-        return clienteConvenioRepository.findByClienteIdCliente(id);
+        //return clienteConvenioRepository.findByClienteIdCliente(id);
     }
 }

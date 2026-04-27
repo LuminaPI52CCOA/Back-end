@@ -18,7 +18,7 @@ import java.util.List;
 public class ClienteController {
 
     private final ClienteService service;
-    private final ConvenioService convenioService
+    private final ConvenioService convenioService;
 
     public ClienteController(ClienteService service,
                              ConvenioService convenioService){
@@ -61,6 +61,6 @@ public class ClienteController {
 
     @GetMapping("/{id}/convenios")
     public ResponseEntity<List<ConvenioResponse>> listarConvenios(@PathVariable Integer id) {
-        return ResponseEntity.status(200).body(convenioService.);
+        return ResponseEntity.status(200).body(null);
     }
 }
