@@ -18,12 +18,9 @@ import java.util.List;
 public class ClienteController {
 
     private final ClienteService service;
-    private final ConvenioService convenioService;
 
-    public ClienteController(ClienteService service,
-                             ConvenioService convenioService){
+    public ClienteController(ClienteService service){
         this.service = service;
-        this.convenioService = convenioService;
     }
 
     @GetMapping
@@ -45,7 +42,7 @@ public class ClienteController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ClienteResponse> buscarPorId(@PathVariable Integer id){
+    public ResponseEntity<ClienteResponse> buscarPorId(@PathVariable Long id){
         Cliente cliente = service.buscarPorId(id);
         ClienteResponse response = ClienteMapper.toDto(cliente);
         return ResponseEntity.ok(response);
@@ -53,7 +50,7 @@ public class ClienteController {
 
     @PutMapping("/{id}")
     public ResponseEntity<ClienteResponse> atualizar(@RequestBody @Valid ClienteRequest request,
-                                                     @PathVariable Integer id){
+                                                     @PathVariable Long id){
         Cliente cliente = service.atualizar(request, id);
         ClienteResponse response = ClienteMapper.toDto(cliente);
         return ResponseEntity.ok(response);

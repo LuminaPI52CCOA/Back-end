@@ -31,7 +31,7 @@ public class ConsultaController {
         return ResponseEntity.status(201).body(ConsultaMapper.toResponse(consultaService.cadastrar(consulta)));
     }
 
-    @GetMapping("/{id")
+    @GetMapping("/{id}")
     public ResponseEntity<ConsultaResponse> buscarPorId(@PathVariable Long id) {
         return ResponseEntity.status(200).body(ConsultaMapper.toResponse(consultaService.buscarPorId(id)));
     }

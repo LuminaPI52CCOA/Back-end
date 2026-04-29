@@ -4,23 +4,21 @@ import com.lumina.backend.dto.convenio.ConvenioMapper;
 import com.lumina.backend.dto.convenio.ConvenioRequest;
 import com.lumina.backend.exception.EntidadeNaoEncontrada;
 import com.lumina.backend.model.Convenio;
-import com.lumina.backend.repository.ClienteConvenioRepository;
 import com.lumina.backend.repository.ClienteRepository;
 import com.lumina.backend.repository.ConvenioRepository;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Service
 public class ConvenioService {
 
     private final ConvenioRepository convenioRepository;
-    private final ClienteConvenioRepository clienteConvenioRepository;
     private final ClienteRepository clienteRepository;
 
     public ConvenioService(ConvenioRepository convenioRepository,
-                           ClienteConvenioRepository clienteConvenioRepository,
                            ClienteRepository clienteRepository) {
         this.convenioRepository = convenioRepository;
-        this.clienteConvenioRepository = clienteConvenioRepository;
         this.clienteRepository = clienteRepository;
     }
 
@@ -52,7 +50,7 @@ public class ConvenioService {
         convenioRepository.delete(convenioEncontrado);
     }
 
-    public void listarConvenios(Integer id) {
+    public void listarConvenios(Long id) {
         if(!clienteRepository.existsById(id)) {
             throw new EntidadeNaoEncontrada("Cliente não encontrado!");
         }

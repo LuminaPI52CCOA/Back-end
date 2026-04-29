@@ -11,7 +11,7 @@ import java.time.LocalDate;
 public class Cliente {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer idCliente;
+    private Long idCliente;
     private String nome;
     private String cpf;
     private String rg;
@@ -28,11 +28,11 @@ public class Cliente {
     private Integer fkResponsavel;
     private String grauParentescoResponsavel;
 
-    public Integer getIdCliente() {
+    public Long getIdCliente() {
         return idCliente;
     }
 
-    public void setIdCliente(Integer idCliente) {
+    public void setIdCliente(Long idCliente) {
         this.idCliente = idCliente;
     }
 

@@ -9,9 +9,11 @@ import com.lumina.backend.model.Usuario;
 import com.lumina.backend.repository.ClienteRepository;
 import com.lumina.backend.repository.ConsultaRepository;
 import com.lumina.backend.repository.UsuarioRepository;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Service
 public class ConsultaService {
     private final ConsultaRepository consultaRepository;
     private final UsuarioRepository usuarioRepository;
