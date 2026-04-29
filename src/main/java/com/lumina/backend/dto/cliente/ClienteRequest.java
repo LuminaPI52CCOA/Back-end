@@ -7,7 +7,7 @@ import java.time.LocalDate;
 
 public class ClienteRequest {
 
-    private Integer idCliente;
+    private Long idCliente;
     @NotBlank
     private String nome;
     @NotBlank
@@ -39,11 +39,11 @@ public class ClienteRequest {
     @NotBlank
     private String grauParentescoResponsavel;
 
-    public Integer getIdCliente() {
+    public Long getIdCliente() {
         return idCliente;
     }
 
-    public void setIdCliente(Integer idCliente) {
+    public void setIdCliente(Long idCliente) {
         this.idCliente = idCliente;
     }
 

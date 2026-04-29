@@ -12,7 +12,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
+public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
     @Modifying
     @Transactional
@@ -28,7 +28,7 @@ u.ativo = :#{#usuarios.ativo}
 WHERE u.idUsuario = :id
 """)
     int atualizarPeloId(@Param("usuarios") UsuarioRequest usuarios,
-                        @Param("id") Integer id);
+                        @Param("id") Long id);
 
     @Modifying
     @Transactional
@@ -38,7 +38,7 @@ u.ativo = :ativo
 WHERE u.idUsuario = :id
 """)
     int logicalDelete(@Param("ativo") Boolean ativo,
-                        @Param("id") Integer id);
+                        @Param("id") Long id);
 
     Optional<Usuario> findByEmail(String username);
 }

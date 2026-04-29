@@ -10,7 +10,7 @@ public class Usuario {
 
         @Id
         @GeneratedValue(strategy = GenerationType.IDENTITY)
-        private Integer idUsuario;
+        private Long idUsuario;
         private String nome;
         private String cpf;
         private String email;
@@ -23,7 +23,7 @@ public class Usuario {
 
         }
 
-        public Usuario(Integer idUsuario, String nome, String cpf, String email, String senha, Integer fkPerfil, String cro, Boolean ativo) {
+        public Usuario(Long idUsuario, String nome, String cpf, String email, String senha, Integer fkPerfil, String cro, Boolean ativo) {
                 this.idUsuario = idUsuario;
                 this.nome = nome;
                 this.cpf = cpf;
@@ -34,11 +34,11 @@ public class Usuario {
                 this.ativo = ativo;
         }
 
-        public Integer getIdUsuario() {
+        public Long getIdUsuario() {
                 return idUsuario;
         }
 
-        public void setIdUsuario(Integer idUsuario) {
+        public void setIdUsuario(Long idUsuario) {
                 this.idUsuario = idUsuario;
         }
 

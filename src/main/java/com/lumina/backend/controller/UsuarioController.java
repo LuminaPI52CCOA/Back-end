@@ -116,7 +116,7 @@ public class UsuarioController {
             summary = "Busca usuario por ID",
             description = "Retorna os dados do usuario correspondente ao identificador informado."
     )
-    public ResponseEntity<Optional<Usuario>> buscarPorId(@PathVariable Integer id){
+    public ResponseEntity<Optional<Usuario>> buscarPorId(@PathVariable Long id){
         return ResponseEntity.ok(service.buscarPorId(id));
     }
 
@@ -125,7 +125,7 @@ public class UsuarioController {
             summary = "Inativa usuario por ID",
             description = "Realiza a inativacao logica do usuario com base no ID informado e retorna 204."
     )
-    public ResponseEntity<Void> deletarUsuario(@PathVariable Integer id){
+    public ResponseEntity<Void> deletarUsuario(@PathVariable Long id){
         Boolean ativo = false;
         service.deletar(ativo, id);
     return ResponseEntity.noContent().build();
@@ -137,7 +137,7 @@ public class UsuarioController {
             description = "Atualiza os dados do usuario conforme o corpo da requisicao e retorna o registro atualizado."
     )
     public ResponseEntity<Optional<Usuario>> atualizar(
-            @Valid @RequestBody UsuarioRequest usuario, @PathVariable Integer id){
+            @Valid @RequestBody UsuarioRequest usuario, @PathVariable Long id){
         service.atualizar(usuario, id);
         return ResponseEntity.ok(service.buscarPorId(id));
     }
