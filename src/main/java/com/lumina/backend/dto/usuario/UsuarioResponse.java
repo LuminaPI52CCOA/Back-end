@@ -5,7 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "Dados de resposta de usuario")
 public class UsuarioResponse {
     @Schema(description = "Identificador unico do usuario", example = "1", type = "integer", format = "int32")
-    private Integer idUsuario;
+    private Long idUsuario;
 
     @Schema(description = "Nome completo do usuario", example = "Ana Maria Souza", type = "string")
     private String nome;
@@ -32,7 +32,7 @@ public class UsuarioResponse {
 
     }
 
-    public UsuarioResponse(Integer idUsuario, String nome, String cpf, String email, String senha, Integer fkPerfil, String cro, Boolean ativo) {
+    public UsuarioResponse(Long idUsuario, String nome, String cpf, String email, String senha, Integer fkPerfil, String cro, Boolean ativo) {
         this.idUsuario = idUsuario;
         this.nome = nome;
         this.cpf = cpf;
@@ -43,11 +43,11 @@ public class UsuarioResponse {
         this.ativo = ativo;
     }
 
-    public Integer getIdUsuario() {
+    public Long getIdUsuario() {
         return idUsuario;
     }
 
-    public void setIdUsuario(Integer idUsuario) {
+    public void setIdUsuario(Long idUsuario) {
         this.idUsuario = idUsuario;
     }
 
