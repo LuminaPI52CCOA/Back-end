@@ -1,27 +1,46 @@
 package com.lumina.backend.dto.cliente;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.LocalDate;
 
+@Schema(description = "Dados de resposta de cliente")
 public class ClienteResponse {
 
-    private Integer idCliente;
+    @Schema(description = "Identificador do cliente", example = "1", type = "integer", format = "int64")
+    private Long idCliente;
+    @Schema(description = "Nome completo do cliente", example = "Maria Oliveira", type = "string")
     private String nome;
+    @Schema(description = "CPF do cliente", example = "12345678901", type = "string")
     private String cpf;
+    @Schema(description = "RG do cliente", example = "123456789", type = "string")
     private String rg;
+    @Schema(description = "Data de nascimento do cliente", example = "1990-05-10", type = "string", format = "date")
     private LocalDate dataNascimento;
+    @Schema(description = "Numero de celular do cliente", example = "11999998888", type = "string")
     private String numeroCelular;
+    @Schema(description = "Email do cliente", example = "maria.oliveira@lumina.com", type = "string", format = "email")
     private String email;
+    @Schema(description = "Sexo do cliente", example = "F", type = "string")
     private Character sexo;
+    @Schema(description = "Naturalidade do cliente", example = "Sao Paulo", type = "string")
     private String naturalidade;
+    @Schema(description = "Nacionalidade do cliente", example = "Brasileira", type = "string")
     private String nacionalidade;
+    @Schema(description = "ID do estado civil do cliente", example = "1", type = "integer", format = "int32")
     private Integer fkEstadoCivil;
+    @Schema(description = "Endereco residencial do cliente", example = "Rua A, 100 - Centro", type = "string")
     private String enderecoResidencial;
+    @Schema(description = "CEP do cliente", example = "09090000", type = "string")
     private String cep;
+    @Schema(description = "ID do cliente que indicou", example = "2", type = "integer", format = "int32")
     private Integer fkClienteIndicacao;
+    @Schema(description = "ID do responsavel quando aplicavel", example = "3", type = "integer", format = "int32")
     private Integer fkResponsavel;
+    @Schema(description = "Grau de parentesco do responsavel", example = "Mae", type = "string")
     private String grauParentescoResponsavel;
 
-    public ClienteResponse(Integer idCliente, String nome, String cpf, String rg, LocalDate dataNascimento, String numeroCelular, String email, Character sexo, String naturalidade, String nacionalidade, Integer fkEstadoCivil, String enderecoResidencial, String cep, Integer fkClienteIndicacao, Integer fkResponsavel, String grauParentescoResponsavel) {
+    public ClienteResponse(Long idCliente, String nome, String cpf, String rg, LocalDate dataNascimento, String numeroCelular, String email, Character sexo, String naturalidade, String nacionalidade, Integer fkEstadoCivil, String enderecoResidencial, String cep, Integer fkClienteIndicacao, Integer fkResponsavel, String grauParentescoResponsavel) {
         this.idCliente = idCliente;
         this.nome = nome;
         this.cpf = cpf;
@@ -44,11 +63,11 @@ public class ClienteResponse {
 
     }
 
-    public Integer getIdCliente() {
+    public Long getIdCliente() {
         return idCliente;
     }
 
-    public void setIdCliente(Integer idCliente) {
+    public void setIdCliente(Long idCliente) {
         this.idCliente = idCliente;
     }
 
