@@ -3,6 +3,10 @@ package com.lumina.backend.controller;
 import com.lumina.backend.model.Perfil;
 import com.lumina.backend.service.Perfil.PerfilService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,6 +32,11 @@ public class PerfilController {
             summary = "Lista todos os perfis",
             description = "Retorna a lista de perfis cadastrados para classificacao de usuarios."
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Perfis retornados com sucesso",
+                    content = @Content(schema = @Schema(implementation = Perfil.class))),
+            @ApiResponse(responseCode = "204", description = "Nao ha perfis cadastrados", content = @Content)
+    })
     public ResponseEntity<List<Perfil>> listar(){
         if(service.listar().isEmpty()){
             return ResponseEntity.noContent().build();
