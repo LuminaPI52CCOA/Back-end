@@ -120,7 +120,7 @@ public class ClienteController {
     }
 
     @PostMapping("/{id}/anamneses")
-    public ResponseEntity<AnamneseResponse> cadastroAnamnese(@PathVariable Integer id,
+    public ResponseEntity<AnamneseResponse> cadastroAnamnese(@PathVariable Long id,
                                                              @RequestBody AnamneseRequest request){
         Anamnese anamnese = service.cadastrarAnamnese(id, request);
         AnamneseResponse response = AnamneseMapper.toDto(anamnese);

@@ -27,7 +27,7 @@ public class AnamneseResponse {
     private Boolean gestante;
 
     public static class AnamneseCliente {
-        private Integer idCliente;
+        private Long idCliente;
         private String nome;
         private String cpf;
         private String rg;
@@ -44,11 +44,11 @@ public class AnamneseResponse {
         private Integer fkResponsavel;
         private String grauParentescoResponsavel;
 
-        public Integer getIdCliente() {
+        public Long getIdCliente() {
             return idCliente;
         }
 
-        public void setIdCliente(Integer idCliente) {
+        public void setIdCliente(Long idCliente) {
             this.idCliente = idCliente;
         }
 

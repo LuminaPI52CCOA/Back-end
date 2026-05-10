@@ -81,7 +81,7 @@ public class ClienteService {
         return anamnese;
     }
 
-    public Anamnese cadastrarAnamnese(Integer id, AnamneseRequest request){
+    public Anamnese cadastrarAnamnese(Long id, AnamneseRequest request){
         repository.findById(id)
                 .orElseThrow(() -> new EntidadeNaoEncontrada("Cliente não encontrado!"));
         Anamnese anamnese = new Anamnese();
