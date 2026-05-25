@@ -1,42 +1,60 @@
 package com.lumina.backend.dto.cliente;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
 
+@Schema(description = "Dados de entrada para cadastro e atualizacao de cliente")
 public class ClienteRequest {
 
+    @Schema(description = "Identificador do cliente", example = "1", type = "integer", format = "int64")
     private Long idCliente;
     @NotBlank
+    @Schema(description = "Nome completo do cliente", example = "Maria Oliveira", type = "string")
     private String nome;
     @NotBlank
+    @Schema(description = "CPF do cliente", example = "12345678901", type = "string")
     private String cpf;
     @NotBlank
+    @Schema(description = "RG do cliente", example = "123456789", type = "string")
     private String rg;
     @NotBlank
+    @Schema(description = "Data de nascimento do cliente", example = "1990-05-10", type = "string", format = "date")
     private LocalDate dataNascimento;
     @NotBlank
+    @Schema(description = "Numero de celular do cliente", example = "11999998888", type = "string")
     private String numeroCelular;
     @NotBlank
+    @Schema(description = "Email do cliente", example = "maria.oliveira@lumina.com", type = "string", format = "email")
     private String email;
     @NotBlank
+    @Schema(description = "Sexo do cliente", example = "F", type = "string")
     private Character sexo;
     @NotBlank
+    @Schema(description = "Naturalidade do cliente", example = "Sao Paulo", type = "string")
     private String naturalidade;
     @NotBlank
+    @Schema(description = "Nacionalidade do cliente", example = "Brasileira", type = "string")
     private String nacionalidade;
     @NotNull
+    @Schema(description = "ID do estado civil do cliente", example = "1", type = "integer", format = "int32")
     private Integer fkEstadoCivil;
     @NotBlank
+    @Schema(description = "Endereco residencial do cliente", example = "Rua A, 100 - Centro", type = "string")
     private String enderecoResidencial;
     @NotBlank
+    @Schema(description = "CEP do cliente", example = "09090000", type = "string")
     private String cep;
     @NotNull
+    @Schema(description = "ID do cliente que indicou", example = "2", type = "integer", format = "int32")
     private Integer fkClienteIndicacao;
     @NotNull
+    @Schema(description = "ID do responsavel quando aplicavel", example = "3", type = "integer", format = "int32")
     private Integer fkResponsavel;
     @NotBlank
+    @Schema(description = "Grau de parentesco do responsavel", example = "Mae", type = "string")
     private String grauParentescoResponsavel;
 
     public Long getIdCliente() {

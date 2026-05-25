@@ -43,6 +43,7 @@ public class SecurityConfiguracao {
     private static final String[] URLS_PERMITIDAS = {
             "/swagger-ui/**",
             "/swagger-ui.html",
+            "/custom.css",
             "/swagger-resources",
             "/swagger-resources/**",
             "/configuration/ui",

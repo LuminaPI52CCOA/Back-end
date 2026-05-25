@@ -2,6 +2,7 @@ package com.lumina.backend.dto.usuario;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(description = "Credenciais de autenticacao do usuario")
 public class UsuarioLoginDto {
 
     @Schema(description = "E-mail do usuário", example = "john@doe.com")
