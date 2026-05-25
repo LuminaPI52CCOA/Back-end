@@ -7,9 +7,11 @@ import com.lumina.backend.model.Convenio;
 import com.lumina.backend.repository.ClienteConvenioRepository;
 import com.lumina.backend.repository.ClienteRepository;
 import com.lumina.backend.repository.ConvenioRepository;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Service
 public class ConvenioService {
 
     private final ConvenioRepository convenioRepository;
@@ -52,11 +54,11 @@ public class ConvenioService {
         convenioRepository.delete(convenioEncontrado);
     }
 
-    public void listarConvenios(Integer id) {
+    public List<Convenio> listarConveniosCliente(Long id) {
         if(!clienteRepository.existsById(id)) {
             throw new EntidadeNaoEncontrada("Cliente não encontrado!");
         }
 
-        return clienteConvenioRepository.findByClienteIdCliente(id);
+        return clienteConvenioRepository.findConveniosByClienteId(id);
     }
 }

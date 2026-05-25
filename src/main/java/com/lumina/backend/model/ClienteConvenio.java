@@ -1,20 +1,40 @@
 package com.lumina.backend.model;
 
-import jakarta.persistence.Entity;
+import jakarta.persistence.*;
 
 @Entity
 public class ClienteConvenio {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long idClienteConvenio;
+
+    @ManyToOne
+    @JoinColumn(name = "id_cliente")
     private Cliente cliente;
+
+    @ManyToOne
+    @JoinColumn(name = "id_convenio")
     private Convenio convenio;
+
     private String numeroInscricao;
 
     public ClienteConvenio() {
     }
 
-    public ClienteConvenio(String numeroInscricao, Convenio convenio, Cliente cliente) {
-        this.numeroInscricao = numeroInscricao;
-        this.convenio = convenio;
+    public ClienteConvenio(Long idClienteConvenio, Cliente cliente, Convenio convenio, String numeroInscricao) {
+        this.idClienteConvenio = idClienteConvenio;
         this.cliente = cliente;
+        this.convenio = convenio;
+        this.numeroInscricao = numeroInscricao;
+    }
+
+    public Long getIdClienteConvenio() {
+        return idClienteConvenio;
+    }
+
+    public void setIdClienteConvenio(Long idClienteConvenio) {
+        this.idClienteConvenio = idClienteConvenio;
     }
 
     public Cliente getCliente() {

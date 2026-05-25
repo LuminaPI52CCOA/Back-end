@@ -42,12 +42,12 @@ public class ClienteService {
         return repository.save(cliente);
     }
 
-    public Cliente buscarPorId(Integer id){
+    public Cliente buscarPorId(Long id){
         return repository.findById(id)
                 .orElseThrow(() -> new EntidadeNaoEncontrada("Cliente não encontrado!"));
     }
 
-    public Cliente atualizar(ClienteRequest request, Integer id){
+    public Cliente atualizar(ClienteRequest request, Long id){
         Cliente cliente = repository.findById(id)
                 .orElseThrow(() -> new EntidadeNaoEncontrada("Cliente não encontrado!"));
         cliente.setIdCliente(request.getIdCliente());

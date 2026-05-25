@@ -4,7 +4,7 @@ import java.time.LocalDate;
 
 public class ClienteResponse {
 
-    private Integer idCliente;
+    private Long idCliente;
     private String nome;
     private String cpf;
     private String rg;
@@ -21,7 +21,7 @@ public class ClienteResponse {
     private Integer fkResponsavel;
     private String grauParentescoResponsavel;
 
-    public ClienteResponse(Integer idCliente, String nome, String cpf, String rg, LocalDate dataNascimento, String numeroCelular, String email, Character sexo, String naturalidade, String nacionalidade, Integer fkEstadoCivil, String enderecoResidencial, String cep, Integer fkClienteIndicacao, Integer fkResponsavel, String grauParentescoResponsavel) {
+    public ClienteResponse(Long idCliente, String nome, String cpf, String rg, LocalDate dataNascimento, String numeroCelular, String email, Character sexo, String naturalidade, String nacionalidade, Integer fkEstadoCivil, String enderecoResidencial, String cep, Integer fkClienteIndicacao, Integer fkResponsavel, String grauParentescoResponsavel) {
         this.idCliente = idCliente;
         this.nome = nome;
         this.cpf = cpf;
@@ -44,11 +44,11 @@ public class ClienteResponse {
 
     }
 
-    public Integer getIdCliente() {
+    public Long getIdCliente() {
         return idCliente;
     }
 
-    public void setIdCliente(Integer idCliente) {
+    public void setIdCliente(Long idCliente) {
         this.idCliente = idCliente;
     }
 

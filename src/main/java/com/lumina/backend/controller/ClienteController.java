@@ -3,6 +3,7 @@ package com.lumina.backend.controller;
 import com.lumina.backend.dto.cliente.ClienteMapper;
 import com.lumina.backend.dto.cliente.ClienteRequest;
 import com.lumina.backend.dto.cliente.ClienteResponse;
+import com.lumina.backend.dto.convenio.ConvenioMapper;
 import com.lumina.backend.dto.convenio.ConvenioResponse;
 import com.lumina.backend.model.Cliente;
 import com.lumina.backend.service.Convenio.ConvenioService;
@@ -18,7 +19,7 @@ import java.util.List;
 public class ClienteController {
 
     private final ClienteService service;
-    private final ConvenioService convenioService
+    private final ConvenioService convenioService;
 
     public ClienteController(ClienteService service,
                              ConvenioService convenioService){
@@ -45,7 +46,7 @@ public class ClienteController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ClienteResponse> buscarPorId(@PathVariable Integer id){
+    public ResponseEntity<ClienteResponse> buscarPorId(@PathVariable Long id){
         Cliente cliente = service.buscarPorId(id);
         ClienteResponse response = ClienteMapper.toDto(cliente);
         return ResponseEntity.ok(response);
@@ -53,14 +54,14 @@ public class ClienteController {
 
     @PutMapping("/{id}")
     public ResponseEntity<ClienteResponse> atualizar(@RequestBody @Valid ClienteRequest request,
-                                                     @PathVariable Integer id){
+                                                     @PathVariable Long id){
         Cliente cliente = service.atualizar(request, id);
         ClienteResponse response = ClienteMapper.toDto(cliente);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}/convenios")
-    public ResponseEntity<List<ConvenioResponse>> listarConvenios(@PathVariable Integer id) {
-        return ResponseEntity.status(200).body(convenioService.);
+    public ResponseEntity<List<ConvenioResponse>> listarConvenios(@PathVariable Long id) {
+        return ResponseEntity.status(200).body(ConvenioMapper.toResponse(convenioService.listarConveniosCliente(id)));
     }
 }
