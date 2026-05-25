@@ -9,7 +9,7 @@ import org.hibernate.validator.constraints.br.CPF;
 @Schema(description = "Dados de entrada para cadastro e atualizacao de usuario")
 public class UsuarioRequest {
     @Schema(description = "Identificador unico do usuario", example = "1", type = "integer", format = "int32")
-    private Integer idUsuario;
+    private Long idUsuario;
 
     @NotBlank
     @Schema(description = "Nome completo do usuario", example = "Ana Maria Souza", type = "string")
@@ -45,7 +45,7 @@ public class UsuarioRequest {
 
     }
 
-    public UsuarioRequest(Integer idUsuario, String nome, String cpf, String email, String senha, Integer fkPerfil, String cro, Boolean ativo) {
+    public UsuarioRequest(Long idUsuario, String nome, String cpf, String email, String senha, Integer fkPerfil, String cro, Boolean ativo) {
         this.idUsuario = idUsuario;
         this.nome = nome;
         this.cpf = cpf;
@@ -56,11 +56,11 @@ public class UsuarioRequest {
         this.ativo = ativo;
     }
 
-    public Integer getIdUsuario() {
+    public Long getIdUsuario() {
         return idUsuario;
     }
 
-    public void setIdUsuario(Integer idUsuario) {
+    public void setIdUsuario(Long idUsuario) {
         this.idUsuario = idUsuario;
     }
 

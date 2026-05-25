@@ -35,7 +35,7 @@ public class UsuarioMapper {
                 UsuarioResponse.UsuarioPerfil();
 
         UsuarioResponse dto = new UsuarioResponse(
-                Math.toIntExact(model.getIdUsuario()),
+                (long) Math.toIntExact(model.getIdUsuario()),
                 model.getNome(),
                 model.getCpf(),
                 model.getEmail(),

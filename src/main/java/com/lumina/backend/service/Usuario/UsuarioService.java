@@ -47,7 +47,7 @@ public class UsuarioService {
     public List<Usuario> listar(){
         return repository.findAll();
     }
-    public Optional<Usuario> buscarPorId(Integer id){
+    public Optional<Usuario> buscarPorId(Long id){
         return Optional.of(repository.findById(id)
                 .orElseThrow(() -> new EntidadeNaoEncontrada(
                         "Usuario de id: %d não encontrado".formatted(id))));
@@ -73,14 +73,14 @@ public class UsuarioService {
         return UsuarioMapper.of(usuarioAutenticado, token);
     }
 
-    public int deletar(Boolean ativo, Integer id){
+    public int deletar(Boolean ativo, Long id){
         Optional<Usuario> usuario = repository.findById(id);
         if(usuario.isEmpty()) {
             throw new EntidadeNaoEncontrada("Usuario de id: %d não encontrado".formatted(id));
         }
             return repository.logicalDelete(ativo, id);
     }
-    public int atualizar(UsuarioRequest usuarios, Integer id){
+    public int atualizar(UsuarioRequest usuarios, Long id){
 
         Optional<Usuario> usuario = repository.findById(id);
         if(usuario.isEmpty()){

@@ -1,7 +1,12 @@
 package com.lumina.backend.dto.convenio;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(description = "Dados de resposta de convenio")
 public class ConvenioResponse {
+    @Schema(description = "Identificador do convenio", example = "1", type = "integer", format = "int64")
     private Long id;
+    @Schema(description = "Nome do convenio", example = "Unimed", type = "string")
     private String nome;
 
     public ConvenioResponse() {
