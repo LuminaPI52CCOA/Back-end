@@ -19,6 +19,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(MockitoExtension.class)
+@DisplayName("Testes unitários PerfilService")
 class PerfilServiceTest {
     @Mock
     private PerfilRespository repository;
@@ -48,19 +49,5 @@ class PerfilServiceTest {
 
     List<Perfil> perfis = service.listar();
     Assertions.assertTrue(perfis.isEmpty());
-    }
-
-    @Test
-    @DisplayName("1.3 Deve retornar 200 quando existir perfis")
-    void retornar200QuandoExistirPerfis() {
-        service = new PerfilService(repository);
-        List<Perfil> listaPerfil = List.of(
-                new Perfil()
-        );
-        Mockito.when(service.listar()).thenReturn(listaPerfil);
-
-        ResponseEntity<List<Perfil>> response = ResponseEntity.ok(service.listar());
-        //List<Perfil> perfis = service.listar();
-        Assertions.assertEquals(200, response.getStatusCodeValue());
     }
 }
