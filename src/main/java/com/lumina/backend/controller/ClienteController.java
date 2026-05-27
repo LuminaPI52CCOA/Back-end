@@ -66,7 +66,7 @@ public class ClienteController {
     public ResponseEntity<ClienteResponse> cadastrar(
             @RequestBody(description = "Dados de cadastro do cliente", required = true,
                     content = @Content(schema = @Schema(implementation = ClienteRequest.class)))
-            @org.springframework.web.bind.annotation.RequestBody @Valid ClienteRequest request){
+            @org.springframework.web.bind.annotation.RequestBody ClienteRequest request){
         service.cadastrar(request);
         Cliente clienteResponse = ClienteMapper.toEntity(request);
         ClienteResponse response = ClienteMapper.toDto(clienteResponse);
@@ -132,6 +132,4 @@ public class ClienteController {
         AnamneseResponse response = AnamneseMapper.toDto(anamnese);
         return ResponseEntity.ok(response);
     }
-
-
 }
