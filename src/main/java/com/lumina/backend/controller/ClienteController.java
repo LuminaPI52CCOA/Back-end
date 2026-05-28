@@ -1,11 +1,17 @@
 package com.lumina.backend.controller;
 
+import com.lumina.backend.dto.anamnese.AnamneseMapper;
+import com.lumina.backend.dto.anamnese.AnamneseRequest;
+import com.lumina.backend.dto.anamnese.AnamneseResponse;
 import com.lumina.backend.dto.cliente.ClienteMapper;
 import com.lumina.backend.dto.cliente.ClienteRequest;
 import com.lumina.backend.dto.cliente.ClienteResponse;
+import com.lumina.backend.dto.convenio.ConvenioMapper;
 import com.lumina.backend.dto.convenio.ConvenioResponse;
+import com.lumina.backend.model.Anamnese;
 import com.lumina.backend.model.Cliente;
 import com.lumina.backend.service.cliente.ClienteService;
+import com.lumina.backend.service.convenio.ConvenioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -26,9 +32,12 @@ import java.util.List;
 public class ClienteController {
 
     private final ClienteService service;
+    private final ConvenioService convenioService;
 
-    public ClienteController(ClienteService service){
+
+    public ClienteController(ClienteService service, ConvenioService convenioService){
         this.service = service;
+        this.convenioService = convenioService;
     }
 
     @GetMapping
@@ -57,7 +66,7 @@ public class ClienteController {
     public ResponseEntity<ClienteResponse> cadastrar(
             @RequestBody(description = "Dados de cadastro do cliente", required = true,
                     content = @Content(schema = @Schema(implementation = ClienteRequest.class)))
-            @org.springframework.web.bind.annotation.RequestBody @Valid ClienteRequest request){
+            @org.springframework.web.bind.annotation.RequestBody ClienteRequest request){
         service.cadastrar(request);
         Cliente clienteResponse = ClienteMapper.toEntity(request);
         ClienteResponse response = ClienteMapper.toDto(clienteResponse);
@@ -104,7 +113,23 @@ public class ClienteController {
             @ApiResponse(responseCode = "404", description = "Cliente nao encontrado", content = @Content)
     })
     public ResponseEntity<List<ConvenioResponse>> listarConvenios(
-            @Parameter(description = "ID do cliente", example = "1") @PathVariable Integer id) {
-        return ResponseEntity.status(200).body(null);
+            @Parameter(description = "ID do cliente", example = "1") @PathVariable Long id) {
+        return ResponseEntity.status(200).body(ConvenioMapper.toResponse(convenioService.listarConveniosCliente(id)));
+    }
+
+
+    @GetMapping("/{id}/anamneses")
+    public ResponseEntity<List<AnamneseResponse>> listarAnamnese(@PathVariable Integer id){
+        List<Anamnese> anamneseList = service.listarAnamnese(id);
+        List<AnamneseResponse> response = AnamneseMapper.toDto(anamneseList);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/anamneses")
+    public ResponseEntity<AnamneseResponse> cadastroAnamnese(@PathVariable Long id,
+                                                             @RequestBody AnamneseRequest request){
+        Anamnese anamnese = service.cadastrarAnamnese(id, request);
+        AnamneseResponse response = AnamneseMapper.toDto(anamnese);
+        return ResponseEntity.ok(response);
     }
 }

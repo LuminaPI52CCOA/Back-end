@@ -11,7 +11,7 @@ public class ConvenioMapper {
         }
 
         return new ConvenioResponse(
-                convenio.getId(),
+                convenio.getIdConvenio(),
                 convenio.getNome()
         );
     }
