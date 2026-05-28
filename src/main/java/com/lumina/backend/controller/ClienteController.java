@@ -5,7 +5,6 @@ import com.lumina.backend.dto.cliente.ClienteRequest;
 import com.lumina.backend.dto.cliente.ClienteResponse;
 import com.lumina.backend.dto.convenio.ConvenioResponse;
 import com.lumina.backend.model.Cliente;
-import com.lumina.backend.service.Convenio.ConvenioService;
 import com.lumina.backend.service.cliente.ClienteService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

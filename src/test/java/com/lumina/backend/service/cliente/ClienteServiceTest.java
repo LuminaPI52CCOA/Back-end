@@ -2,8 +2,8 @@ package com.lumina.backend.service.cliente;
 
 import com.lumina.backend.dto.cliente.ClienteMapper;
 import com.lumina.backend.dto.cliente.ClienteRequest;
-import com.lumina.backend.exception.AtributoJaCadastradoException;
-import com.lumina.backend.exception.CampoNuloOuIncorretoException;
+//import com.lumina.backend.exceptionAtributoJaCadastradoException;
+//import com.lumina.backend.exception.CampoNuloOuIncorretoException;
 import com.lumina.backend.exception.EntidadeNaoEncontrada;
 import com.lumina.backend.model.Cliente;
 import com.lumina.backend.repository.ClienteRepository;
