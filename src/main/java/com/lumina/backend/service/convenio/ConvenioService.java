@@ -1,4 +1,4 @@
-package com.lumina.backend.service.Convenio;
+package com.lumina.backend.service.convenio;
 
 import com.lumina.backend.dto.convenio.ConvenioMapper;
 import com.lumina.backend.dto.convenio.ConvenioRequest;
