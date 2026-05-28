@@ -4,7 +4,6 @@ import com.lumina.backend.dto.convenio.ConvenioMapper;
 import com.lumina.backend.dto.convenio.ConvenioRequest;
 import com.lumina.backend.exception.EntidadeNaoEncontrada;
 import com.lumina.backend.model.Convenio;
-import com.lumina.backend.repository.ClienteRepository;
 import com.lumina.backend.repository.ConvenioRepository;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
@@ -22,7 +21,6 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 
 @ExtendWith(MockitoExtension.class)
 class ConvenioServiceTest {
@@ -41,15 +39,15 @@ class ConvenioServiceTest {
         @DisplayName("1.1 Deve retornar uma lista cheia.")
         void deveRetornarUmaListaCheiaComSucesso() {
             Convenio c1 = new Convenio();
-            c1.setId(1L);
+            c1.setIdConvenio(1L);
             c1.setNome("Unimed");
 
             Convenio c2 = new Convenio();
-            c2.setId(2L);
+            c2.setIdConvenio(2L);
             c2.setNome("Amil");
 
             Convenio c3 = new Convenio();
-            c3.setId(3L);
+            c3.setIdConvenio(3L);
             c3.setNome("Bradesco Saúde");
 
             var listaCheia = List.of(c1, c2, c3);
@@ -66,7 +64,7 @@ class ConvenioServiceTest {
         @Test
         @DisplayName("1.2 Deve retornar uma lista vazia.")
         void deveRetornarUmaListaVazia() {
-            var listaVazia = Collections.EMPTY_LIST;
+            var listaVazia = Collections.<Convenio>emptyList();
 
             Mockito.when(convenioRepository.findAll())
                     .thenReturn(listaVazia);
@@ -94,7 +92,7 @@ class ConvenioServiceTest {
             convenioRequest.setNome("Unimed");
 
             Convenio convenio = ConvenioMapper.toEntity(convenioRequest);
-            convenio.setId(1L);
+            convenio.setIdConvenio(1L);
 
             Mockito.when(convenioRepository.save(any(Convenio.class)))
                     .thenReturn(convenio);
@@ -126,11 +124,11 @@ class ConvenioServiceTest {
             convenioRequest.setNome("Unimed Atualizado");
 
             Convenio convenioExistente = new Convenio();
-            convenioExistente.setId(1L);
+            convenioExistente.setIdConvenio(1L);
             convenioExistente.setNome("Unimed");
 
             Convenio convenioAtualizado = new Convenio();
-            convenioAtualizado.setId(1L);
+            convenioAtualizado.setIdConvenio(1L);
             convenioAtualizado.setNome("Unimed Atualizado");
 
             Mockito.when(convenioRepository.findById(1L))
@@ -159,7 +157,7 @@ class ConvenioServiceTest {
             Mockito.when(convenioRepository.findById(1L))
                     .thenReturn(Optional.empty());
 
-            EntidadeNaoEncontrada ex = assertThrows(
+            assertThrows(
                     EntidadeNaoEncontrada.class,
                     () -> convenioService.atualizar(1L, convenioRequest)
             );
@@ -182,7 +180,7 @@ class ConvenioServiceTest {
         @DisplayName("4.1 Deve deletar o convênio com sucesso")
         void deveDeletarOConvenioComSucesso() {
             Convenio convenio = new Convenio();
-            convenio.setId(1L);
+            convenio.setIdConvenio(1L);
             convenio.setNome("Unimed");
 
             Mockito.when(convenioRepository.findById(1L))
@@ -204,7 +202,7 @@ class ConvenioServiceTest {
             Mockito.when(convenioRepository.findById(1L))
                     .thenReturn(Optional.empty());
 
-            EntidadeNaoEncontrada ex = assertThrows(
+            assertThrows(
                     EntidadeNaoEncontrada.class,
                     () -> convenioService.deletar(1L)
             );
