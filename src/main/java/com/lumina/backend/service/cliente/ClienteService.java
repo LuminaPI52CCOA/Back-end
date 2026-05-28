@@ -1,6 +1,8 @@
 package com.lumina.backend.service.cliente;
 
 import com.lumina.backend.dto.cliente.ClienteRequest;
+import com.lumina.backend.exception.CpfDuplicadoException;
+import com.lumina.backend.exception.EmailDuplicadoException;
 import com.lumina.backend.exception.EntidadeNaoEncontrada;
 import com.lumina.backend.model.Cliente;
 import com.lumina.backend.repository.ClienteRepository;
@@ -22,6 +24,12 @@ public class ClienteService {
     }
 
     public Cliente cadastrar(ClienteRequest request){
+        if((repository.findByEmail(request.getEmail()).isPresent())){
+            throw new EmailDuplicadoException("Email " + request.getEmail() + " já existe");
+        }
+        if((repository.findByCpf(request.getCpf()).isPresent())){
+            throw new CpfDuplicadoException("Cpf " + request.getCpf() + " já existe");
+        }
         Cliente cliente = new Cliente();
         cliente.setIdCliente(request.getIdCliente());
         cliente.setNome(request.getNome());
@@ -39,6 +47,8 @@ public class ClienteService {
         cliente.setFkClienteIndicacao(request.getFkClienteIndicacao());
         cliente.setFkResponsavel(request.getFkResponsavel());
         cliente.setGrauParentescoResponsavel(request.getGrauParentescoResponsavel());
+
+
         return repository.save(cliente);
     }
 
