@@ -28,8 +28,11 @@ import java.util.stream.Collectors;
 public class AnamneseService {
 
     private final AnamneseRepository repository;
+    private final TextractClient textractClient;
+    private final GeminiAIService geminiAIService;
+    private AnamneseMapper anamneseMapper;
 
-    public AnamneseService(AnamneseRepository repository) {
+    public AnamneseService(AnamneseRepository repository, TextractClient textractClient, GeminiAIService geminiAIService,  AnamneseMapper anamneseMapper) {
         this.repository = repository;
     }
 
