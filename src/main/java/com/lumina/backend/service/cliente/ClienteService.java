@@ -29,7 +29,6 @@ public class ClienteService {
 
     public Cliente cadastrar(ClienteRequest request){
         Cliente cliente = new Cliente();
-        cliente.setIdCliente(request.getIdCliente());
         cliente.setNome(request.getNome());
         cliente.setCpf(request.getCpf());
         cliente.setRg(request.getRg());
