@@ -5,17 +5,26 @@ import com.lumina.backend.dto.cliente.ClienteRequest;
 import com.lumina.backend.dto.cliente.ClienteResponse;
 import com.lumina.backend.model.Anamnese;
 import com.lumina.backend.model.Cliente;
+import com.lumina.backend.repository.ClienteRepository;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+@Component
 public class AnamneseMapper {
 
-    public static Anamnese toEntity(AnamneseRequest dto) {
+    private  ClienteRepository repositorioCliente;
+
+    public  Anamnese toEntity(AnamneseRequest dto) {
         if (dto == null) {
             return null;
         }
 
         Anamnese entidade = new Anamnese();
+
+        Cliente cliente = repositorioCliente.getReferenceById(dto.getFkCliente());
+        entidade.setFkCliente(cliente);
+
         entidade.setIdAnamnese(dto.getIdAnamnese());
         entidade.setDataAnamnese(dto.getDataAnamnese());
         entidade.setFazendoTratamento(dto.getFazendoTratamento());
@@ -49,7 +58,8 @@ public class AnamneseMapper {
         Cliente cliente = model.getFkCliente();
 
         AnamneseResponse.AnamneseCliente anamneseCliente = new AnamneseResponse.AnamneseCliente();
-        anamneseCliente.setIdCliente(cliente.getIdCliente());
+
+        anamneseCliente.setIdCliente(model.getFkCliente().getIdCliente());
         anamneseCliente.setNome(cliente.getNome());
         anamneseCliente.setCpf(cliente.getCpf());
         anamneseCliente.setRg(cliente.getRg());
