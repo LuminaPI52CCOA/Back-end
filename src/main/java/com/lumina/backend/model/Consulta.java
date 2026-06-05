@@ -13,9 +13,11 @@ public class Consulta {
     private Long idConsulta;
 
     @ManyToOne
+    @JoinColumn(name = "fk_cliente")
     private Cliente cliente;
 
     @ManyToOne
+    @JoinColumn(name = "fk_usuario")
     private Usuario usuario;
 
     private LocalDate data;

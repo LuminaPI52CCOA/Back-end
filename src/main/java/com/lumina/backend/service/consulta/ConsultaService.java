@@ -50,4 +50,24 @@ public class ConsultaService {
         return consultaRepository.findById(id)
                 .orElseThrow(() -> new EntidadeNaoEncontrada("Consulta não encontrada"));
     }
+
+    public Consulta reagendar(Long id, ConsultaRequest request) {
+        // Aproveitamos o método já existente que lança a exceção caso não encontre
+        Consulta consultaExistente = buscarPorId(id);
+
+        // Atualizamos os dados de data e horário
+        consultaExistente.setData(request.getData());
+        consultaExistente.setHorarioInicio(request.getHorarioInicio());
+        consultaExistente.setHorarioFim(request.getHorarioFim());
+
+        // Caso seja necessário permitir a troca de dentista (Usuário) ou Cliente no reagendamento,
+        // basta buscar nos repositórios e setar aqui, de forma similar ao método cadastrar.
+
+        return consultaRepository.save(consultaExistente);
+    }
+
+    public void cancelar(Long id) {
+        Consulta consultaExistente = buscarPorId(id);
+        consultaRepository.delete(consultaExistente);
+    }
 }
