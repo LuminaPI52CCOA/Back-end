@@ -1,4 +1,4 @@
-package com.lumina.backend;
+package com.lumina.backend.service.usuario;
 
 import com.lumina.backend.dto.usuario.UsuarioRequest;
 import com.lumina.backend.dto.usuario.UsuarioTokenDto;
