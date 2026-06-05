@@ -22,22 +22,18 @@ import java.util.Optional;
 @Service
 public class UsuarioService {
 
-    @Autowired
     private PasswordEncoder passwordEncoder;
-
-    @Autowired
     private UsuarioRepository usuarioRepository;
-
-    @Autowired
     private GerenciadorTokenJwt gerenciadorTokenJwt;
-
-    @Autowired
     private AuthenticationManager authenticationManager;
-
     private final UsuarioRepository repository;
 
-    public UsuarioService(UsuarioRepository repository) {
+    public UsuarioService(UsuarioRepository repository, AuthenticationManager authenticationManager, GerenciadorTokenJwt gerenciadorTokenJwt, UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
         this.repository = repository;
+        this.authenticationManager = authenticationManager;
+        this.gerenciadorTokenJwt = gerenciadorTokenJwt;
+        this.usuarioRepository = usuarioRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public Usuario salvar(Usuario usuario){
@@ -89,4 +85,6 @@ public class UsuarioService {
 
         return repository.atualizarPeloId(usuarios, id);
     }
+
+
 }

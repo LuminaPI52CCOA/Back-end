@@ -7,7 +7,7 @@ import java.time.LocalDate;
 
 public class AnamneseRequest {
     private Long idAnamnese;
-    private Integer fkCliente;
+    private Long  fkClienteId;
     private LocalDate dataAnamnese;
     private Boolean fazendoTratamento;
     private String descricaoTratamento;
@@ -37,12 +37,12 @@ public class AnamneseRequest {
         this.idAnamnese = idAnamnese;
     }
 
-    public Integer getFkCliente() {
-        return fkCliente;
+    public Long getFkCliente() {
+        return fkClienteId;
     }
 
-    public void setFkCliente(Integer fkCliente) {
-        this.fkCliente = fkCliente;
+    public void setFkCliente(Long fkCliente) {
+        this.fkClienteId = fkCliente;
     }
 
     public LocalDate getDataAnamnese() {

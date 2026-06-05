@@ -10,6 +10,7 @@ public class Anamnese {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idAnamnese;
     @ManyToOne
+    @JoinColumn(name = "fk_cliente")
     private Cliente fkCliente;
     private LocalDate dataAnamnese;
     private Boolean fazendoTratamento;
@@ -31,6 +32,33 @@ public class Anamnese {
     private String descricaoPressaoArterial;
     private Boolean historicoDesmaioConvulsao;
     private Boolean gestante;
+
+    public Anamnese(Long idAnamnese, Cliente fkCliente, LocalDate dataAnamnese, Boolean fazendoTratamento, String descricaoTratamento, Boolean doresCabecaFaceAtm, Boolean alergiaMedicamentos, String descricaoAlergiaMedicamentos, Boolean reacaoAnestesiaLocal, Boolean sensibilidadeDentaria, Boolean bruxismoApertamento, Boolean sangramentoGengival, Boolean possuiHabito, String descricaoHabito, Boolean historicoDiabetes, Boolean sangramentoExcessivo, Boolean problemaCardiaco, String descricaoProblemaCardiaco, Boolean pressaoArterialNormal, String descricaoPressaoArterial, Boolean historicoDesmaioConvulsao, Boolean gestante) {
+        this.idAnamnese = idAnamnese;
+        this.fkCliente = fkCliente;
+        this.dataAnamnese = dataAnamnese;
+        this.fazendoTratamento = fazendoTratamento;
+        this.descricaoTratamento = descricaoTratamento;
+        this.doresCabecaFaceAtm = doresCabecaFaceAtm;
+        this.alergiaMedicamentos = alergiaMedicamentos;
+        this.descricaoAlergiaMedicamentos = descricaoAlergiaMedicamentos;
+        this.reacaoAnestesiaLocal = reacaoAnestesiaLocal;
+        this.sensibilidadeDentaria = sensibilidadeDentaria;
+        this.bruxismoApertamento = bruxismoApertamento;
+        this.sangramentoGengival = sangramentoGengival;
+        this.possuiHabito = possuiHabito;
+        this.descricaoHabito = descricaoHabito;
+        this.historicoDiabetes = historicoDiabetes;
+        this.sangramentoExcessivo = sangramentoExcessivo;
+        this.problemaCardiaco = problemaCardiaco;
+        this.descricaoProblemaCardiaco = descricaoProblemaCardiaco;
+        this.pressaoArterialNormal = pressaoArterialNormal;
+        this.descricaoPressaoArterial = descricaoPressaoArterial;
+        this.historicoDesmaioConvulsao = historicoDesmaioConvulsao;
+        this.gestante = gestante;
+    }
+
+    public Anamnese() {}
 
     public Long getIdAnamnese() {
         return idAnamnese;

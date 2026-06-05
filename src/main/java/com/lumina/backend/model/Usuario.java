@@ -30,7 +30,6 @@ public class Usuario {
         private Boolean ativo;
 
         public Usuario(){
-
         }
 
         public Usuario(Long idUsuario, String nome, String cpf, String email, String senha, Integer fkPerfil, String cro, Boolean ativo) {
