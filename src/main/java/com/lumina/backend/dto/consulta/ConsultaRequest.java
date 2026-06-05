@@ -11,6 +11,7 @@ import jakarta.validation.constraints.Positive;
 
 import java.sql.Time;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 @Schema(description = "Dados de entrada para cadastro de consulta")
@@ -33,16 +34,16 @@ public class ConsultaRequest {
 
     @NotNull
     @Schema(description = "Horario de inicio da consulta", example = "09:00:00", type = "string")
-    private Time horarioInicio;
+    private LocalTime horarioInicio;
 
     @NotNull
     @Schema(description = "Horario de termino da consulta", example = "09:30:00", type = "string")
-    private Time horarioFim;
+    private LocalTime horarioFim;
 
     public ConsultaRequest() {
     }
 
-    public ConsultaRequest(Long idCliente, Long idUsuario, LocalDate data, Time horarioInicio, Time horarioFim) {
+    public ConsultaRequest(Long idCliente, Long idUsuario, LocalDate data, LocalTime horarioInicio, LocalTime horarioFim) {
         this.idCliente = idCliente;
         this.idUsuario = idUsuario;
         this.data = data;
@@ -74,19 +75,19 @@ public class ConsultaRequest {
         this.data = data;
     }
 
-    public Time getHorarioInicio() {
+    public LocalTime getHorarioInicio() {
         return horarioInicio;
     }
 
-    public void setHorarioInicio(Time horarioInicio) {
+    public void setHorarioInicio(LocalTime horarioInicio) {
         this.horarioInicio = horarioInicio;
     }
 
-    public Time getHorarioFim() {
+    public LocalTime getHorarioFim() {
         return horarioFim;
     }
 
-    public void setHorarioFim(Time horarioFim) {
+    public void setHorarioFim(LocalTime horarioFim) {
         this.horarioFim = horarioFim;
     }
 }
