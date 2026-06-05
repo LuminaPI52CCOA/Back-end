@@ -2,9 +2,7 @@ package com.lumina.backend.service.cliente;
 
 import com.lumina.backend.dto.cliente.ClienteMapper;
 import com.lumina.backend.dto.cliente.ClienteRequest;
-//import com.lumina.backend.exceptionAtributoJaCadastradoException;
-//import com.lumina.backend.exception.CampoNuloOuIncorretoException;
-import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.exception.*;
 import com.lumina.backend.model.Cliente;
 import com.lumina.backend.repository.ClienteRepository;
 import io.jsonwebtoken.lang.Assert;
@@ -33,7 +31,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 class ClienteServiceTest {
 
     @Nested
-    @DisplayName("Teste de listagem de todos os clientes cadastrados")
+    @DisplayName("1. Teste de listagem de todos os clientes cadastrados")
     class ListarTest{
 
         @Mock
@@ -43,7 +41,7 @@ class ClienteServiceTest {
         private ClienteService clienteService;
 
         @Test
-        @DisplayName("Deve retornar uma lista cheia.")
+        @DisplayName("1.1 Deve retornar uma lista cheia.")
         void deveRetornarUmaListaCheiaComSucesso(){
             Cliente c1 = new Cliente();
             c1.setIdCliente(1L);
@@ -147,7 +145,7 @@ class ClienteServiceTest {
 
         }
         @Test
-        @DisplayName("Deve retornar uma lista vazia.")
+        @DisplayName("1.2 Deve retornar uma lista vazia.")
         void deveRetornarUmaListaVazia(){
 
 
@@ -163,7 +161,7 @@ class ClienteServiceTest {
     }
 
     @Nested
-    @DisplayName("Teste de cadastro do cliente")
+    @DisplayName("2. Teste de cadastro do cliente")
     class cadatrarTest{
         @Mock
         private ClienteRepository clienteRepository;
@@ -172,7 +170,7 @@ class ClienteServiceTest {
         private ClienteService clienteService;
 
         @Test
-        @DisplayName("Cadastro deve ser realizado com sucesso")
+        @DisplayName("2.1 Cadastro deve ser realizado com sucesso")
         void deveCriarClienteCorretamente(){
             ClienteRequest c1 = new ClienteRequest();
             c1.setIdCliente(1L);
@@ -204,9 +202,46 @@ class ClienteServiceTest {
 
             Assertions.assertNotNull(resultado);
         }
+
+        @Test
+        @DisplayName("2.2 Deve retornar uma exception de email duplicado")
+        void deveRetornarUmaExceptionEmailDuplicado(){
+            ClienteRequest c1 = new ClienteRequest();
+            c1.setEmail("teste@gmail.com");
+
+            Mockito.when(clienteRepository.findByEmail("teste@gmail.com"))
+                    .thenReturn(Optional.of(ClienteMapper.toEntity(c1)));
+
+            EmailDuplicadoException emailDuplicadoException = assertThrows(
+                    EmailDuplicadoException.class,
+                    () -> clienteService.cadastrar(c1)
+            );
+        }
+
+            @Test
+            @DisplayName("2.3 Deve retornar uma exception de cpf duplicado")
+            void NaoDeveCadastrarOClienteCorretamente(){
+                ClienteRequest c1 = new ClienteRequest();
+                c1.setCpf("1111111111");
+                c1.setEmail("ana.souza@email.com");
+
+                Cliente c2 = new Cliente();
+                c2.setCpf("1111111111");
+    
+                Mockito.when(clienteRepository.findByEmail(Mockito.anyString()))
+                        .thenReturn(Optional.empty());
+    
+                Mockito.when(clienteRepository.findByCpf("1111111111"))
+                        .thenReturn(Optional.of(c2));
+    
+                CpfDuplicadoException cpfDuplicadoException = assertThrows(
+                        CpfDuplicadoException.class,
+                        () -> clienteService.cadastrar(c1)
+                );
+        }
     }
     @Nested
-    @DisplayName("Teste de busca por id")
+    @DisplayName("3. Teste de busca por id")
     class bucarPorIdTest{
 
         @Mock
@@ -216,7 +251,7 @@ class ClienteServiceTest {
         private ClienteService clienteService;
 
         @Test
-        @DisplayName("Deve retornar o cliente buscado pelo id especifico corretamente")
+        @DisplayName("3.1 Deve retornar o cliente buscado pelo id especifico corretamente")
         void deveBuscarCorretamenteOClientePorId(){
             Cliente c1 = new Cliente();
             c1.setIdCliente(1L);
@@ -248,7 +283,7 @@ class ClienteServiceTest {
         }
 
         @Test
-        @DisplayName("Não deve retornar o cliente buscado pelo id especifico corretamente")
+        @DisplayName("3.2 Não deve retornar o cliente buscado pelo id especifico corretamente")
         void naoDeveBuscarOClientePorId(){
 
             Mockito.when(clienteRepository.findById(1L))
@@ -262,7 +297,7 @@ class ClienteServiceTest {
     }
 
     @Nested
-    @DisplayName("Testes de atualizar o cliente")
+    @DisplayName("4. Testes de atualizar o cliente")
     class AtualizarClienteTest{
         @Mock
         private ClienteRepository clienteRepository;
@@ -270,7 +305,7 @@ class ClienteServiceTest {
         @InjectMocks
         private ClienteService clienteService;
         @Test
-        @DisplayName("Deve atualizar o cliente com sucesso")
+        @DisplayName("4.1 Deve atualizar o cliente com sucesso")
         void deveAtualizarOClienteComSucesso(){
             ClienteRequest c1 = new ClienteRequest();
             c1.setIdCliente(1L);
@@ -311,7 +346,7 @@ class ClienteServiceTest {
         }
 
         @Test
-        @DisplayName("Deve lançar EntidadeNaoEncontrada ao tentar atualizar um cliente inexistente")
+        @DisplayName("4.2 Deve lançar EntidadeNaoEncontrada ao tentar atualizar um cliente inexistente")
         void deveLancarExcecaoAoAtualizarOClienteInexistente() {
 
             ClienteRequest request = new ClienteRequest();
