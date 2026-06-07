@@ -1,10 +1,14 @@
 package com.lumina.backend.service.cliente;
 
+import com.lumina.backend.dto.anamnese.AnamneseRequest;
 import com.lumina.backend.dto.cliente.ClienteMapper;
 import com.lumina.backend.dto.cliente.ClienteRequest;
 import com.lumina.backend.exception.*;
+import com.lumina.backend.model.Anamnese;
 import com.lumina.backend.model.Cliente;
+import com.lumina.backend.repository.AnamneseRepository;
 import com.lumina.backend.repository.ClienteRepository;
+import com.lumina.backend.service.anamnese.AnamneseService;
 import io.jsonwebtoken.lang.Assert;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
@@ -365,5 +369,116 @@ class ClienteServiceTest {
             Mockito.verify(clienteRepository, Mockito.never()).save(any(Cliente.class));
         }
 
+    }
+    @Nested
+    @DisplayName("Testes do Método Listar Anamnese")
+    class ListarAnamneseTest {
+
+        @Mock
+        private AnamneseRepository anamneseRepository;
+
+        @Mock
+        private ClienteRepository repository;
+
+        @InjectMocks
+        private ClienteService service;
+
+        @Test
+        @DisplayName("1.1 Deve retornar a lista de anamneses com sucesso quando existirem registros.")
+        void deveRetornarListaDeAnamnesesComSucesso() {
+            Integer clienteId = 1;
+            Anamnese a1 = new Anamnese();
+            a1.setIdAnamnese(1L);
+            a1.setDescricaoTratamento("Tratamento ortodôntico");
+
+            List<Anamnese> listaCheia = List.of(a1);
+
+            Mockito.when(anamneseRepository.findAnamneseByFkCliente_IdCliente(clienteId))
+                    .thenReturn(listaCheia);
+
+
+            List<Anamnese> resultado = service.listarAnamnese(clienteId);
+
+
+            assertFalse(resultado.isEmpty());
+            assertEquals(1, resultado.size());
+            assertEquals("Tratamento ortodôntico", resultado.get(0).getDescricaoTratamento());
+
+        }
+
+        @Test
+        @DisplayName("1.2 Deve lançar EntidadeNaoEncontrada quando a lista de anamneses vier vazia.")
+        void deveLancarExcecaoQuandoListaVazia() {
+
+            Integer clienteId = 2;
+            Mockito.when(anamneseRepository.findAnamneseByFkCliente_IdCliente(clienteId))
+                    .thenReturn(Collections.emptyList());
+
+
+            EntidadeNaoEncontrada excecao = assertThrows(EntidadeNaoEncontrada.class, () -> {
+                service.listarAnamnese(clienteId);
+            });
+        }
+    }
+    @Nested
+    @DisplayName("Testes do Método Cadastrar Anamnese")
+    class CadastrarAnamneseTest {
+
+        @Mock
+        private AnamneseRepository anamneseRepository;
+
+        @Mock
+        private ClienteRepository repository;
+
+        @InjectMocks
+        private ClienteService service;
+
+        @Test
+        @DisplayName("2.1 Deve cadastrar anamnese com sucesso quando o cliente for encontrado.")
+        void deveCadastrarAnamneseComSucesso() {
+
+            Long clienteId = 10L;
+            Cliente clienteExistente = new Cliente();
+
+            AnamneseRequest request = new AnamneseRequest();
+            request.setIdAnamnese(100L);
+            request.setDataAnamnese(LocalDate.now());
+            request.setFazendoTratamento(true);
+            request.setDescricaoTratamento("Cardíaco");
+            request.setAlergiaMedicamentos(false);
+
+            Mockito.when(repository.findById(clienteId)).thenReturn(Optional.of(clienteExistente));
+
+            Anamnese resultado = service.cadastrarAnamnese(clienteId, request);
+
+            assertNotNull(resultado);
+            assertEquals(100L, resultado.getIdAnamnese());
+            assertEquals("Cardíaco", resultado.getDescricaoTratamento());
+            assertTrue(resultado.getFazendoTratamento());
+
+
+            Mockito.verify(repository, Mockito.times(1)).findById(clienteId);
+            Mockito.verify(anamneseRepository, Mockito.times(1)).save(any(Anamnese.class));
+        }
+
+        @Test
+        @DisplayName("2.2 Deve lançar EntidadeNaoEncontrada ao tentar cadastrar anamnese para cliente inexistente.")
+        void deveLancarExcecaoQuandoClienteNaoEncontrado() {
+            Long clienteId = 99L;
+            AnamneseRequest request = new AnamneseRequest();
+
+            Mockito.when(repository.findById(clienteId)).thenReturn(Optional.empty());
+
+
+            EntidadeNaoEncontrada excecao = assertThrows(EntidadeNaoEncontrada.class, () -> {
+                service.cadastrarAnamnese(clienteId, request);
+            });
+
+            assertEquals("Cliente não encontrado!", excecao.getMessage());
+
+
+            Mockito.verify(repository, Mockito.times(1)).findById(clienteId);
+            Mockito.verify(anamneseRepository, Mockito.never()).save(any(Anamnese.class));
+        }
     }
 }
