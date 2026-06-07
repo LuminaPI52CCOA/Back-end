@@ -371,7 +371,7 @@ class ClienteServiceTest {
 
     }
     @Nested
-    @DisplayName("Testes do Método Listar Anamnese")
+    @DisplayName("5. Testes do Método Listar Anamnese")
     class ListarAnamneseTest {
 
         @Mock
@@ -384,7 +384,7 @@ class ClienteServiceTest {
         private ClienteService service;
 
         @Test
-        @DisplayName("1.1 Deve retornar a lista de anamneses com sucesso quando existirem registros.")
+        @DisplayName("5.1 Deve retornar a lista de anamneses com sucesso quando existirem registros.")
         void deveRetornarListaDeAnamnesesComSucesso() {
             Integer clienteId = 1;
             Anamnese a1 = new Anamnese();
@@ -407,7 +407,7 @@ class ClienteServiceTest {
         }
 
         @Test
-        @DisplayName("1.2 Deve lançar EntidadeNaoEncontrada quando a lista de anamneses vier vazia.")
+        @DisplayName("5.2 Deve lançar EntidadeNaoEncontrada quando a lista de anamneses vier vazia.")
         void deveLancarExcecaoQuandoListaVazia() {
 
             Integer clienteId = 2;
@@ -421,7 +421,7 @@ class ClienteServiceTest {
         }
     }
     @Nested
-    @DisplayName("Testes do Método Cadastrar Anamnese")
+    @DisplayName("6. Testes do Método Cadastrar Anamnese")
     class CadastrarAnamneseTest {
 
         @Mock
@@ -434,7 +434,7 @@ class ClienteServiceTest {
         private ClienteService service;
 
         @Test
-        @DisplayName("2.1 Deve cadastrar anamnese com sucesso quando o cliente for encontrado.")
+        @DisplayName("6.1 Deve cadastrar anamnese com sucesso quando o cliente for encontrado.")
         void deveCadastrarAnamneseComSucesso() {
 
             Long clienteId = 10L;
@@ -462,7 +462,7 @@ class ClienteServiceTest {
         }
 
         @Test
-        @DisplayName("2.2 Deve lançar EntidadeNaoEncontrada ao tentar cadastrar anamnese para cliente inexistente.")
+        @DisplayName("6.2 Deve lançar EntidadeNaoEncontrada ao tentar cadastrar anamnese para cliente inexistente.")
         void deveLancarExcecaoQuandoClienteNaoEncontrado() {
             Long clienteId = 99L;
             AnamneseRequest request = new AnamneseRequest();
