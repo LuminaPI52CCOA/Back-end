@@ -50,4 +50,19 @@ public class ConsultaService {
         return consultaRepository.findById(id)
                 .orElseThrow(() -> new EntidadeNaoEncontrada("Consulta não encontrada"));
     }
+
+    public Consulta reagendar(Long id, ConsultaRequest request) {
+        Consulta consultaExistente = buscarPorId(id);
+
+        consultaExistente.setData(request.getData());
+        consultaExistente.setHorarioInicio(request.getHorarioInicio());
+        consultaExistente.setHorarioFim(request.getHorarioFim());
+
+        return consultaRepository.save(consultaExistente);
+    }
+
+    public void cancelar(Long id) {
+        Consulta consultaExistente = buscarPorId(id);
+        consultaRepository.delete(consultaExistente);
+    }
 }
