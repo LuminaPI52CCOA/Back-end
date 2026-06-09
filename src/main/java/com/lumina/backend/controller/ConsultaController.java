@@ -65,4 +65,35 @@ public class ConsultaController {
             @Parameter(description = "ID da consulta", example = "1") @PathVariable Long id) {
         return ResponseEntity.status(200).body(ConsultaMapper.toResponse(consultaService.buscarPorId(id)));
     }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Reagendar consulta", description = "Atualiza as informações de data e horário de uma consulta específica.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Consulta reagendada com sucesso",
+                    content = @Content(schema = @Schema(implementation = ConsultaResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos para reagendamento", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Consulta não encontrada", content = @Content)
+    })
+    public ResponseEntity<ConsultaResponse> reagendar(
+            @Parameter(description = "ID da consulta", example = "1") @PathVariable Long id,
+            @RequestBody(description = "Novos dados para a consulta", required = true,
+                    content = @Content(schema = @Schema(implementation = ConsultaRequest.class)))
+            @Valid @org.springframework.web.bind.annotation.RequestBody ConsultaRequest consultaRequest) {
+
+        Consulta consultaAtualizada = consultaService.reagendar(id, consultaRequest);
+        return ResponseEntity.status(200).body(ConsultaMapper.toResponse(consultaAtualizada));
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Cancela consulta", description = "Remove uma consulta da agenda pelo identificador informado.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Consulta cancelada com sucesso"),
+            @ApiResponse(responseCode = "404", description = "Consulta não encontrada", content = @Content)
+    })
+    public ResponseEntity<Void> cancelar(
+            @Parameter(description = "ID da consulta", example = "1") @PathVariable Long id) {
+
+        consultaService.cancelar(id);
+        return ResponseEntity.noContent().build();
+    }
 }

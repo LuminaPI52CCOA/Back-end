@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.sql.Time;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Schema(description = "Dados de resposta de consulta")
 public class ConsultaResponse {
@@ -19,14 +20,19 @@ public class ConsultaResponse {
     @Schema(description = "Data da consulta", example = "2026-05-15", type = "string", format = "date")
     private LocalDate data;
     @Schema(description = "Horario de inicio da consulta", example = "09:00:00", type = "string")
-    private Time horarioInicio;
+    private LocalTime horarioInicio;
     @Schema(description = "Horario de termino da consulta", example = "09:30:00", type = "string")
-    private Time horarioFim;
+    private LocalTime horarioFim;
 
     public ConsultaResponse() {
     }
 
-    public ConsultaResponse(Long id, ClienteResponse cliente, UsuarioResponse usuario, LocalDate data, Time horarioInicio, Time horarioFim) {
+    public ConsultaResponse(Long id,
+                            ClienteResponse cliente,
+                            UsuarioResponse usuario,
+                            LocalDate data,
+                            LocalTime horarioInicio,
+                            LocalTime horarioFim) {
         this.id = id;
         this.cliente = cliente;
         this.usuario = usuario;
@@ -67,19 +73,19 @@ public class ConsultaResponse {
         this.data = data;
     }
 
-    public Time getHorarioInicio() {
+    public LocalTime getHorarioInicio() {
         return horarioInicio;
     }
 
-    public void setHorarioInicio(Time horarioInicio) {
+    public void setHorarioInicio(LocalTime horarioInicio) {
         this.horarioInicio = horarioInicio;
     }
 
-    public Time getHorarioFim() {
+    public LocalTime getHorarioFim() {
         return horarioFim;
     }
 
-    public void setHorarioFim(Time horarioFim) {
+    public void setHorarioFim(LocalTime horarioFim) {
         this.horarioFim = horarioFim;
     }
 }
