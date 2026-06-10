@@ -38,10 +38,11 @@ public class PerfilController {
             @ApiResponse(responseCode = "204", description = "Nao ha perfis cadastrados", content = @Content)
     })
     public ResponseEntity<List<Perfil>> listar(){
-        if(service.listar().isEmpty()){
+        List<Perfil> perfis = service.listar();
+        if(perfis.isEmpty()){
             return ResponseEntity.noContent().build();
         }
-        return ResponseEntity.ok(service.listar());
+        return ResponseEntity.ok(perfis);
     }
 
 }
