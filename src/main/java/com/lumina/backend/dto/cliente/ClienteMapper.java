@@ -24,8 +24,6 @@ public class ClienteMapper {
         entidade.setFkEstadoCivil(dto.getFkEstadoCivil());
         entidade.setEnderecoResidencial(dto.getEnderecoResidencial());
         entidade.setCep(dto.getCep());
-        entidade.setFkClienteIndicacao(dto.getFkClienteIndicacao());
-        entidade.setFkResponsavel(dto.getFkResponsavel());
         entidade.setGrauParentescoResponsavel(dto.getGrauParentescoResponsavel());
 
         return entidade;
@@ -36,8 +34,13 @@ public class ClienteMapper {
             return null;
         }
 
-        ClienteResponse usuarioPerfilDto = new
-                ClienteResponse();
+        Integer fkClienteIndicacao = model.getClienteIndicacao() != null && model.getClienteIndicacao().getIdCliente() != null
+                ? model.getClienteIndicacao().getIdCliente().intValue()
+                : null;
+
+        Integer fkResponsavel = model.getResponsavel() != null && model.getResponsavel().getIdCliente() != null
+                ? model.getResponsavel().getIdCliente().intValue()
+                : null;
 
         ClienteResponse dto = new ClienteResponse(
                 model.getIdCliente(),
@@ -53,8 +56,8 @@ public class ClienteMapper {
                 model.getFkEstadoCivil(),
                 model.getEnderecoResidencial(),
                 model.getCep(),
-                model.getFkClienteIndicacao(),
-                model.getFkResponsavel(),
+                fkClienteIndicacao,
+                fkResponsavel,
                 model.getGrauParentescoResponsavel()
         );
 

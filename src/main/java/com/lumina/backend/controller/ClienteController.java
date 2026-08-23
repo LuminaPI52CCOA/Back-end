@@ -41,14 +41,18 @@ public class ClienteController {
     }
 
     @GetMapping
-    @Operation(summary = "Lista clientes", description = "Retorna os clientes cadastrados no sistema.")
+    @Operation(summary = "Lista ou busca clientes", description = "Retorna os clientes cadastrados no sistema, permitindo filtrar por nome ou CPF.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Clientes retornados com sucesso",
                     content = @Content(schema = @Schema(implementation = ClienteResponse.class))),
-            @ApiResponse(responseCode = "204", description = "Nao ha clientes cadastrados", content = @Content)
+            @ApiResponse(responseCode = "204", description = "Nenhum cliente encontrado", content = @Content)
     })
-    public ResponseEntity<List<ClienteResponse>> listar(){
-        List<Cliente> clientes = service.listar();
+    public ResponseEntity<List<ClienteResponse>> listar(
+            @Parameter(description = "Nome para busca parcial de clientes", example = "Maria")
+            @RequestParam(required = false) String nome,
+            @Parameter(description = "CPF exato do cliente", example = "12345678901")
+            @RequestParam(required = false) String cpf){
+        List<Cliente> clientes = service.listarComFiltros(nome, cpf);
         if(clientes.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
@@ -66,10 +70,9 @@ public class ClienteController {
     public ResponseEntity<ClienteResponse> cadastrar(
             @RequestBody(description = "Dados de cadastro do cliente", required = true,
                     content = @Content(schema = @Schema(implementation = ClienteRequest.class)))
-            @org.springframework.web.bind.annotation.RequestBody ClienteRequest request){
-        service.cadastrar(request);
-        Cliente clienteResponse = ClienteMapper.toEntity(request);
-        ClienteResponse response = ClienteMapper.toDto(clienteResponse);
+            @org.springframework.web.bind.annotation.RequestBody @Valid ClienteRequest request){
+        Cliente clienteCadastrado = service.cadastrar(request);
+        ClienteResponse response = ClienteMapper.toDto(clienteCadastrado);
         return ResponseEntity.status(201).body(response);
     }
 
