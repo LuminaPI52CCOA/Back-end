@@ -7,11 +7,13 @@ import com.lumina.backend.dto.cliente.ClienteMapper;
 import com.lumina.backend.dto.cliente.ClienteRequest;
 import com.lumina.backend.dto.cliente.ClienteResponse;
 import com.lumina.backend.dto.convenio.ConvenioResponse;
+import com.lumina.backend.dto.estado_civil.EstadoCivilResponse;
 import com.lumina.backend.exception.EmailDuplicadoException;
 import com.lumina.backend.exception.EntidadeNaoEncontrada;
 import com.lumina.backend.model.Anamnese;
 import com.lumina.backend.model.Cliente;
 import com.lumina.backend.model.Convenio;
+import com.lumina.backend.model.EstadoCivil;
 import com.lumina.backend.service.cliente.ClienteService;
 import com.lumina.backend.service.convenio.ConvenioService;
 import org.junit.jupiter.api.Assertions;
@@ -66,29 +68,29 @@ class ClienteControllerTest {
 
             List<Cliente> listaCheia = List.of(c1, c2);
 
-            Mockito.when(clienteService.listar()).thenReturn(listaCheia);
+            Mockito.when(clienteService.listarComFiltros(null, null)).thenReturn(listaCheia);
 
-            ResponseEntity<List<ClienteResponse>> response = clienteController.listar();
+            ResponseEntity<List<ClienteResponse>> response = clienteController.listar(null, null);
 
             Assertions.assertEquals(200, response.getStatusCodeValue());
             Assertions.assertNotNull(response.getBody());
             Assertions.assertFalse(response.getBody().isEmpty());
             Assertions.assertEquals(2, response.getBody().size());
 
-            Mockito.verify(clienteService, Mockito.times(1)).listar();
+            Mockito.verify(clienteService, Mockito.times(1)).listarComFiltros(null, null);
         }
 
         @Test
         @DisplayName("1.2 Deve retornar status 204 quando a lista estiver vazia")
         void deveRetornarStatus204QuandoListaVazia() {
-            Mockito.when(clienteService.listar()).thenReturn(Collections.emptyList());
+            Mockito.when(clienteService.listarComFiltros(null, null)).thenReturn(Collections.emptyList());
 
-            ResponseEntity<List<ClienteResponse>> response = clienteController.listar();
+            ResponseEntity<List<ClienteResponse>> response = clienteController.listar(null, null);
 
             Assertions.assertEquals(204, response.getStatusCodeValue());
             Assertions.assertNull(response.getBody());
 
-            Mockito.verify(clienteService, Mockito.times(1)).listar();
+            Mockito.verify(clienteService, Mockito.times(1)).listarComFiltros(null, null);
         }
     }
 
@@ -371,6 +373,43 @@ class ClienteControllerTest {
 
             Assertions.assertEquals("Cliente não encontrado", exception.getMessage());
             Mockito.verify(clienteService, Mockito.times(1)).cadastrarAnamnese(anyLong(), any(AnamneseRequest.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("8. Testes do Método Listar Estados Civis")
+    class ListarEstadosCivisTest {
+
+        @Test
+        @DisplayName("8.1 Deve retornar lista de estados civis com status 200")
+        void deveRetornarListaDeEstadosCivisComSucesso() {
+            EstadoCivil ec1 = new EstadoCivil(1, "Solteiro(a)");
+            EstadoCivil ec2 = new EstadoCivil(2, "Casado(a)");
+            List<EstadoCivil> lista = List.of(ec1, ec2);
+
+            Mockito.when(clienteService.listarEstadosCivis()).thenReturn(lista);
+
+            ResponseEntity<List<EstadoCivilResponse>> response = clienteController.listarEstadosCivis();
+
+            Assertions.assertEquals(200, response.getStatusCodeValue());
+            Assertions.assertNotNull(response.getBody());
+            Assertions.assertEquals(2, response.getBody().size());
+            Assertions.assertEquals("Solteiro(a)", response.getBody().get(0).getDescricao());
+
+            Mockito.verify(clienteService, Mockito.times(1)).listarEstadosCivis();
+        }
+
+        @Test
+        @DisplayName("8.2 Deve retornar status 204 quando não houver estados civis")
+        void deveRetornarStatus204QuandoListaVazia() {
+            Mockito.when(clienteService.listarEstadosCivis()).thenReturn(Collections.emptyList());
+
+            ResponseEntity<List<EstadoCivilResponse>> response = clienteController.listarEstadosCivis();
+
+            Assertions.assertEquals(204, response.getStatusCodeValue());
+            Assertions.assertNull(response.getBody());
+
+            Mockito.verify(clienteService, Mockito.times(1)).listarEstadosCivis();
         }
     }
 }
