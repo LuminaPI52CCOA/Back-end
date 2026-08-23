@@ -22,15 +22,10 @@ public class EstadoCivilMapper {
             return null;
         }
 
-        EstadoCivilResponse estadoCivilResponse = new
-                EstadoCivilResponse();
-
-        EstadoCivilResponse dto = new EstadoCivilResponse(
+        return new EstadoCivilResponse(
                 model.getIdEstadoCivil(),
                 model.getDescricao()
         );
-
-        return dto;
     }
 
     public static List<EstadoCivilResponse> toDto(List<EstadoCivil> entities) {

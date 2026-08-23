@@ -8,8 +8,11 @@ import com.lumina.backend.dto.cliente.ClienteRequest;
 import com.lumina.backend.dto.cliente.ClienteResponse;
 import com.lumina.backend.dto.convenio.ConvenioMapper;
 import com.lumina.backend.dto.convenio.ConvenioResponse;
+import com.lumina.backend.dto.estado_civil.EstadoCivilMapper;
+import com.lumina.backend.dto.estado_civil.EstadoCivilResponse;
 import com.lumina.backend.model.Anamnese;
 import com.lumina.backend.model.Cliente;
+import com.lumina.backend.model.EstadoCivil;
 import com.lumina.backend.service.cliente.ClienteService;
 import com.lumina.backend.service.convenio.ConvenioService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,6 +41,22 @@ public class ClienteController {
     public ClienteController(ClienteService service, ConvenioService convenioService){
         this.service = service;
         this.convenioService = convenioService;
+    }
+
+    @GetMapping("/estado-civil")
+    @Operation(summary = "Lista todos os estados civis", description = "Retorna os estados civis cadastrados no sistema para selecao em formularios.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Estados civis retornados com sucesso",
+                    content = @Content(schema = @Schema(implementation = EstadoCivilResponse.class))),
+            @ApiResponse(responseCode = "204", description = "Nenhum estado civil encontrado", content = @Content)
+    })
+    public ResponseEntity<List<EstadoCivilResponse>> listarEstadosCivis() {
+        List<EstadoCivil> estadosCivis = service.listarEstadosCivis();
+        if (estadosCivis.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        List<EstadoCivilResponse> response = EstadoCivilMapper.toDto(estadosCivis);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping
@@ -76,7 +95,7 @@ public class ClienteController {
         return ResponseEntity.status(201).body(response);
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     @Operation(summary = "Busca cliente por ID", description = "Retorna os dados de um cliente pelo identificador informado.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Cliente encontrado",
@@ -90,7 +109,7 @@ public class ClienteController {
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:\\d+}")
     @Operation(summary = "Atualiza cliente", description = "Atualiza os dados de um cliente pelo identificador.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Cliente atualizado com sucesso",
@@ -108,7 +127,7 @@ public class ClienteController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/{id}/convenios")
+    @GetMapping("/{id:\\d+}/convenios")
     @Operation(summary = "Lista convenios do cliente", description = "Retorna os convenios vinculados ao cliente informado.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Convenios do cliente retornados com sucesso",
@@ -121,14 +140,14 @@ public class ClienteController {
     }
 
 
-    @GetMapping("/{id}/anamneses")
+    @GetMapping("/{id:\\d+}/anamneses")
     public ResponseEntity<List<AnamneseResponse>> listarAnamnese(@PathVariable Integer id){
         List<Anamnese> anamneseList = service.listarAnamnese(id);
         List<AnamneseResponse> response = AnamneseMapper.toDto(anamneseList);
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/{id}/anamneses")
+    @PostMapping("/{id:\\d+}/anamneses")
     public ResponseEntity<AnamneseResponse> cadastroAnamnese(@PathVariable Long id,
                                                              @RequestBody AnamneseRequest request){
         Anamnese anamnese = service.cadastrarAnamnese(id, request);

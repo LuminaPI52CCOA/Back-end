@@ -10,8 +10,10 @@ import com.lumina.backend.exception.EmailDuplicadoException;
 import com.lumina.backend.exception.EntidadeNaoEncontrada;
 import com.lumina.backend.model.Anamnese;
 import com.lumina.backend.model.Cliente;
+import com.lumina.backend.model.EstadoCivil;
 import com.lumina.backend.repository.AnamneseRepository;
 import com.lumina.backend.repository.ClienteRepository;
+import com.lumina.backend.repository.EstadoCivilRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -22,10 +24,18 @@ public class ClienteService {
 
     private final ClienteRepository repository;
     private final AnamneseRepository anamneseRepository;
+    private final EstadoCivilRepository estadoCivilRepository;
 
-    public ClienteService(ClienteRepository repository, AnamneseRepository anamneseRepository) {
+    public ClienteService(ClienteRepository repository,
+                          AnamneseRepository anamneseRepository,
+                          EstadoCivilRepository estadoCivilRepository) {
         this.repository = repository;
         this.anamneseRepository = anamneseRepository;
+        this.estadoCivilRepository = estadoCivilRepository;
+    }
+
+    public List<EstadoCivil> listarEstadosCivis() {
+        return estadoCivilRepository.findAll();
     }
 
     public List<Cliente> listar(){
