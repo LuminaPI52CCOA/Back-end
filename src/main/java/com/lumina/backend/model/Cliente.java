@@ -1,9 +1,6 @@
 package com.lumina.backend.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 
 import java.time.LocalDate;
 
@@ -13,19 +10,25 @@ public class Cliente {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idCliente;
     private String nome;
+    private Integer fkEstadoCivil;
     private String cpf;
     private String rg;
     private LocalDate dataNascimento;
-    private String numeroCelular;
-    private String email;
-    private Character sexo;
     private String naturalidade;
     private String nacionalidade;
-    private Integer fkEstadoCivil;
-    private String enderecoResidencial;
+    private Character sexo;
     private String cep;
-    private Integer fkClienteIndicacao;
-    private Integer fkResponsavel;
+    private String enderecoResidencial;
+    private String email;
+    private String numeroCelular;
+
+    @ManyToOne
+    @JoinColumn(name = "fk_cliente_indicacao")
+    private Cliente clienteIndicacao;
+
+    @ManyToOne
+    @JoinColumn(name = "fk_responsavel")
+    private Cliente responsavel;
     private String grauParentescoResponsavel;
 
     public Long getIdCliente() {
@@ -132,20 +135,20 @@ public class Cliente {
         this.cep = cep;
     }
 
-    public Integer getFkClienteIndicacao() {
-        return fkClienteIndicacao;
+    public Cliente getClienteIndicacao() {
+        return clienteIndicacao;
     }
 
-    public void setFkClienteIndicacao(Integer fkClienteIndicacao) {
-        this.fkClienteIndicacao = fkClienteIndicacao;
+    public void setClienteIndicacao(Cliente clienteIndicacao) {
+        this.clienteIndicacao = clienteIndicacao;
     }
 
-    public Integer getFkResponsavel() {
-        return fkResponsavel;
+    public Cliente getResponsavel() {
+        return responsavel;
     }
 
-    public void setFkResponsavel(Integer fkResponsavel) {
-        this.fkResponsavel = fkResponsavel;
+    public void setResponsavel(Cliente responsavel) {
+        this.responsavel = responsavel;
     }
 
     public String getGrauParentescoResponsavel() {
