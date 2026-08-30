@@ -1,9 +1,11 @@
 package com.lumina.backend.controller.cliente;
 
 import com.lumina.backend.controller.ClienteController;
+import com.lumina.backend.domain.cliente.Cliente;
+import com.lumina.backend.domain.cliente.ClienteCommand;
+import com.lumina.backend.domain.cliente.ClienteId;
 import com.lumina.backend.dto.anamnese.AnamneseRequest;
 import com.lumina.backend.dto.anamnese.AnamneseResponse;
-import com.lumina.backend.dto.cliente.ClienteMapper;
 import com.lumina.backend.dto.cliente.ClienteRequest;
 import com.lumina.backend.dto.cliente.ClienteResponse;
 import com.lumina.backend.dto.convenio.ConvenioResponse;
@@ -11,7 +13,6 @@ import com.lumina.backend.dto.estado_civil.EstadoCivilResponse;
 import com.lumina.backend.exception.EmailDuplicadoException;
 import com.lumina.backend.exception.EntidadeNaoEncontrada;
 import com.lumina.backend.model.Anamnese;
-import com.lumina.backend.model.Cliente;
 import com.lumina.backend.model.Convenio;
 import com.lumina.backend.model.EstadoCivil;
 import com.lumina.backend.service.cliente.ClienteService;
@@ -47,6 +48,14 @@ class ClienteControllerTest {
     @InjectMocks
     private ClienteController clienteController;
 
+    private Cliente criarClienteDomain(Long id, String nome, String cpf, String email) {
+        ClienteCommand command = new ClienteCommand(
+                nome, cpf, "RG-123", LocalDate.of(1998, 5, 21), "SP", "Brasileira",
+                'F', "01010-000", "Rua Flores", email, "(11) 98765-4321", 1, null, null, null
+        );
+        return Cliente.reconstruir(ClienteId.of(id), command);
+    }
+
     @Nested
     @DisplayName("1. Teste de listagem de todos os clientes")
     class ListarTest {
@@ -54,17 +63,8 @@ class ClienteControllerTest {
         @Test
         @DisplayName("1.1 Deve retornar uma lista cheia de clientes com status 200")
         void deveRetornarListaCheiaComSucesso() {
-            Cliente c1 = new Cliente();
-            c1.setIdCliente(1L);
-            c1.setNome("Ana Souza Lima");
-            c1.setCpf("123.456.789-01");
-            c1.setEmail("ana.souza@email.com");
-
-            Cliente c2 = new Cliente();
-            c2.setIdCliente(2L);
-            c2.setNome("Bruno Oliveira Santos");
-            c2.setCpf("987.654.321-00");
-            c2.setEmail("bruno.oliveira@email.com");
+            Cliente c1 = criarClienteDomain(1L, "Ana Souza Lima", "123.456.789-01", "ana.souza@email.com");
+            Cliente c2 = criarClienteDomain(2L, "Bruno Oliveira Santos", "987.654.321-00", "bruno.oliveira@email.com");
 
             List<Cliente> listaCheia = List.of(c1, c2);
 
@@ -107,7 +107,7 @@ class ClienteControllerTest {
             request.setCpf("123.456.789-01");
             request.setEmail("ana.souza@email.com");
 
-            Cliente clienteSalvo = ClienteMapper.toEntity(request);
+            Cliente clienteSalvo = criarClienteDomain(1L, "Ana Souza Lima", "123.456.789-01", "ana.souza@email.com");
 
             Mockito.when(clienteService.cadastrar(any(ClienteRequest.class))).thenReturn(clienteSalvo);
 
@@ -146,11 +146,7 @@ class ClienteControllerTest {
         @Test
         @DisplayName("3.1 Deve retornar cliente encontrado com status 200")
         void deveRetornarClienteEncontradoComSucesso() {
-            Cliente cliente = new Cliente();
-            cliente.setIdCliente(1L);
-            cliente.setNome("Ana Souza Lima");
-            cliente.setCpf("123.456.789-01");
-            cliente.setEmail("ana.souza@email.com");
+            Cliente cliente = criarClienteDomain(1L, "Ana Souza Lima", "123.456.789-01", "ana.souza@email.com");
 
             Mockito.when(clienteService.buscarPorId(1L)).thenReturn(cliente);
 
@@ -192,10 +188,7 @@ class ClienteControllerTest {
             request.setNome("Ana Souza Atualizado");
             request.setEmail("ana.atualizado@email.com");
 
-            Cliente clienteAtualizado = new Cliente();
-            clienteAtualizado.setIdCliente(1L);
-            clienteAtualizado.setNome("Ana Souza Atualizado");
-            clienteAtualizado.setEmail("ana.atualizado@email.com");
+            Cliente clienteAtualizado = criarClienteDomain(1L, "Ana Souza Atualizado", "123.456.789-01", "ana.atualizado@email.com");
 
             Mockito.when(clienteService.atualizar(any(ClienteRequest.class), anyLong()))
                     .thenReturn(clienteAtualizado);
@@ -279,7 +272,7 @@ class ClienteControllerTest {
         @Test
         @DisplayName("6.1 Deve retornar lista de anamneses com status 200")
         void deveRetornarListaDeAnamnesesComSucesso() {
-            Cliente cliente = new Cliente();
+            com.lumina.backend.model.Cliente cliente = new com.lumina.backend.model.Cliente();
             cliente.setIdCliente(1L);
 
             Anamnese a1 = new Anamnese();
@@ -329,7 +322,7 @@ class ClienteControllerTest {
         @Test
         @DisplayName("7.1 Deve cadastrar anamnese com sucesso e retornar status 200")
         void deveCadastrarAnamneseComSucesso() {
-            Cliente cliente = new Cliente();
+            com.lumina.backend.model.Cliente cliente = new com.lumina.backend.model.Cliente();
             cliente.setIdCliente(1L);
 
             AnamneseRequest request = new AnamneseRequest();

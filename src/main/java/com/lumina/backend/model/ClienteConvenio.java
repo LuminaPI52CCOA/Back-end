@@ -3,6 +3,7 @@ package com.lumina.backend.model;
 import jakarta.persistence.*;
 
 @Entity
+@Table(name = "clientes_convenios")
 public class ClienteConvenio {
 
     @Id
@@ -10,11 +11,11 @@ public class ClienteConvenio {
     private Long idClienteConvenio;
 
     @ManyToOne
-    @JoinColumn(name = "id_cliente")
+    @JoinColumn(name = "fk_cliente")
     private Cliente cliente;
 
     @ManyToOne
-    @JoinColumn(name = "id_convenio")
+    @JoinColumn(name = "fk_convenio")
     private Convenio convenio;
 
     private String numeroInscricao;

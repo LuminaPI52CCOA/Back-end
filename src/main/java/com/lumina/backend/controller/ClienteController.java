@@ -1,5 +1,6 @@
 package com.lumina.backend.controller;
 
+import com.lumina.backend.domain.cliente.Cliente;
 import com.lumina.backend.dto.anamnese.AnamneseMapper;
 import com.lumina.backend.dto.anamnese.AnamneseRequest;
 import com.lumina.backend.dto.anamnese.AnamneseResponse;
@@ -11,7 +12,6 @@ import com.lumina.backend.dto.convenio.ConvenioResponse;
 import com.lumina.backend.dto.estado_civil.EstadoCivilMapper;
 import com.lumina.backend.dto.estado_civil.EstadoCivilResponse;
 import com.lumina.backend.model.Anamnese;
-import com.lumina.backend.model.Cliente;
 import com.lumina.backend.model.EstadoCivil;
 import com.lumina.backend.service.cliente.ClienteService;
 import com.lumina.backend.service.convenio.ConvenioService;

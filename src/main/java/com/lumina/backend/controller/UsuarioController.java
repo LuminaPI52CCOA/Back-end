@@ -1,7 +1,8 @@
 package com.lumina.backend.controller;
 
+import com.lumina.backend.domain.usuario.UsuarioCommand;
+import com.lumina.backend.domain.usuario.Usuario;
 import com.lumina.backend.dto.usuario.*;
-import com.lumina.backend.model.Usuario;
 import com.lumina.backend.service.Usuario.UsuarioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -59,10 +60,19 @@ public class UsuarioController {
             @org.springframework.web.bind.annotation.RequestBody @Valid UsuarioRequest usuario) {
 
         String senhaNova = passwordEncoder.encode(usuario.getSenha());
-        Usuario entidade = UsuarioMapper.toEntity(usuario);
-        entidade.setSenha(senhaNova);
-
-        Usuario usuariosCadastrados = service.salvar(entidade);
+        UsuarioCommand command = UsuarioMapper.toCommand(usuario);
+        UsuarioCommand commandComSenha = new UsuarioCommand(
+            command.nome(),
+            command.cpf(),
+            command.email(),
+            senhaNova,
+            command.fkPerfil(),
+            command.cro(),
+            command.ativo()
+        );
+        
+        Usuario usuarioDomain = Usuario.criar(commandComSenha);
+        Usuario usuariosCadastrados = service.salvar(usuarioDomain);
 
         return ResponseEntity
                 .status(201)
@@ -86,7 +96,7 @@ public class UsuarioController {
             @org.springframework.web.bind.annotation.RequestBody UsuarioLoginDto usuarioLoginDto,
             HttpServletResponse response) {
 
-        final Usuario usuario = UsuarioMapper.of(usuarioLoginDto);
+        final com.lumina.backend.model.Usuario usuario = UsuarioMapper.of(usuarioLoginDto);
 
         // autenticar() gera o token internamente — precisamos dele apenas para o cookie
         UsuarioTokenDto autenticado = this.service.autenticar(usuario);
@@ -155,12 +165,15 @@ public class UsuarioController {
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Usuario encontrado",
-                    content = @Content(schema = @Schema(implementation = Usuario.class))),
+                    content = @Content(schema = @Schema(implementation = UsuarioResponse.class))),
             @ApiResponse(responseCode = "404", description = "Usuario nao encontrado", content = @Content)
     })
-    public ResponseEntity<Optional<Usuario>> buscarPorId(
+    public ResponseEntity<UsuarioResponse> buscarPorId(
             @Parameter(description = "ID do usuario", example = "1") @PathVariable Long id){
-        return ResponseEntity.ok(service.buscarPorId(id));
+        return service.buscarPorId(id)
+                .map(UsuarioMapper::toDto)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
@@ -186,16 +199,16 @@ public class UsuarioController {
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Usuario atualizado com sucesso",
-                    content = @Content(schema = @Schema(implementation = Usuario.class))),
+                    content = @Content(schema = @Schema(implementation = UsuarioResponse.class))),
             @ApiResponse(responseCode = "400", description = "Dados invalidos para atualizacao", content = @Content),
             @ApiResponse(responseCode = "404", description = "Usuario nao encontrado", content = @Content)
     })
-    public ResponseEntity<Optional<Usuario>> atualizar(
+    public ResponseEntity<UsuarioResponse> atualizar(
             @RequestBody(description = "Dados para atualizacao do usuario", required = true,
                     content = @Content(schema = @Schema(implementation = UsuarioRequest.class)))
             @Valid @org.springframework.web.bind.annotation.RequestBody UsuarioRequest usuario,
             @Parameter(description = "ID do usuario", example = "1") @PathVariable Long id){
-        service.atualizar(usuario, id);
-        return ResponseEntity.ok(service.buscarPorId(id));
+        Usuario usuarioAtualizado = service.atualizar(usuario, id);
+        return ResponseEntity.ok(UsuarioMapper.toDto(usuarioAtualizado));
     }
 }

@@ -5,10 +5,12 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 
 @Entity
+@Table(name = "anamneses")
 public class Anamnese {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idAnamnese;
+
     @ManyToOne
     @JoinColumn(name = "fk_cliente")
     private Cliente fkCliente;

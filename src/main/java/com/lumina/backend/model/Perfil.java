@@ -1,19 +1,14 @@
 package com.lumina.backend.model;
 
-import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 
 @Entity
-@Schema(description = "Perfil de acesso utilizado para classificar permissoes de usuarios")
+@Table(name = "perfis")
 public class Perfil {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Schema(description = "Identificador do perfil", example = "1", type = "integer", format = "int32")
     private Integer idPerfil;
-    @Schema(description = "Nome do perfil", example = "ADMIN", type = "string")
     private String nome;
 
     public Perfil(Integer id, String nome) {
