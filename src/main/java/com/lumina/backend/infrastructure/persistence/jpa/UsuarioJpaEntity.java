@@ -3,7 +3,7 @@ package com.lumina.backend.infrastructure.persistence.jpa;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "usuarios")
+@Table(name = "usuario")
 public class UsuarioJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

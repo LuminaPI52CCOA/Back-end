@@ -3,7 +3,7 @@ package com.lumina.backend.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "clientes_convenios")
+@Table(name = "cliente_convenio")
 public class ClienteConvenio {
 
     @Id
