@@ -75,6 +75,9 @@ public class GerenciadorTokenJwt {
     }
 
     private SecretKey parseSecret() {
+        if (this.secret == null || this.secret.isBlank()) {
+            throw new IllegalStateException("A chave secreta JWT (jwt.secret / JWT_SECRET) não foi configurada!");
+        }
         return Keys.hmacShaKeyFor(Decoders.BASE64.decode(this.secret));
     }
 }
