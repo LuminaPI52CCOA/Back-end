@@ -83,6 +83,12 @@ public class UsuarioService {
             throw new EntidadeNaoEncontrada("Usuario de id: %d não encontrado".formatted(id));
         }
 
+        if (usuarios.getSenha() != null && !usuarios.getSenha().isBlank()) {
+            usuarios.setSenha(passwordEncoder.encode(usuarios.getSenha()));
+        } else {
+            usuarios.setSenha(usuario.get().getSenha());
+        }
+
         return repository.atualizarPeloId(usuarios, id);
     }
 
