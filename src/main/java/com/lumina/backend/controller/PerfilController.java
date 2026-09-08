@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -17,6 +18,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/perfis")
+@PreAuthorize("hasRole('ADMIN')")
 @Tag(name = "Perfis", description = "Endpoints para consulta de perfis de acesso do sistema Lumina")
 public class PerfilController {
 
@@ -38,10 +40,11 @@ public class PerfilController {
             @ApiResponse(responseCode = "204", description = "Nao ha perfis cadastrados", content = @Content)
     })
     public ResponseEntity<List<Perfil>> listar(){
-        if(service.listar().isEmpty()){
+        List<Perfil> perfis = service.listar();
+        if(perfis.isEmpty()){
             return ResponseEntity.noContent().build();
         }
-        return ResponseEntity.ok(service.listar());
+        return ResponseEntity.ok(perfis);
     }
 
 }

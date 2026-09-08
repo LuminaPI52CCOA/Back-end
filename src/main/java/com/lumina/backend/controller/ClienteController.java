@@ -1,5 +1,6 @@
 package com.lumina.backend.controller;
 
+import com.lumina.backend.domain.cliente.Cliente;
 import com.lumina.backend.dto.anamnese.AnamneseMapper;
 import com.lumina.backend.dto.anamnese.AnamneseRequest;
 import com.lumina.backend.dto.anamnese.AnamneseResponse;
@@ -8,8 +9,10 @@ import com.lumina.backend.dto.cliente.ClienteRequest;
 import com.lumina.backend.dto.cliente.ClienteResponse;
 import com.lumina.backend.dto.convenio.ConvenioMapper;
 import com.lumina.backend.dto.convenio.ConvenioResponse;
+import com.lumina.backend.dto.estado_civil.EstadoCivilMapper;
+import com.lumina.backend.dto.estado_civil.EstadoCivilResponse;
 import com.lumina.backend.model.Anamnese;
-import com.lumina.backend.model.Cliente;
+import com.lumina.backend.model.EstadoCivil;
 import com.lumina.backend.service.cliente.ClienteService;
 import com.lumina.backend.service.convenio.ConvenioService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,13 +24,19 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/clientes")
+@PreAuthorize("hasAnyRole('ADMIN', 'DENTISTA', 'RECEPCIONISTA')")
 @Tag(name = "Clientes", description = "Endpoints para cadastro e gestao de clientes")
 public class ClienteController {
 
@@ -40,15 +49,35 @@ public class ClienteController {
         this.convenioService = convenioService;
     }
 
+    @GetMapping("/estado-civil")
+    @Operation(summary = "Lista todos os estados civis", description = "Retorna os estados civis cadastrados no sistema para selecao em formularios.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Estados civis retornados com sucesso",
+                    content = @Content(schema = @Schema(implementation = EstadoCivilResponse.class))),
+            @ApiResponse(responseCode = "204", description = "Nenhum estado civil encontrado", content = @Content)
+    })
+    public ResponseEntity<List<EstadoCivilResponse>> listarEstadosCivis() {
+        List<EstadoCivil> estadosCivis = service.listarEstadosCivis();
+        if (estadosCivis.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        List<EstadoCivilResponse> response = EstadoCivilMapper.toDto(estadosCivis);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping
-    @Operation(summary = "Lista clientes", description = "Retorna os clientes cadastrados no sistema.")
+    @Operation(summary = "Lista ou busca clientes", description = "Retorna os clientes cadastrados no sistema, permitindo filtrar por nome ou CPF.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Clientes retornados com sucesso",
                     content = @Content(schema = @Schema(implementation = ClienteResponse.class))),
-            @ApiResponse(responseCode = "204", description = "Nao ha clientes cadastrados", content = @Content)
+            @ApiResponse(responseCode = "204", description = "Nenhum cliente encontrado", content = @Content)
     })
-    public ResponseEntity<List<ClienteResponse>> listar(){
-        List<Cliente> clientes = service.listar();
+    public ResponseEntity<List<ClienteResponse>> listar(
+            @Parameter(description = "Nome para busca parcial de clientes", example = "Maria")
+            @RequestParam(required = false) String nome,
+            @Parameter(description = "CPF exato do cliente", example = "12345678901")
+            @RequestParam(required = false) String cpf){
+        List<Cliente> clientes = service.listarComFiltros(nome, cpf);
         if(clientes.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
@@ -66,14 +95,16 @@ public class ClienteController {
     public ResponseEntity<ClienteResponse> cadastrar(
             @RequestBody(description = "Dados de cadastro do cliente", required = true,
                     content = @Content(schema = @Schema(implementation = ClienteRequest.class)))
-            @org.springframework.web.bind.annotation.RequestBody ClienteRequest request){
-        service.cadastrar(request);
-        Cliente clienteResponse = ClienteMapper.toEntity(request);
-        ClienteResponse response = ClienteMapper.toDto(clienteResponse);
+            @org.springframework.web.bind.annotation.RequestBody @Valid ClienteRequest request){
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
+        Cliente clienteCadastrado = service.cadastrar(request);
+        ClienteResponse response = ClienteMapper.toDto(clienteCadastrado);
+        log.info("AUDIT: Usuario [{}] cadastrou novo cliente ID [{}] CPF [{}]", usuario, response.getIdCliente(), clienteCadastrado.getCpf());
         return ResponseEntity.status(201).body(response);
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     @Operation(summary = "Busca cliente por ID", description = "Retorna os dados de um cliente pelo identificador informado.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Cliente encontrado",
@@ -82,12 +113,15 @@ public class ClienteController {
     })
     public ResponseEntity<ClienteResponse> buscarPorId(
             @Parameter(description = "ID do cliente", example = "1") @PathVariable Long id){
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
+        log.info("AUDIT: Usuario [{}] consultou dados do cliente ID [{}]", usuario, id);
         Cliente cliente = service.buscarPorId(id);
         ClienteResponse response = ClienteMapper.toDto(cliente);
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:\\d+}")
     @Operation(summary = "Atualiza cliente", description = "Atualiza os dados de um cliente pelo identificador.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Cliente atualizado com sucesso",
@@ -100,12 +134,15 @@ public class ClienteController {
                     content = @Content(schema = @Schema(implementation = ClienteRequest.class)))
             @org.springframework.web.bind.annotation.RequestBody @Valid ClienteRequest request,
             @Parameter(description = "ID do cliente", example = "1") @PathVariable Long id){
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
         Cliente cliente = service.atualizar(request, id);
+        log.info("AUDIT: Usuario [{}] atualizou dados do cliente ID [{}]", usuario, id);
         ClienteResponse response = ClienteMapper.toDto(cliente);
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/{id}/convenios")
+    @GetMapping("/{id:\\d+}/convenios")
     @Operation(summary = "Lista convenios do cliente", description = "Retorna os convenios vinculados ao cliente informado.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Convenios do cliente retornados com sucesso",
@@ -118,17 +155,23 @@ public class ClienteController {
     }
 
 
-    @GetMapping("/{id}/anamneses")
+    @GetMapping("/{id:\\d+}/anamneses")
     public ResponseEntity<List<AnamneseResponse>> listarAnamnese(@PathVariable Integer id){
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
+        log.info("AUDIT: Usuario [{}] listou anamneses do cliente ID [{}]", usuario, id);
         List<Anamnese> anamneseList = service.listarAnamnese(id);
         List<AnamneseResponse> response = AnamneseMapper.toDto(anamneseList);
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/{id}/anamneses")
+    @PostMapping("/{id:\\d+}/anamneses")
     public ResponseEntity<AnamneseResponse> cadastroAnamnese(@PathVariable Long id,
                                                              @RequestBody AnamneseRequest request){
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
         Anamnese anamnese = service.cadastrarAnamnese(id, request);
+        log.info("AUDIT: Usuario [{}] cadastrou anamnese manual para o cliente ID [{}]", usuario, id);
         AnamneseResponse response = AnamneseMapper.toDto(anamnese);
         return ResponseEntity.ok(response);
     }

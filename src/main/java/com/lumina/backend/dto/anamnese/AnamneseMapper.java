@@ -72,8 +72,14 @@ public class AnamneseMapper {
         anamneseCliente.setFkEstadoCivil(cliente.getFkEstadoCivil());
         anamneseCliente.setEnderecoResidencial(cliente.getEnderecoResidencial());
         anamneseCliente.setCep(cliente.getCep());
-        anamneseCliente.setFkClienteIndicacao(cliente.getFkClienteIndicacao());
-        anamneseCliente.setFkResponsavel(cliente.getFkResponsavel());
+        Integer fkClienteIndicacao = cliente.getClienteIndicacao() != null && cliente.getClienteIndicacao().getIdCliente() != null
+                ? cliente.getClienteIndicacao().getIdCliente().intValue()
+                : null;
+        Integer fkResponsavel = cliente.getResponsavel() != null && cliente.getResponsavel().getIdCliente() != null
+                ? cliente.getResponsavel().getIdCliente().intValue()
+                : null;
+        anamneseCliente.setFkClienteIndicacao(fkClienteIndicacao);
+        anamneseCliente.setFkResponsavel(fkResponsavel);
         anamneseCliente.setGrauParentescoResponsavel(cliente.getGrauParentescoResponsavel());
 
 
