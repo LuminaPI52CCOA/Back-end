@@ -6,6 +6,7 @@ import com.lumina.backend.dto.anamnese.AnamneseMapper;
 import com.lumina.backend.dto.anamnese.OcrRespostaDTO;
 import com.lumina.backend.exception.AnamneseVazio;
 import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.exception.FormatoArquivoInvalidoException;
 import com.lumina.backend.model.Anamnese;
 import com.lumina.backend.model.Cliente;
 import com.lumina.backend.repository.AnamneseRepository;
@@ -22,11 +23,21 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 public class AnamneseService {
+
+    private static final List<String> TIPOS_PERMITIDOS = List.of(
+            "image/jpeg",
+            "image/jpg",
+            "image/png",
+            "application/pdf"
+    );
+
+    private static final long TAMANHO_MAXIMO_BYTES = 10 * 1024 * 1024; // 10MB
 
     private final AnamneseRepository repository;
     private final TextractClient textractClient;
@@ -40,16 +51,24 @@ public class AnamneseService {
         this.anamneseMapper = anamneseMapper;
     }
 
-
-
     public Anamnese processImage(
-            MultipartFile file
+            MultipartFile file,
+            Long clienteId
     ) throws IOException {
 
         log.trace("Processando imagem da anamnese no OCR");
 
-        if(file.isEmpty()){
+        if(file == null || file.isEmpty()){
             throw new AnamneseVazio("Arquivo não encontrado.");
+        }
+
+        if (file.getSize() > TAMANHO_MAXIMO_BYTES) {
+            throw new FormatoArquivoInvalidoException("Tamanho do arquivo excede o limite máximo permitido de 10MB.");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !TIPOS_PERMITIDOS.contains(contentType.toLowerCase())) {
+            throw new FormatoArquivoInvalidoException("Tipo de arquivo inválido. Apenas PNG, JPEG ou PDF são aceitos.");
         }
 
         byte[] bytes = file.getBytes();
@@ -92,39 +111,65 @@ public class AnamneseService {
         JsonNode json = geminiAIService.limparJsonGemini(retornoApi);
         log.trace("Realizando insert no banco de dados");
 
-            OcrRespostaDTO.FichaAnamneseWrapperDTO ficha = mapper.treeToValue(json, OcrRespostaDTO.FichaAnamneseWrapperDTO.class);
-            OcrRespostaDTO.PerguntasAnamneseDTO perguntas = ficha.fichaAnamnese().perguntas();
+        if (json == null || json.isNull() || json.isEmpty()) {
+            throw new FormatoArquivoInvalidoException("Resposta do processamento de IA inválida ou vazia.");
+        }
 
+        OcrRespostaDTO.FichaAnamneseWrapperDTO ficha;
+        try {
+            ficha = mapper.treeToValue(json, OcrRespostaDTO.FichaAnamneseWrapperDTO.class);
+        } catch (Exception e) {
+            throw new FormatoArquivoInvalidoException("Estrutura do JSON retornado pela IA é inválida.");
+        }
+
+        if (ficha == null || ficha.fichaAnamnese() == null || ficha.fichaAnamnese().perguntas() == null) {
+            throw new FormatoArquivoInvalidoException("Campos obrigatórios da ficha de anamnese não encontrados na resposta da IA.");
+        }
+
+        OcrRespostaDTO.PerguntasAnamneseDTO perguntas = ficha.fichaAnamnese().perguntas();
 
         Anamnese anamnese = new Anamnese();
 
         anamnese.setDataAnamnese(LocalDate.now());
-        anamnese.setFazendoTratamento(perguntas.q1().respostaSim());
-        anamnese.setDescricaoTratamento(perguntas.q1().detalhes());
-        anamnese.setDoresCabecaFaceAtm(perguntas.q2().respostaSim());
-        anamnese.setAlergiaMedicamentos(perguntas.q3().respostaSim());
-        anamnese.setDescricaoAlergiaMedicamentos(perguntas.q3().detalhes());
-        anamnese.setReacaoAnestesiaLocal(perguntas.q4().respostaSim());
-        anamnese.setSensibilidadeDentaria(perguntas.q5().respostaSim());
-        anamnese.setBruxismoApertamento(perguntas.q6().respostaSim());
-        anamnese.setSangramentoGengival(perguntas.q7().respostaSim());
-        anamnese.setPossuiHabito(perguntas.q8().respostaSim());
-        anamnese.setDescricaoHabito(perguntas.q8().detalhes());
-        anamnese.setHistoricoDiabetes(perguntas.q9().respostaSim());
-        anamnese.setSangramentoExcessivo(perguntas.q10().respostaSim());
-        anamnese.setProblemaCardiaco(perguntas.q11().respostaSim());
-        anamnese.setDescricaoProblemaCardiaco(perguntas.q11().detalhes());
-        anamnese.setPressaoArterialNormal(perguntas.q12().respostaSim());
-        anamnese.setDescricaoPressaoArterial(perguntas.q12().detalhes());
-        anamnese.setHistoricoDiabetes(perguntas.q13().respostaSim());
-        anamnese.setGestante(perguntas.q14().respostaSim());
+        anamnese.setFazendoTratamento(getRespostaSim(perguntas.q1()));
+        anamnese.setDescricaoTratamento(getDetalhes(perguntas.q1()));
+        anamnese.setDoresCabecaFaceAtm(getRespostaSim(perguntas.q2()));
+        anamnese.setAlergiaMedicamentos(getRespostaSim(perguntas.q3()));
+        anamnese.setDescricaoAlergiaMedicamentos(getDetalhes(perguntas.q3()));
+        anamnese.setReacaoAnestesiaLocal(getRespostaSim(perguntas.q4()));
+        anamnese.setSensibilidadeDentaria(getRespostaSim(perguntas.q5()));
+        anamnese.setBruxismoApertamento(getRespostaSim(perguntas.q6()));
+        anamnese.setSangramentoGengival(getRespostaSim(perguntas.q7()));
+        anamnese.setPossuiHabito(getRespostaSim(perguntas.q8()));
+        anamnese.setDescricaoHabito(getDetalhes(perguntas.q8()));
+        anamnese.setHistoricoDiabetes(getRespostaSim(perguntas.q9()));
+        anamnese.setSangramentoExcessivo(getRespostaSim(perguntas.q10()));
+        anamnese.setProblemaCardiaco(getRespostaSim(perguntas.q11()));
+        anamnese.setDescricaoProblemaCardiaco(getDetalhes(perguntas.q11()));
+        anamnese.setPressaoArterialNormal(getRespostaSim(perguntas.q12()));
+        anamnese.setDescricaoPressaoArterial(getDetalhes(perguntas.q12()));
+        anamnese.setHistoricoDesmaioConvulsao(getRespostaSim(perguntas.q13()));
+        anamnese.setGestante(getRespostaSim(perguntas.q14()));
 
-        Cliente cliente = new Cliente();
-        cliente.setIdCliente(1L);
-
+        if (clienteId != null) {
+            Cliente cliente = new Cliente();
+            cliente.setIdCliente(clienteId);
             anamnese.setFkCliente(cliente);
+        }
 
         return repository.save(anamnese);
+    }
+
+    private Boolean getRespostaSim(OcrRespostaDTO.DetalheRespostaDTO detalhe) {
+        return detalhe != null ? detalhe.respostaSim() : false;
+    }
+
+    private String getDetalhes(OcrRespostaDTO.DetalheRespostaDTO detalhe) {
+        return detalhe != null ? detalhe.detalhes() : null;
+    }
+
+    public Anamnese processImage(MultipartFile file) throws IOException {
+        return processImage(file, null);
     }
 
 

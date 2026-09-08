@@ -24,13 +24,19 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/clientes")
+@PreAuthorize("hasAnyRole('ADMIN', 'DENTISTA', 'RECEPCIONISTA')")
 @Tag(name = "Clientes", description = "Endpoints para cadastro e gestao de clientes")
 public class ClienteController {
 
@@ -90,8 +96,11 @@ public class ClienteController {
             @RequestBody(description = "Dados de cadastro do cliente", required = true,
                     content = @Content(schema = @Schema(implementation = ClienteRequest.class)))
             @org.springframework.web.bind.annotation.RequestBody @Valid ClienteRequest request){
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
         Cliente clienteCadastrado = service.cadastrar(request);
         ClienteResponse response = ClienteMapper.toDto(clienteCadastrado);
+        log.info("AUDIT: Usuario [{}] cadastrou novo cliente ID [{}] CPF [{}]", usuario, response.getIdCliente(), clienteCadastrado.getCpf());
         return ResponseEntity.status(201).body(response);
     }
 
@@ -104,6 +113,9 @@ public class ClienteController {
     })
     public ResponseEntity<ClienteResponse> buscarPorId(
             @Parameter(description = "ID do cliente", example = "1") @PathVariable Long id){
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
+        log.info("AUDIT: Usuario [{}] consultou dados do cliente ID [{}]", usuario, id);
         Cliente cliente = service.buscarPorId(id);
         ClienteResponse response = ClienteMapper.toDto(cliente);
         return ResponseEntity.ok(response);
@@ -122,7 +134,10 @@ public class ClienteController {
                     content = @Content(schema = @Schema(implementation = ClienteRequest.class)))
             @org.springframework.web.bind.annotation.RequestBody @Valid ClienteRequest request,
             @Parameter(description = "ID do cliente", example = "1") @PathVariable Long id){
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
         Cliente cliente = service.atualizar(request, id);
+        log.info("AUDIT: Usuario [{}] atualizou dados do cliente ID [{}]", usuario, id);
         ClienteResponse response = ClienteMapper.toDto(cliente);
         return ResponseEntity.ok(response);
     }
@@ -142,6 +157,9 @@ public class ClienteController {
 
     @GetMapping("/{id:\\d+}/anamneses")
     public ResponseEntity<List<AnamneseResponse>> listarAnamnese(@PathVariable Integer id){
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
+        log.info("AUDIT: Usuario [{}] listou anamneses do cliente ID [{}]", usuario, id);
         List<Anamnese> anamneseList = service.listarAnamnese(id);
         List<AnamneseResponse> response = AnamneseMapper.toDto(anamneseList);
         return ResponseEntity.ok(response);
@@ -150,7 +168,10 @@ public class ClienteController {
     @PostMapping("/{id:\\d+}/anamneses")
     public ResponseEntity<AnamneseResponse> cadastroAnamnese(@PathVariable Long id,
                                                              @RequestBody AnamneseRequest request){
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
         Anamnese anamnese = service.cadastrarAnamnese(id, request);
+        log.info("AUDIT: Usuario [{}] cadastrou anamnese manual para o cliente ID [{}]", usuario, id);
         AnamneseResponse response = AnamneseMapper.toDto(anamnese);
         return ResponseEntity.ok(response);
     }

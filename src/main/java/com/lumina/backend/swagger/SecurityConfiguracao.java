@@ -2,6 +2,10 @@ package com.lumina.backend.swagger;
 
 import com.lumina.backend.service.Usuario.AutenticacaoService;
 import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,12 +24,20 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.csrf.CsrfTokenRequestHandler;
+import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.OncePerRequestFilter;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Supplier;
 
 
 @Configuration
@@ -52,7 +64,8 @@ public class SecurityConfiguracao {
             "/api/public/authenticate",
             "/webjars/**",
             "/v3/api-docs/**",
-            "/actuator/*",
+            "/actuator/health",
+            "/actuator/info",
             "/usuarios/login/**",
             "/usuarios/logout/**",
             "/error/**"
@@ -64,16 +77,17 @@ public class SecurityConfiguracao {
                 // Habilita CORS com a configuração definida em corsConfigurationSource()
                 .cors(Customizer.withDefaults())
 
-                // Desabilita CSRF (Cross-Site Request Forgery):
-                // APIs REST stateless com JWT não precisam de proteção CSRF porque:
-                // 1. Não usam cookies para autenticação (usam header Authorization)
-                // 2. Browsers não enviam headers customizados em requisições cross-origin automaticamente
-                // ATENÇÃO: se usar cookies para armazenar o token, habilite o CSRF novamente!
-                .csrf(CsrfConfigurer<HttpSecurity>::disable)
+                // Habilita proteção CSRF com CookieCsrfTokenRepository (Cookie XSRF-TOKEN para SPA)
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
+                        .ignoringRequestMatchers(URLS_PERMITIDAS)
+                )
 
                 // Define quais URLs são públicas e quais exigem autenticação
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(URLS_PERMITIDAS).permitAll()  // rotas públicas
+                        .requestMatchers(URLS_PERMITIDAS).permitAll()  // rotas públicas e probes de saúde
+                        .requestMatchers("/actuator/**").hasRole("ADMIN") // métricas e endpoints internos restritos ao ADMIN
                         .anyRequest().authenticated()                  // todas as outras exigem token
                 )
 
@@ -89,11 +103,45 @@ public class SecurityConfiguracao {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         // Adiciona o filtro JWT ANTES do filtro padrão de autenticação por usuário/senha.
-        // Isso garante que o token seja processado antes que o Spring Security tente
-        // qualquer outro mecanismo de autenticação.
         http.addFilterBefore(jwtAuthenticationFilterBean(), UsernamePasswordAuthenticationFilter.class);
+        // Adiciona o filtro para carregar o token CSRF após o filtro de autenticação
+        http.addFilterAfter(new CsrfCookieFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    /**
+     * Handler customizado para compatibilidade de CSRF Token em SPAs (Single Page Applications).
+     * Resolve tanto o header X-XSRF-TOKEN padrão quanto o valor mascarado com proteção BREACH.
+     */
+    static final class SpaCsrfTokenRequestHandler extends CsrfTokenRequestAttributeHandler {
+        private final CsrfTokenRequestHandler delegate = new XorCsrfTokenRequestAttributeHandler();
+
+        @Override
+        public void handle(HttpServletRequest request, HttpServletResponse response, Supplier<CsrfToken> csrfToken) {
+            this.delegate.handle(request, response, csrfToken);
+        }
+
+        @Override
+        public String resolveCsrfTokenValue(HttpServletRequest request, CsrfToken csrfToken) {
+            String headerValue = request.getHeader(csrfToken.getHeaderName());
+            return (headerValue != null) ? headerValue : this.delegate.resolveCsrfTokenValue(request, csrfToken);
+        }
+    }
+
+    /**
+     * Filtro para forçar o carregamento diferido do token CSRF e gerar o cookie XSRF-TOKEN para o frontend.
+     */
+    static final class CsrfCookieFilter extends OncePerRequestFilter {
+        @Override
+        protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+                throws ServletException, IOException {
+            CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
+            if (csrfToken != null) {
+                csrfToken.getToken();
+            }
+            filterChain.doFilter(request, response);
+        }
     }
 
     @Bean
@@ -152,8 +200,8 @@ public class SecurityConfiguracao {
         // Permite todos os headers de requisição (Content-Type, Authorization etc.)
         configuracao.setAllowedHeaders(List.of("*"));
 
-        // Expõe o header Content-Disposition para download de arquivos
-        configuracao.setExposedHeaders(List.of(HttpHeaders.CONTENT_DISPOSITION));
+        // Expõe o header Content-Disposition e headers de CSRF para o frontend SPA
+        configuracao.setExposedHeaders(List.of(HttpHeaders.CONTENT_DISPOSITION, "X-XSRF-TOKEN", "XSRF-TOKEN"));
 
         UrlBasedCorsConfigurationSource origem = new UrlBasedCorsConfigurationSource();
         origem.registerCorsConfiguration("/**", configuracao);

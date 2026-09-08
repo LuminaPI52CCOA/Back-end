@@ -134,7 +134,22 @@ public class UsuarioService {
             Usuario usuarioExistente = repositoryPort.buscarPorId(UsuarioId.of(id))
                     .orElseThrow(() -> new EntidadeNaoEncontrada("Usuario de id: %d não encontrado".formatted(id)));
 
-            UsuarioCommand command = UsuarioMapper.toCommand(usuarios);
+            String senhaFinal;
+            if (usuarios.getSenha() != null && !usuarios.getSenha().isBlank()) {
+                senhaFinal = passwordEncoder != null ? passwordEncoder.encode(usuarios.getSenha()) : usuarios.getSenha();
+            } else {
+                senhaFinal = usuarioExistente.getSenha();
+            }
+
+            UsuarioCommand command = new UsuarioCommand(
+                    usuarios.getNome() != null ? usuarios.getNome() : usuarioExistente.getNome(),
+                    usuarios.getCpf() != null ? usuarios.getCpf() : usuarioExistente.getCpf(),
+                    usuarios.getEmail() != null ? usuarios.getEmail() : usuarioExistente.getEmail(),
+                    senhaFinal,
+                    usuarios.getFkPerfil() != null ? usuarios.getFkPerfil() : usuarioExistente.getFkPerfil(),
+                    usuarios.getCro() != null ? usuarios.getCro() : usuarioExistente.getCro(),
+                    usuarios.getAtivo() != null ? usuarios.getAtivo() : usuarioExistente.getAtivo()
+            );
             Usuario usuarioAtualizado = usuarioExistente.atualizar(command);
 
             return repositoryPort.salvar(usuarioAtualizado);
@@ -144,6 +159,13 @@ public class UsuarioService {
             if (usuarios.getNome() != null) usuarioExistente.setNome(usuarios.getNome());
             if (usuarios.getEmail() != null) usuarioExistente.setEmail(usuarios.getEmail());
             if (usuarios.getCpf() != null) usuarioExistente.setCpf(usuarios.getCpf());
+            if (usuarios.getSenha() != null && !usuarios.getSenha().isBlank()) {
+                usuarioExistente.setSenha(passwordEncoder != null ? passwordEncoder.encode(usuarios.getSenha()) : usuarios.getSenha());
+            }
+            if (usuarios.getFkPerfil() != null) usuarioExistente.setFkPerfil(usuarios.getFkPerfil());
+            if (usuarios.getCro() != null) usuarioExistente.setCro(usuarios.getCro());
+            if (usuarios.getAtivo() != null) usuarioExistente.setAtivo(usuarios.getAtivo());
+
             com.lumina.backend.model.Usuario saved = usuarioRepository.save(usuarioExistente);
             return toDomain(saved);
         }

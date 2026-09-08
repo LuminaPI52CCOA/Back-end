@@ -3,17 +3,21 @@ package com.lumina.backend.dto.anamnese;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class OcrRespostaDTO {
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record DetalheRespostaDTO(
             @JsonProperty("resposta_sim") Boolean respostaSim,
             String detalhes
     ) {
         @Override
-    public Boolean respostaSim() {
-        return respostaSim != null ? respostaSim : false;
-    }}
+        public Boolean respostaSim() {
+            return respostaSim != null ? respostaSim : false;
+        }
+    }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record PerguntasAnamneseDTO(
             @JsonProperty("q1_tratamento_medico") DetalheRespostaDTO q1,
             @JsonProperty("q2_dores_cabeca_face_ouvido_articulacao") DetalheRespostaDTO q2,
@@ -31,6 +35,7 @@ public class OcrRespostaDTO {
             @JsonProperty("q14_esta_gravida") DetalheRespostaDTO q14
     ) {}
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record FichaAnamneseWrapperDTO(
             @JsonProperty("ficha_anamnese") FichaAnamneseDTO fichaAnamnese
     ) {}
