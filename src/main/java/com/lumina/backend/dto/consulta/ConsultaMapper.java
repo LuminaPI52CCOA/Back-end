@@ -17,7 +17,7 @@ public class ConsultaMapper {
                 ClienteMapper.toDto(consulta.getCliente()),
                 UsuarioMapper.toDto(consulta.getUsuario()),
                 consulta.getData(),
-                consulta.getHorarioFim(),
+                consulta.getHorarioInicio(),
                 consulta.getHorarioFim()
         );
     }

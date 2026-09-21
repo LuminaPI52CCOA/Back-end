@@ -68,6 +68,7 @@ public class SecurityConfiguracao {
             "/actuator/info",
             "/usuarios/login/**",
             "/usuarios/logout/**",
+            "/alexa/vincular",
             "/error/**"
     };
 
