@@ -78,12 +78,8 @@ public class SecurityConfiguracao {
                 // Habilita CORS com a configuração definida em corsConfigurationSource()
                 .cors(Customizer.withDefaults())
 
-                // Habilita proteção CSRF com CookieCsrfTokenRepository (Cookie XSRF-TOKEN para SPA)
-                .csrf(csrf -> csrf
-                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
-                        .ignoringRequestMatchers(URLS_PERMITIDAS)
-                )
+                // Desabilita CSRF: API REST stateless com autenticação JWT e cookie com SameSite=Strict
+                .csrf(CsrfConfigurer::disable)
 
                 // Define quais URLs são públicas e quais exigem autenticação
                 .authorizeHttpRequests(authorize -> authorize
@@ -105,8 +101,6 @@ public class SecurityConfiguracao {
 
         // Adiciona o filtro JWT ANTES do filtro padrão de autenticação por usuário/senha.
         http.addFilterBefore(jwtAuthenticationFilterBean(), UsernamePasswordAuthenticationFilter.class);
-        // Adiciona o filtro para carregar o token CSRF após o filtro de autenticação
-        http.addFilterAfter(new CsrfCookieFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
