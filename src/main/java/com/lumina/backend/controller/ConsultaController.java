@@ -18,6 +18,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import com.lumina.backend.dto.alexa.AlexaAnamneseAlertaDto;
+import com.lumina.backend.dto.alexa.AlexaConsultaDto;
+import com.lumina.backend.dto.alexa.AlexaResumoDiaDto;
+import com.lumina.backend.model.Usuario;
+import com.lumina.backend.repository.UsuarioRepository;
+import com.lumina.backend.service.alexa.AlexaService;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 import java.util.List;
 
 @RestController
@@ -27,9 +36,15 @@ import java.util.List;
 public class ConsultaController {
 
     private final ConsultaService consultaService;
+    private final AlexaService alexaService;
+    private final UsuarioRepository usuarioRepository;
 
-    public ConsultaController(ConsultaService consultaService) {
+    public ConsultaController(ConsultaService consultaService,
+                              AlexaService alexaService,
+                              UsuarioRepository usuarioRepository) {
         this.consultaService = consultaService;
+        this.alexaService = alexaService;
+        this.usuarioRepository = usuarioRepository;
     }
 
     @GetMapping
@@ -97,5 +112,51 @@ public class ConsultaController {
 
         consultaService.cancelar(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/proxima")
+    @Operation(summary = "Busca próxima consulta para a Alexa", description = "Retorna a próxima consulta agendada para o dentista vinculado ou autenticado.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Próxima consulta retornada com sucesso",
+                    content = @Content(schema = @Schema(implementation = AlexaConsultaDto.class)))
+    })
+    public ResponseEntity<AlexaConsultaDto> obterProximaConsulta(
+            @RequestHeader(value = "X-Alexa-User-Id", required = false) String alexaUserId) {
+        Long usuarioAuthId = obterUsuarioIdAutenticado();
+        return ResponseEntity.ok(alexaService.obterProximaConsulta(alexaUserId, usuarioAuthId));
+    }
+
+    @GetMapping("/hoje")
+    @Operation(summary = "Busca resumo das consultas de hoje para a Alexa", description = "Retorna o total e os horários das consultas de hoje do dentista.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Resumo do dia retornado com sucesso",
+                    content = @Content(schema = @Schema(implementation = AlexaResumoDiaDto.class)))
+    })
+    public ResponseEntity<AlexaResumoDiaDto> obterConsultasHoje(
+            @RequestHeader(value = "X-Alexa-User-Id", required = false) String alexaUserId) {
+        Long usuarioAuthId = obterUsuarioIdAutenticado();
+        return ResponseEntity.ok(alexaService.obterConsultasHoje(alexaUserId, usuarioAuthId));
+    }
+
+    @GetMapping("/proxima/anamnese")
+    @Operation(summary = "Busca alertas de anamnese do próximo paciente", description = "Retorna alergias e condições médicas críticas do próximo paciente.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Alertas retornados com sucesso",
+                    content = @Content(schema = @Schema(implementation = AlexaAnamneseAlertaDto.class)))
+    })
+    public ResponseEntity<AlexaAnamneseAlertaDto> obterAlertaAnamneseProxima(
+            @RequestHeader(value = "X-Alexa-User-Id", required = false) String alexaUserId) {
+        Long usuarioAuthId = obterUsuarioIdAutenticado();
+        return ResponseEntity.ok(alexaService.obterAlertaAnamneseProxima(alexaUserId, usuarioAuthId));
+    }
+
+    private Long obterUsuarioIdAutenticado() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getName() != null && !auth.getName().isBlank() && !"anonymousUser".equalsIgnoreCase(auth.getName())) {
+            return usuarioRepository.findByEmail(auth.getName())
+                    .map(Usuario::getIdUsuario)
+                    .orElse(null);
+        }
+        return null;
     }
 }
