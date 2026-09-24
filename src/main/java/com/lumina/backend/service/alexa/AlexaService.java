@@ -110,12 +110,63 @@ public class AlexaService {
 
         String dentistaNome = vinculo.getUsuario().getNome();
         log.info("ALEXA: Dispositivo [{}] vinculado com sucesso ao Dr(a). [{}]", request.getAlexaUserId(), dentistaNome);
+        log.info("AUDIT: Dispositivo Alexa [{}] vinculado com sucesso ao dentista ID [{}] (Nome: [{}])",
+                request.getAlexaUserId(), vinculo.getUsuario().getIdUsuario(), dentistaNome);
 
         return new AlexaVincularResponse(
                 true,
                 "Dispositivo Alexa vinculado com sucesso ao Dr(a). " + dentistaNome + "!",
                 dentistaNome
         );
+    }
+
+    @Transactional(readOnly = true)
+    public AlexaStatusResponse obterStatus(Long targetUserId) {
+        Usuario dentista = usuarioRepository.findById(targetUserId)
+                .orElseThrow(() -> new EntidadeNaoEncontrada("Usuário não encontrado"));
+
+        Optional<UsuarioAlexa> vinculoOpt = usuarioAlexaRepository.findByUsuario_IdUsuarioAndAtivoTrue(targetUserId);
+
+        if (vinculoOpt.isPresent()) {
+            UsuarioAlexa vinculo = vinculoOpt.get();
+            boolean isPending = vinculo.getAlexaUserId() != null && vinculo.getAlexaUserId().startsWith("pending-");
+            if (!isPending) {
+                LocalDateTime vinculadoEm = vinculo.getAtualizadoEm() != null ? vinculo.getAtualizadoEm() : vinculo.getCriadoEm();
+                return new AlexaStatusResponse(
+                        true,
+                        vinculo.getAlexaUserId(),
+                        vinculo.getApiEndpoint(),
+                        vinculadoEm,
+                        dentista.getNome()
+                );
+            }
+        }
+
+        return new AlexaStatusResponse(
+                false,
+                null,
+                null,
+                null,
+                dentista.getNome()
+        );
+    }
+
+    @Transactional
+    public String desconectar(Long targetUserId) {
+        Usuario dentista = usuarioRepository.findById(targetUserId)
+                .orElseThrow(() -> new EntidadeNaoEncontrada("Usuário não encontrado"));
+
+        UsuarioAlexa vinculo = usuarioAlexaRepository.findByUsuario_IdUsuarioAndAtivoTrue(targetUserId)
+                .orElseThrow(() -> new EntidadeNaoEncontrada("Nenhum dispositivo Alexa vinculado encontrado para este dentista"));
+
+        String alexaUserId = vinculo.getAlexaUserId();
+        vinculo.setAtivo(false);
+        vinculo.setCodigoPareamento(null);
+        vinculo.setCodigoExpiracao(null);
+        usuarioAlexaRepository.save(vinculo);
+
+        log.info("ALEXA: Dispositivo [{}] desconectado com sucesso do dentista ID [{}]", alexaUserId, targetUserId);
+        return alexaUserId;
     }
 
     public Usuario resolverDentista(String alexaUserId, Long idUsuarioAutenticado) {
