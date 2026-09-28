@@ -1,0 +1,33 @@
+name: "Backend CI (Build & Unit Tests)"
+
+on:
+  push:
+    branches: [main, develop, feat/lambda-alexa]
+    paths:
+      - "src/**"
+      - "pom.xml"
+      - ".github/workflows/backend-*.yml"
+  pull_request:
+    branches: [main, develop, feat/lambda-alexa]
+    paths:
+      - "src/**"
+      - "pom.xml"
+      - ".github/workflows/backend-*.yml"
+
+jobs:
+  test:
+    name: "Executar Testes Unitarios e Integracao (Java 21)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do Repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21 (Eclipse Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: "maven"
+
+      - name: Executar Testes com Maven
+        run: mvn clean test
