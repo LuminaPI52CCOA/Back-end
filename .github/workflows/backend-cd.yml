@@ -1,0 +1,90 @@
+name: "Backend CD (Deploy to EC2)"
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_host:
+        description: "IP Publico ou DNS da EC2 Backend (ou IP privado se usar Bastion)"
+        required: true
+        type: string
+      ssh_user:
+        description: "Usuario SSH da instancia"
+        required: true
+        default: "ubuntu"
+        type: string
+      bastion_host:
+        description: "IP do Bastion Host (opcional, para saltar em ambiente prod privado)"
+        required: false
+        default: ""
+        type: string
+
+jobs:
+  deploy:
+    name: "Build do JAR e Deploy via SSH"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do Repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21 (Eclipse Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: "maven"
+
+      - name: Compilar Artefato JAR
+        run: mvn clean package -DskipTests
+
+      - name: Configurar Chave SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          cat << 'EOF' > ~/.ssh/config
+          Host *
+            StrictHostKeyChecking no
+            UserKnownHostsFile=/dev/null
+          EOF
+
+      - name: Transferir JAR e Reiniciar Servico (Direto ou via Bastion)
+        env:
+          TARGET: ${{ inputs.target_host }}
+          USER: ${{ inputs.ssh_user }}
+          BASTION: ${{ inputs.bastion_host }}
+        run: |
+          SSH_OPTS="-o StrictHostKeyChecking=no -i ~/.ssh/id_rsa"
+          SCP_OPTS="-o StrictHostKeyChecking=no -i ~/.ssh/id_rsa"
+
+          if [ -n "$BASTION" ]; then
+            echo "Conectando atraves do Bastion Host ($BASTION)..."
+            SSH_OPTS="$SSH_OPTS -J ${USER}@${BASTION}"
+            SCP_OPTS="$SCP_OPTS -o ProxyJump=${USER}@${BASTION}"
+          fi
+
+          echo "Enviando arquivo JAR para a instancia $TARGET..."
+          scp $SCP_OPTS target/*.jar ${USER}@${TARGET}:/tmp/backend.jar
+
+          echo "Substituindo binario e reiniciando o servico systemd..."
+          ssh $SSH_OPTS ${USER}@${TARGET} << 'EOSSH'
+            sudo mkdir -p /opt/lumina-backend/target
+            sudo cp /tmp/backend.jar /opt/lumina-backend/target/backend-0.0.1-SNAPSHOT.jar
+            sudo systemctl restart lumina-backend
+            sleep 5
+            sudo systemctl status lumina-backend --no-pager
+          EOSSH
+
+      - name: Validar Health Check da API
+        if: ${{ inputs.bastion_host == '' }}
+        run: |
+          echo "Verificando /actuator/health..."
+          for i in {1..10}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://${{ inputs.target_host }}:8080/actuator/health || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Backend respondeu com HTTP 200 OK!"
+              exit 0
+            fi
+            echo "Aguardando subida da aplicacao ($i/10)..."
+            sleep 4
+          done
+          echo "⚠️ Timeout aguardando HTTP 200 no actuator health check."
