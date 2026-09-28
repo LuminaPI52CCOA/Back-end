@@ -251,4 +251,114 @@ class AlexaServiceTest {
             assertTrue(alerta.getMensagemVoz().contains("Dipirona"));
         }
     }
+
+    @Nested
+    @DisplayName("5. Testes de Consulta de Status")
+    class StatusTest {
+
+        @Test
+        @DisplayName("Deve retornar status conectado quando houver dispositivo ativo")
+        void deveRetornarStatusConectado() {
+            Usuario usuario = new Usuario();
+            usuario.setIdUsuario(1L);
+            usuario.setNome("Dr. Ricardo");
+
+            UsuarioAlexa vinculo = new UsuarioAlexa();
+            vinculo.setUsuario(usuario);
+            vinculo.setAlexaUserId("amzn1.ask.account.RICARDO");
+            vinculo.setApiEndpoint("https://api.amazonalexa.com");
+            vinculo.setAtivo(true);
+            vinculo.setCriadoEm(LocalDateTime.now().minusDays(1));
+            vinculo.setAtualizadoEm(LocalDateTime.now().minusHours(2));
+
+            when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+            when(usuarioAlexaRepository.findByUsuario_IdUsuarioAndAtivoTrue(1L)).thenReturn(Optional.of(vinculo));
+
+            AlexaStatusResponse status = alexaService.obterStatus(1L);
+
+            assertNotNull(status);
+            assertTrue(status.getConectado());
+            assertEquals("amzn1.ask.account.RICARDO", status.getAlexaUserId());
+            assertEquals("https://api.amazonalexa.com", status.getApiEndpoint());
+            assertEquals("Dr. Ricardo", status.getDentistaNome());
+            assertNotNull(status.getVinculadoEm());
+        }
+
+        @Test
+        @DisplayName("Deve retornar status não conectado quando não houver dispositivo ativo")
+        void deveRetornarStatusNaoConectado() {
+            Usuario usuario = new Usuario();
+            usuario.setIdUsuario(2L);
+            usuario.setNome("Dra. Beatriz");
+
+            when(usuarioRepository.findById(2L)).thenReturn(Optional.of(usuario));
+            when(usuarioAlexaRepository.findByUsuario_IdUsuarioAndAtivoTrue(2L)).thenReturn(Optional.empty());
+
+            AlexaStatusResponse status = alexaService.obterStatus(2L);
+
+            assertNotNull(status);
+            assertFalse(status.getConectado());
+            assertNull(status.getAlexaUserId());
+            assertNull(status.getVinculadoEm());
+            assertEquals("Dra. Beatriz", status.getDentistaNome());
+        }
+
+        @Test
+        @DisplayName("Deve lançar EntidadeNaoEncontrada quando usuário não existir ao consultar status")
+        void deveLancarExcecaoQuandoUsuarioNaoExistirAoConsultarStatus() {
+            when(usuarioRepository.findById(99L)).thenReturn(Optional.empty());
+
+            assertThrows(EntidadeNaoEncontrada.class, () -> alexaService.obterStatus(99L));
+        }
+    }
+
+    @Nested
+    @DisplayName("6. Testes de Desconexão")
+    class DesconectarTest {
+
+        @Test
+        @DisplayName("Deve desconectar dispositivo com sucesso")
+        void deveDesconectarComSucesso() {
+            Usuario usuario = new Usuario();
+            usuario.setIdUsuario(1L);
+            usuario.setNome("Dr. Ricardo");
+
+            UsuarioAlexa vinculo = new UsuarioAlexa();
+            vinculo.setIdUsuarioAlexa(10L);
+            vinculo.setUsuario(usuario);
+            vinculo.setAlexaUserId("amzn1.ask.account.RICARDO");
+            vinculo.setAtivo(true);
+
+            when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+            when(usuarioAlexaRepository.findByUsuario_IdUsuarioAndAtivoTrue(1L)).thenReturn(Optional.of(vinculo));
+
+            String alexaUserId = alexaService.desconectar(1L);
+
+            assertEquals("amzn1.ask.account.RICARDO", alexaUserId);
+            assertFalse(vinculo.getAtivo());
+            assertNull(vinculo.getCodigoPareamento());
+            assertNull(vinculo.getCodigoExpiracao());
+            verify(usuarioAlexaRepository).save(vinculo);
+        }
+
+        @Test
+        @DisplayName("Deve lançar EntidadeNaoEncontrada quando não houver vínculo ativo para desconectar")
+        void deveLancarExcecaoQuandoSemVinculoParaDesconectar() {
+            Usuario usuario = new Usuario();
+            usuario.setIdUsuario(2L);
+
+            when(usuarioRepository.findById(2L)).thenReturn(Optional.of(usuario));
+            when(usuarioAlexaRepository.findByUsuario_IdUsuarioAndAtivoTrue(2L)).thenReturn(Optional.empty());
+
+            assertThrows(EntidadeNaoEncontrada.class, () -> alexaService.desconectar(2L));
+        }
+
+        @Test
+        @DisplayName("Deve lançar EntidadeNaoEncontrada quando usuário não existir ao desconectar")
+        void deveLancarExcecaoQuandoUsuarioNaoExistirAoDesconectar() {
+            when(usuarioRepository.findById(99L)).thenReturn(Optional.empty());
+
+            assertThrows(EntidadeNaoEncontrada.class, () -> alexaService.desconectar(99L));
+        }
+    }
 }
