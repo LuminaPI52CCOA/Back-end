@@ -1,12 +1,14 @@
 package com.lumina.backend.dto.estado_civil;
 
-import jakarta.validation.constraints.NotBlank;
+import io.swagger.v3.oas.annotations.media.Schema;
 
-import java.time.LocalDate;
-
+@Schema(description = "Dados de resposta de estado civil")
 public class EstadoCivilResponse {
 
+    @Schema(description = "ID do estado civil", example = "1", type = "integer", format = "int32")
     private Integer idEstadoCivil;
+
+    @Schema(description = "Descrição do estado civil", example = "Solteiro(a)", type = "string")
     private String descricao;
 
     public EstadoCivilResponse(){}

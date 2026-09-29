@@ -55,7 +55,7 @@ public class UsuarioServiceTest {
             List<Usuario>  usuariosEsperados =List.of(new Usuario());
             when(usuarioRepository.findAll()).thenReturn(usuariosEsperados);
 
-            List<Usuario> usuarios = usuarioService.listar();
+            List<com.lumina.backend.domain.usuario.Usuario> usuarios = usuarioService.listar();
 
             Assertions.assertEquals(usuariosEsperados.size(),usuarios.size());
             Mockito.verify(usuarioRepository,Mockito.times(1)).findAll();
@@ -144,9 +144,8 @@ public class UsuarioServiceTest {
             when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
             when(usuarioRepository.logicalDelete(false, 1L)).thenReturn(1); // 1 = linha afetada no banco
 
-            int resultado = usuarioService.deletar(false, 1L);
+            usuarioService.deletar(false, 1L);
 
-            assertThat(resultado).isEqualTo(1);
             verify(usuarioRepository).findById(1L);
             verify(usuarioRepository).logicalDelete(false, 1L);
         }
@@ -173,15 +172,16 @@ public class UsuarioServiceTest {
 
             Usuario usuario = criarUsuario(1L, "ana@email.com");
             UsuarioRequest request = new UsuarioRequest();
+            request.setNome("Ana Maria");
 
             when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
-            when(usuarioRepository.atualizarPeloId(request, 1L)).thenReturn(1);
+            when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
 
-            int resultado = usuarioService.atualizar(request, 1L);
+            com.lumina.backend.domain.usuario.Usuario resultado = usuarioService.atualizar(request, 1L);
 
-            assertThat(resultado).isEqualTo(1);
+            assertThat(resultado).isNotNull();
             verify(usuarioRepository).findById(1L);
-            verify(usuarioRepository).atualizarPeloId(request, 1L);
+            verify(usuarioRepository).save(any(Usuario.class));
         }
 
         @Test
@@ -198,19 +198,23 @@ public class UsuarioServiceTest {
 
             assertThat(excecao.getMessage()).contains("99");
 
-            verify(usuarioRepository, never()).atualizarPeloId(any(), any());
+            verify(usuarioRepository, never()).save(any());
         }
 
         @Test
         @DisplayName("1.9 Deve salvar e retornar o usuário")
         void deveSalvarUsuario() {
             Usuario usuario = criarUsuario(1L, "ana@email.com");
-            when(usuarioRepository.save(usuario)).thenReturn(usuario);
+            when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
 
-            Usuario resultado = usuarioService.salvar(usuario);
+            com.lumina.backend.domain.usuario.Usuario resultado = usuarioService.salvar(com.lumina.backend.domain.usuario.Usuario.criar(
+                new com.lumina.backend.domain.usuario.UsuarioCommand(
+                    usuario.getNome(), usuario.getCpf(), usuario.getEmail(), usuario.getSenha(), usuario.getFkPerfil(), usuario.getCro(), usuario.getAtivo()
+                )
+            ));
 
-            assertThat(resultado).isEqualTo(usuario);
-            verify(usuarioRepository).save(usuario);
+            assertThat(resultado).isNotNull();
+            verify(usuarioRepository).save(any(Usuario.class));
         }
 
         @Test
@@ -219,7 +223,7 @@ public class UsuarioServiceTest {
             Usuario usuario = criarUsuario(1L, "ana@email.com");
             when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
 
-            Optional<Usuario> resultado = usuarioService.buscarPorId(1L);
+            Optional<com.lumina.backend.domain.usuario.Usuario> resultado = usuarioService.buscarPorId(1L);
 
             assertThat(resultado).isPresent();
             assertThat(resultado.get().getEmail()).isEqualTo("ana@email.com");
@@ -227,16 +231,13 @@ public class UsuarioServiceTest {
         }
 
         @Test
-        @DisplayName("1.11 Deve lançar exceção quando o id não existir")
+        @DisplayName("1.11 Deve retornar optional vazio quando o id não existir")
         void deveLancarExcecaoQuandoBuscarIdInexistente() {
             when(usuarioRepository.findById(99L)).thenReturn(Optional.empty());
 
-            EntidadeNaoEncontrada excecao = assertThrows(
-                    EntidadeNaoEncontrada.class,
-                    () -> usuarioService.buscarPorId(99L)
-            );
+            Optional<com.lumina.backend.domain.usuario.Usuario> resultado = usuarioService.buscarPorId(99L);
 
-            assertThat(excecao.getMessage()).contains("99");
+            assertThat(resultado).isEmpty();
             verify(usuarioRepository).findById(99L);
         }
 

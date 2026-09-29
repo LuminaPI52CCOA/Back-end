@@ -112,7 +112,7 @@ class AnamneseServiceTest {
 	    Mockito.when(repository.save(any(Anamnese.class)))
 		    .thenAnswer(invocation -> invocation.getArgument(0));
 
-	    Anamnese resultado = anamneseService.processImage(arquivo);
+	    Anamnese resultado = anamneseService.processImage(arquivo, 1L);
 
 	    ArgumentCaptor<Anamnese> captor = ArgumentCaptor.forClass(Anamnese.class);
 	    Mockito.verify(repository, Mockito.times(1)).save(captor.capture());
@@ -149,6 +149,69 @@ class AnamneseServiceTest {
 
 	    Mockito.verifyNoInteractions(textractClient);
 	    Mockito.verifyNoInteractions(geminiAIService);
+	    Mockito.verifyNoInteractions(repository);
+	}
+
+	@Test
+	@DisplayName("Deve lancar excecao quando tipo de arquivo for invalido")
+	void deveLancarExcecaoQuandoTipoArquivoInvalido() {
+	    MultipartFile arquivoInvalido = new MockMultipartFile(
+		    "arquivo",
+		    "script.sh",
+		    "application/x-sh",
+		    "echo 'hacked'".getBytes()
+	    );
+
+	    assertThrows(com.lumina.backend.exception.FormatoArquivoInvalidoException.class,
+		    () -> anamneseService.processImage(arquivoInvalido));
+
+	    Mockito.verifyNoInteractions(textractClient);
+	    Mockito.verifyNoInteractions(geminiAIService);
+	    Mockito.verifyNoInteractions(repository);
+	}
+
+	@Test
+	@DisplayName("Deve lancar excecao quando tamanho do arquivo exceder 10MB")
+	void deveLancarExcecaoQuandoTamanhoExcederLimite() {
+	    MultipartFile arquivoGrande = Mockito.mock(MultipartFile.class);
+	    Mockito.when(arquivoGrande.isEmpty()).thenReturn(false);
+	    Mockito.when(arquivoGrande.getSize()).thenReturn(11L * 1024 * 1024);
+
+	    assertThrows(com.lumina.backend.exception.FormatoArquivoInvalidoException.class,
+		    () -> anamneseService.processImage(arquivoGrande));
+
+	    Mockito.verifyNoInteractions(textractClient);
+	    Mockito.verifyNoInteractions(geminiAIService);
+	    Mockito.verifyNoInteractions(repository);
+	}
+
+	@Test
+	@DisplayName("Deve lancar excecao quando retorno da IA for incompleto ou invalido")
+	void deveLancarExcecaoQuandoRetornoIaInvalido() throws IOException {
+	    MultipartFile arquivo = new MockMultipartFile(
+		    "arquivo",
+		    "anamnese.png",
+		    "image/png",
+		    "conteudo".getBytes()
+	    );
+
+	    DetectDocumentTextResponse respostaTextract = DetectDocumentTextResponse.builder()
+		    .blocks(Block.builder().blockType(BlockType.LINE).text("Texto").build())
+		    .build();
+
+	    ObjectMapper mapper = new ObjectMapper();
+	    JsonNode jsonInvalido = mapper.readTree("{\"invalido\": true}");
+
+	    Mockito.when(textractClient.detectDocumentText(any(DetectDocumentTextRequest.class)))
+		    .thenReturn(respostaTextract);
+	    Mockito.when(geminiAIService.transformarEmJson(anyString()))
+		    .thenReturn("retorno-bruto");
+	    Mockito.when(geminiAIService.limparJsonGemini(anyString()))
+		    .thenReturn(jsonInvalido);
+
+	    assertThrows(com.lumina.backend.exception.FormatoArquivoInvalidoException.class,
+		    () -> anamneseService.processImage(arquivo));
+
 	    Mockito.verifyNoInteractions(repository);
 	}
     }

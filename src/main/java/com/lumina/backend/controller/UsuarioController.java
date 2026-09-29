@@ -1,7 +1,8 @@
 package com.lumina.backend.controller;
 
+import com.lumina.backend.domain.usuario.UsuarioCommand;
+import com.lumina.backend.domain.usuario.Usuario;
 import com.lumina.backend.dto.usuario.*;
-import com.lumina.backend.model.Usuario;
 import com.lumina.backend.service.Usuario.UsuarioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -13,10 +14,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,6 +29,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @RestController
 @RequestMapping("/usuarios")
 @Tag(name = "Usuarios", description = "Endpoints para cadastro e gestao de usuarios do sistema Lumina")
@@ -35,6 +41,9 @@ public class UsuarioController {
 
     @Value("${jwt.validity}")
     private long jwtValidity;
+
+    @Value("${jwt.cookie.secure:false}")
+    private boolean cookieSecure;
 
     private final UsuarioService service;
 
@@ -59,10 +68,20 @@ public class UsuarioController {
             @org.springframework.web.bind.annotation.RequestBody @Valid UsuarioRequest usuario) {
 
         String senhaNova = passwordEncoder.encode(usuario.getSenha());
-        Usuario entidade = UsuarioMapper.toEntity(usuario);
-        entidade.setSenha(senhaNova);
-
-        Usuario usuariosCadastrados = service.salvar(entidade);
+        UsuarioCommand command = UsuarioMapper.toCommand(usuario);
+        UsuarioCommand commandComSenha = new UsuarioCommand(
+            command.nome(),
+            command.cpf(),
+            command.email(),
+            senhaNova,
+            command.fkPerfil(),
+            command.cro(),
+            command.ativo()
+        );
+        
+        Usuario usuarioDomain = Usuario.criar(commandComSenha);
+        Usuario usuariosCadastrados = service.salvar(usuarioDomain);
+        log.info("AUDIT: Usuario [{}] cadastrado com sucesso", usuario.getEmail());
 
         return ResponseEntity
                 .status(201)
@@ -83,10 +102,10 @@ public class UsuarioController {
     public ResponseEntity<UsuarioSessaoDto> login(
             @RequestBody(description = "Credenciais de autenticacao", required = true,
                     content = @Content(schema = @Schema(implementation = UsuarioLoginDto.class)))
-            @org.springframework.web.bind.annotation.RequestBody UsuarioLoginDto usuarioLoginDto,
+            @Valid @org.springframework.web.bind.annotation.RequestBody UsuarioLoginDto usuarioLoginDto,
             HttpServletResponse response) {
 
-        final Usuario usuario = UsuarioMapper.of(usuarioLoginDto);
+        final com.lumina.backend.model.Usuario usuario = UsuarioMapper.of(usuarioLoginDto);
 
         // autenticar() gera o token internamente — precisamos dele apenas para o cookie
         UsuarioTokenDto autenticado = this.service.autenticar(usuario);
@@ -94,7 +113,7 @@ public class UsuarioController {
         // Token vai para o cookie HttpOnly — inacessível ao JavaScript (proteção XSS)
         ResponseCookie cookie = ResponseCookie.from(COOKIE_NOME, autenticado.getToken())
                 .httpOnly(true)                          // inacessível ao JavaScript
-                .secure(false)                           // true em produção (exige HTTPS)
+                .secure(cookieSecure)                    // true em produção (exige HTTPS)
                 .sameSite("Strict")                      // bloqueia envio cross-site (mitiga CSRF)
                 .path("/")                               // valido para toda a aplicacao
                 .maxAge(Duration.ofSeconds(jwtValidity)) // expira junto com o token JWT
@@ -104,7 +123,7 @@ public class UsuarioController {
 
         // Body retorna apenas dados de sessão — sem o token
         UsuarioSessaoDto sessao = UsuarioMapper.ofSessao(autenticado);
-        System.out.println(autenticado.getToken());
+        log.info("AUDIT: Usuario [{}] autenticado com sucesso", usuario.getEmail());
         return ResponseEntity.ok(sessao);
     }
 
@@ -117,9 +136,13 @@ public class UsuarioController {
             @ApiResponse(responseCode = "204", description = "Logout realizado com sucesso", content = @Content)
     })
     public ResponseEntity<Void> logout(HttpServletResponse response) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
+        log.info("AUDIT: Usuario [{}] realizou logout", usuario);
+
         ResponseCookie cookie = ResponseCookie.from(COOKIE_NOME, "")
                 .httpOnly(true)
-                .secure(false)
+                .secure(cookieSecure)
                 .sameSite("Strict")
                 .path("/")
                 .maxAge(0)  // maxAge=0 instrui o browser a deletar o cookie imediatamente
@@ -131,6 +154,7 @@ public class UsuarioController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(
             summary = "Lista todos os usuarios",
             description = "Retorna a lista de usuarios cadastrados. Caso nao existam registros, retorna 204."
@@ -149,21 +173,26 @@ public class UsuarioController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DENTISTA', 'RECEPCIONISTA')")
     @Operation(
             summary = "Busca usuario por ID",
             description = "Retorna os dados do usuario correspondente ao identificador informado."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Usuario encontrado",
-                    content = @Content(schema = @Schema(implementation = Usuario.class))),
+                    content = @Content(schema = @Schema(implementation = UsuarioResponse.class))),
             @ApiResponse(responseCode = "404", description = "Usuario nao encontrado", content = @Content)
     })
-    public ResponseEntity<Optional<Usuario>> buscarPorId(
+    public ResponseEntity<UsuarioResponse> buscarPorId(
             @Parameter(description = "ID do usuario", example = "1") @PathVariable Long id){
-        return ResponseEntity.ok(service.buscarPorId(id));
+        return service.buscarPorId(id)
+                .map(UsuarioMapper::toDto)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(
             summary = "Inativa usuario por ID",
             description = "Realiza a inativacao logica do usuario com base no ID informado e retorna 204."
@@ -174,28 +203,37 @@ public class UsuarioController {
     })
     public ResponseEntity<Void> deletarUsuario(
             @Parameter(description = "ID do usuario", example = "1") @PathVariable Long id){
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String usuarioLogado = (auth != null) ? auth.getName() : "ANONYMOUS";
+        log.info("AUDIT: Usuario [{}] inativou o usuario ID [{}]", usuarioLogado, id);
+
         Boolean ativo = false;
         service.deletar(ativo, id);
-    return ResponseEntity.noContent().build();
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DENTISTA', 'RECEPCIONISTA')")
     @Operation(
             summary = "Atualiza usuario por ID",
             description = "Atualiza os dados do usuario conforme o corpo da requisicao e retorna o registro atualizado."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Usuario atualizado com sucesso",
-                    content = @Content(schema = @Schema(implementation = Usuario.class))),
+                    content = @Content(schema = @Schema(implementation = UsuarioResponse.class))),
             @ApiResponse(responseCode = "400", description = "Dados invalidos para atualizacao", content = @Content),
             @ApiResponse(responseCode = "404", description = "Usuario nao encontrado", content = @Content)
     })
-    public ResponseEntity<Optional<Usuario>> atualizar(
+    public ResponseEntity<UsuarioResponse> atualizar(
             @RequestBody(description = "Dados para atualizacao do usuario", required = true,
                     content = @Content(schema = @Schema(implementation = UsuarioRequest.class)))
             @Valid @org.springframework.web.bind.annotation.RequestBody UsuarioRequest usuario,
             @Parameter(description = "ID do usuario", example = "1") @PathVariable Long id){
-        service.atualizar(usuario, id);
-        return ResponseEntity.ok(service.buscarPorId(id));
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String usuarioLogado = (auth != null) ? auth.getName() : "ANONYMOUS";
+        log.info("AUDIT: Usuario [{}] atualizou dados do usuario ID [{}]", usuarioLogado, id);
+
+        Usuario usuarioAtualizado = service.atualizar(usuario, id);
+        return ResponseEntity.ok(UsuarioMapper.toDto(usuarioAtualizado));
     }
 }

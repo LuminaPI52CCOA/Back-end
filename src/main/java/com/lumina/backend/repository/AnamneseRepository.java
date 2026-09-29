@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface AnamneseRepository extends JpaRepository<Anamnese, Integer> {
     List<Anamnese> findAnamneseByFkCliente_IdCliente(Integer id);
+    List<Anamnese> findByFkCliente_IdClienteOrderByDataAnamneseDesc(Long idCliente);
 }

@@ -34,6 +34,12 @@ class ConsultaControllerTest {
     @Mock
     private ConsultaService consultaService;
 
+    @Mock
+    private com.lumina.backend.service.alexa.AlexaService alexaService;
+
+    @Mock
+    private com.lumina.backend.repository.UsuarioRepository usuarioRepository;
+
     @InjectMocks
     private ConsultaController consultaController;
 

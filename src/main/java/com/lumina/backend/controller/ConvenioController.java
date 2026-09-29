@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -30,6 +31,7 @@ public class ConvenioController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'DENTISTA', 'RECEPCIONISTA')")
     @Operation(summary = "Lista convenios", description = "Retorna todos os convenios cadastrados no sistema.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Convenios retornados com sucesso",
@@ -40,6 +42,7 @@ public class ConvenioController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Cadastra convenio", description = "Cadastra um novo convenio no sistema.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Convenio cadastrado com sucesso",
@@ -54,6 +57,7 @@ public class ConvenioController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Atualiza convenio", description = "Atualiza os dados de um convenio pelo identificador.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Convenio atualizado com sucesso",
@@ -71,6 +75,7 @@ public class ConvenioController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Exclui convenio", description = "Remove um convenio existente pelo identificador.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "Convenio removido com sucesso", content = @Content),

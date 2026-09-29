@@ -1,27 +1,27 @@
 package com.lumina.backend.dto.usuario;
 
-import com.lumina.backend.model.Usuario;
+import com.lumina.backend.domain.usuario.UsuarioCommand;
+import com.lumina.backend.domain.usuario.UsuarioId;
+import com.lumina.backend.domain.usuario.Usuario;
 
 import java.util.List;
 
 public class UsuarioMapper {
 
-    public static Usuario toEntity(UsuarioRequest dto) {
+    public static UsuarioCommand toCommand(UsuarioRequest dto) {
         if (dto == null) {
             return null;
         }
 
-        Usuario entidade = new Usuario();
-        entidade.setIdUsuario(dto.getIdUsuario());
-        entidade.setNome(dto.getNome());
-        entidade.setCpf(dto.getCpf());
-        entidade.setEmail(dto.getEmail());
-        entidade.setSenha(dto.getSenha());
-        entidade.setCro(dto.getCro());
-        entidade.setAtivo(dto.getAtivo());
-        entidade.setFkPerfil(dto.getFkPerfil());
-
-        return entidade;
+        return new UsuarioCommand(
+            dto.getNome(),
+            dto.getCpf(),
+            dto.getEmail(),
+            dto.getSenha(),
+            dto.getFkPerfil(),
+            dto.getCro(),
+            dto.getAtivo()
+        );
     }
 
     public static UsuarioResponse toDto(Usuario model) {
@@ -30,12 +30,13 @@ public class UsuarioMapper {
         }
 
         Integer perfil = model.getFkPerfil();
+        Long idUsuario = model.getId() != null ? model.getId().getValue() : null;
 
         UsuarioResponse.UsuarioPerfil usuarioPerfilDto = new
                 UsuarioResponse.UsuarioPerfil();
 
         UsuarioResponse dto = new UsuarioResponse(
-                (long) Math.toIntExact(model.getIdUsuario()),
+                idUsuario,
                 model.getNome(),
                 model.getCpf(),
                 model.getEmail(),
@@ -48,14 +49,31 @@ public class UsuarioMapper {
         return dto;
     }
 
+    public static UsuarioResponse toDto(com.lumina.backend.model.Usuario model) {
+        if (model == null) {
+            return null;
+        }
+
+        return new UsuarioResponse(
+                model.getIdUsuario(),
+                model.getNome(),
+                model.getCpf(),
+                model.getEmail(),
+                model.getSenha(),
+                model.getFkPerfil(),
+                model.getCro(),
+                model.getAtivo()
+        );
+    }
+
     public static List<UsuarioResponse> toDto(List<Usuario> entities) {
         return entities.stream()
                 .map(UsuarioMapper::toDto)
                 .toList();
     }
 
-    public static Usuario of(UsuarioRequest usuarioCriacaoDto) {
-        Usuario usuario = new Usuario();
+    public static com.lumina.backend.model.Usuario of(UsuarioRequest usuarioCriacaoDto) {
+        com.lumina.backend.model.Usuario usuario = new com.lumina.backend.model.Usuario();
 
         usuario.setEmail(usuarioCriacaoDto.getEmail());
         usuario.setNome(usuarioCriacaoDto.getNome());
@@ -64,8 +82,8 @@ public class UsuarioMapper {
         return usuario;
     }
 
-    public static Usuario of(UsuarioLoginDto usuarioLoginDto) {
-        Usuario usuario = new Usuario();
+    public static com.lumina.backend.model.Usuario of(UsuarioLoginDto usuarioLoginDto) {
+        com.lumina.backend.model.Usuario usuario = new com.lumina.backend.model.Usuario();
 
         usuario.setEmail(usuarioLoginDto.getEmail());
         usuario.setSenha(usuarioLoginDto.getSenha());
@@ -73,7 +91,7 @@ public class UsuarioMapper {
         return usuario;
     }
 
-    public static UsuarioTokenDto of(Usuario usuario, String token) {
+    public static UsuarioTokenDto of(com.lumina.backend.model.Usuario usuario, String token) {
         UsuarioTokenDto usuarioTokenDto = new UsuarioTokenDto();
         Long idUsuario = Long.valueOf(usuario.getIdUsuario());;
 
@@ -102,7 +120,7 @@ public class UsuarioMapper {
         return dto;
     }
 
-    public static UsuarioListarDto of(Usuario usuario) {
+    public static UsuarioListarDto of(com.lumina.backend.model.Usuario usuario) {
         UsuarioListarDto usuarioListarDto = new UsuarioListarDto();
         Long idUsuario = Long.valueOf(usuario.getIdUsuario());
 
