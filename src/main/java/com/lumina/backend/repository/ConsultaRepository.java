@@ -60,4 +60,6 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Long> {
     );
 
     List<Consulta> findByUsuarioIdUsuario(Long idUsuario);
+
+    boolean existsByClienteIdClienteAndUsuarioIdUsuario(Long idCliente, Long idUsuario);
 }

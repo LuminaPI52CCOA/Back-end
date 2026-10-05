@@ -21,9 +21,9 @@ public class Usuario implements UserDetails {
         private String cpf;
         private String email;
         private String senha;
-            @ManyToOne
-    @JoinColumn(name = "fk_perfil")
-    private Perfil perfil;
+        @ManyToOne
+        @JoinColumn(name = "fk_perfil")
+        private Perfil perfil;
         private String cro;
         private Boolean ativo;
 

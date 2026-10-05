@@ -32,7 +32,6 @@ public class ConsultaService {
         return consultaRepository.findAll();
     }
 
-    @PreAuthorize("hasRole('DENTISTA')")
     public List<Consulta> listarPorDentista(Long idUsuario){
         return consultaRepository.findByUsuarioIdUsuario(idUsuario);
     }
