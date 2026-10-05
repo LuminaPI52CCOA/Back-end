@@ -13,6 +13,8 @@ import com.lumina.backend.dto.estado_civil.EstadoCivilMapper;
 import com.lumina.backend.dto.estado_civil.EstadoCivilResponse;
 import com.lumina.backend.model.Anamnese;
 import com.lumina.backend.model.EstadoCivil;
+import com.lumina.backend.model.Usuario;
+import com.lumina.backend.repository.UsuarioRepository;
 import com.lumina.backend.service.cliente.ClienteService;
 import com.lumina.backend.service.convenio.ConvenioService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,11 +44,14 @@ public class ClienteController {
 
     private final ClienteService service;
     private final ConvenioService convenioService;
+    private final UsuarioRepository usuarioRepository;
+    private final com.lumina.backend.repository.ConsultaRepository consultaRepository;
 
-
-    public ClienteController(ClienteService service, ConvenioService convenioService){
+    public ClienteController(ClienteService service, ConvenioService convenioService, UsuarioRepository usuarioRepository, com.lumina.backend.repository.ConsultaRepository consultaRepository){
         this.service = service;
         this.convenioService = convenioService;
+        this.usuarioRepository = usuarioRepository;
+        this.consultaRepository = consultaRepository;
     }
 
     @GetMapping("/estado-civil")
@@ -77,6 +82,17 @@ public class ClienteController {
             @RequestParam(required = false) String nome,
             @Parameter(description = "CPF exato do cliente", example = "12345678901")
             @RequestParam(required = false) String cpf){
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        Boolean isRecepcionista = auth.getAuthorities()
+                .stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_RECEPCIONISTA") || a.getAuthority().equals("ROLE_ADMIN"));
+
+        if(!isRecepcionista){
+            return ResponseEntity.status(403).build();
+        }
+
         List<Cliente> clientes = service.listarComFiltros(nome, cpf);
         if(clientes.isEmpty()) {
             return ResponseEntity.noContent().build();
@@ -97,6 +113,14 @@ public class ClienteController {
                     content = @Content(schema = @Schema(implementation = ClienteRequest.class)))
             @org.springframework.web.bind.annotation.RequestBody @Valid ClienteRequest request){
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        Boolean isRecepcionista = auth.getAuthorities()
+                .stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_RECEPCIONISTA") || a.getAuthority().equals("ROLE_ADMIN"));
+
+        if(!isRecepcionista){
+            return ResponseEntity.status(403).build();
+        }
         String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
         Cliente clienteCadastrado = service.cadastrar(request);
         ClienteResponse response = ClienteMapper.toDto(clienteCadastrado);
@@ -114,6 +138,22 @@ public class ClienteController {
     public ResponseEntity<ClienteResponse> buscarPorId(
             @Parameter(description = "ID do cliente", example = "1") @PathVariable Long id){
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        Boolean isApenasDentista = auth.getAuthorities()
+                .stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_DENTISTA"))
+                && auth.getAuthorities()
+                .stream()
+                .noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_RECEPCIONISTA"));
+
+        Long usuarioLogadoId = obterUsuarioIdAutenticado();
+
+        if (isApenasDentista) {
+            boolean temConsulta = consultaRepository.existsByClienteIdClienteAndUsuarioIdUsuario(id, usuarioLogadoId);
+            if (!temConsulta) {
+                return ResponseEntity.status(403).build();
+            }
+        }
         String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
         log.info("AUDIT: Usuario [{}] consultou dados do cliente ID [{}]", usuario, id);
         Cliente cliente = service.buscarPorId(id);
@@ -135,6 +175,14 @@ public class ClienteController {
             @org.springframework.web.bind.annotation.RequestBody @Valid ClienteRequest request,
             @Parameter(description = "ID do cliente", example = "1") @PathVariable Long id){
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        Boolean isRecepcionista = auth.getAuthorities()
+                .stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_RECEPCIONISTA") || a.getAuthority().equals("ROLE_ADMIN"));
+
+        if(!isRecepcionista){
+            return ResponseEntity.status(403).build();
+        }
         String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
         Cliente cliente = service.atualizar(request, id);
         log.info("AUDIT: Usuario [{}] atualizou dados do cliente ID [{}]", usuario, id);
@@ -151,6 +199,15 @@ public class ClienteController {
     })
     public ResponseEntity<List<ConvenioResponse>> listarConvenios(
             @Parameter(description = "ID do cliente", example = "1") @PathVariable Long id) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        Boolean isRecepcionista = auth.getAuthorities()
+                .stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_RECEPCIONISTA") || a.getAuthority().equals("ROLE_ADMIN"));
+
+        if(!isRecepcionista){
+            return ResponseEntity.status(403).build();
+        }
         return ResponseEntity.status(200).body(ConvenioMapper.toResponse(convenioService.listarConveniosCliente(id)));
     }
 
@@ -174,5 +231,15 @@ public class ClienteController {
         log.info("AUDIT: Usuario [{}] cadastrou anamnese manual para o cliente ID [{}]", usuario, id);
         AnamneseResponse response = AnamneseMapper.toDto(anamnese);
         return ResponseEntity.ok(response);
+    }
+
+    private Long obterUsuarioIdAutenticado() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getName() != null && !auth.getName().isBlank() && !"anonymousUser".equalsIgnoreCase(auth.getName())) {
+            return usuarioRepository.findByEmail(auth.getName())
+                    .map(Usuario::getIdUsuario)
+                    .orElse(null);
+        }
+        return null;
     }
 }
