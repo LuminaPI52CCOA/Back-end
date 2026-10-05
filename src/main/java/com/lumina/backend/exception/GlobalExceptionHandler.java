@@ -98,9 +98,9 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(erro);
     }
 
-    @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ErroRespostaDto> handleBadCredentials(BadCredentialsException ex, HttpServletRequest request) {
-        log.warn("Credenciais invalidas no caminho {}", request.getRequestURI());
+    @ExceptionHandler({BadCredentialsException.class, org.springframework.security.core.AuthenticationException.class})
+    public ResponseEntity<ErroRespostaDto> handleBadCredentials(Exception ex, HttpServletRequest request) {
+        log.warn("Credenciais invalidas no caminho {}: {}", request.getRequestURI(), ex.getMessage());
         ErroRespostaDto erro = new ErroRespostaDto(
                 HttpStatus.UNAUTHORIZED.value(),
                 HttpStatus.UNAUTHORIZED.getReasonPhrase(),
