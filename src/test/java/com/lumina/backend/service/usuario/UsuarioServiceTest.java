@@ -43,7 +43,7 @@ public class UsuarioServiceTest {
     UsuarioService usuarioService;
 
     private Usuario criarUsuario(Long id, String email) {
-        return new Usuario(id, "Ana", "123.456.789-00", email, "senha123", 1, "CRO-123", true);
+        return new Usuario(id, "Ana", "123.456.789-00", email, "senha123", new com.lumina.backend.model.Perfil(1, "ADMIN"), "CRO-123", true);
     }
 
     @Nested
@@ -209,7 +209,7 @@ public class UsuarioServiceTest {
 
             com.lumina.backend.domain.usuario.Usuario resultado = usuarioService.salvar(com.lumina.backend.domain.usuario.Usuario.criar(
                 new com.lumina.backend.domain.usuario.UsuarioCommand(
-                    usuario.getNome(), usuario.getCpf(), usuario.getEmail(), usuario.getSenha(), usuario.getFkPerfil(), usuario.getCro(), usuario.getAtivo()
+                    usuario.getNome(), usuario.getCpf(), usuario.getEmail(), usuario.getSenha(), usuario.getPerfil() != null ? usuario.getPerfil().getIdPerfil() : null, usuario.getCro(), usuario.getAtivo()
                 )
             ));
 

@@ -1,10 +1,16 @@
 package com.lumina.backend.repository;
 
+import com.lumina.backend.model.Cliente;
 import com.lumina.backend.model.Consulta;
+import com.lumina.backend.model.Usuario;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -52,4 +58,6 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Long> {
             @Param("horarioInicio") LocalTime horarioInicio,
             @Param("horarioFim") LocalTime horarioFim
     );
+
+    List<Consulta> findByUsuarioIdUsuario(Long idUsuario);
 }

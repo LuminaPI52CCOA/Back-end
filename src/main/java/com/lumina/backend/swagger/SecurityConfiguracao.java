@@ -101,6 +101,8 @@ public class SecurityConfiguracao {
 
         // Adiciona o filtro JWT ANTES do filtro padrão de autenticação por usuário/senha.
         http.addFilterBefore(jwtAuthenticationFilterBean(), UsernamePasswordAuthenticationFilter.class);
+        // Adiciona o filtro para carregar o token CSRF após o filtro de autenticação
+        http.addFilterAfter(new CsrfCookieFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

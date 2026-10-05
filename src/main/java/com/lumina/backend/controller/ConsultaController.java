@@ -57,6 +57,20 @@ public class ConsultaController {
         return ResponseEntity.status(200).body(ConsultaMapper.toResponse(consultaService.listar()));
     }
 
+    @GetMapping("/dentista/{id}")
+    @PreAuthorize("permitAll()")
+    @io.swagger.v3.oas.annotations.security.SecurityRequirements
+    @Operation(summary = "Lista consultas do dentista", description = "Retorna as consultas cadastradas no sistema.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Consultas retornadas com sucesso",
+                    content = @Content(schema = @Schema(implementation = ConsultaResponse.class)))
+    })
+    public ResponseEntity<List<ConsultaResponse>> listarConsultasDentista(
+            @PathVariable Long id
+    ){
+        return ResponseEntity.status(200).body(ConsultaMapper.toResponse(consultaService.listarPorDentista(id)));
+    }
+
     @PostMapping
     @Operation(summary = "Cadastra consulta", description = "Cadastra uma nova consulta com cliente, usuario e horarios informados.")
     @ApiResponses(value = {

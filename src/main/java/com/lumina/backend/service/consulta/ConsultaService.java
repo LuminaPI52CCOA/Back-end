@@ -9,6 +9,7 @@ import com.lumina.backend.model.Usuario;
 import com.lumina.backend.repository.ClienteRepository;
 import com.lumina.backend.repository.ConsultaRepository;
 import com.lumina.backend.repository.UsuarioRepository;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -29,6 +30,11 @@ public class ConsultaService {
 
     public List<Consulta> listar() {
         return consultaRepository.findAll();
+    }
+
+    @PreAuthorize("hasRole('DENTISTA')")
+    public List<Consulta> listarPorDentista(Long idUsuario){
+        return consultaRepository.findByUsuarioIdUsuario(idUsuario);
     }
 
     public Consulta cadastrar(ConsultaRequest consulta) {

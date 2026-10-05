@@ -24,7 +24,7 @@ public class UsuarioDetalhesDto implements UserDetails {
         this.nome = usuario.getNome();
         this.email = usuario.getEmail();
         this.senha = usuario.getSenha();
-        this.fkPerfil = usuario.getFkPerfil();
+        this.fkPerfil = usuario.getPerfil() != null ? usuario.getPerfil().getIdPerfil() : null;
     }
 
     public String getNome() {

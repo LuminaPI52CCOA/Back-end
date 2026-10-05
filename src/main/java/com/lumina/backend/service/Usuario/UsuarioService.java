@@ -162,7 +162,11 @@ public class UsuarioService {
             if (usuarios.getSenha() != null && !usuarios.getSenha().isBlank()) {
                 usuarioExistente.setSenha(passwordEncoder != null ? passwordEncoder.encode(usuarios.getSenha()) : usuarios.getSenha());
             }
-            if (usuarios.getFkPerfil() != null) usuarioExistente.setFkPerfil(usuarios.getFkPerfil());
+            if (usuarios.getFkPerfil() != null) {
+                com.lumina.backend.model.Perfil perfil = new com.lumina.backend.model.Perfil();
+                perfil.setIdPerfil(usuarios.getFkPerfil());
+                usuarioExistente.setPerfil(perfil);
+            }
             if (usuarios.getCro() != null) usuarioExistente.setCro(usuarios.getCro());
             if (usuarios.getAtivo() != null) usuarioExistente.setAtivo(usuarios.getAtivo());
 
@@ -180,7 +184,7 @@ public class UsuarioService {
                 model.getCpf(),
                 model.getEmail(),
                 model.getSenha(),
-                model.getFkPerfil(),
+                model.getPerfil() != null ? model.getPerfil().getIdPerfil() : null,
                 model.getCro(),
                 model.getAtivo()
         );
@@ -195,7 +199,7 @@ public class UsuarioService {
         model.setCpf(domain.getCpf());
         model.setEmail(domain.getEmail());
         model.setSenha(domain.getSenha());
-        model.setFkPerfil(domain.getFkPerfil());
+        if(domain.getFkPerfil() != null) { com.lumina.backend.model.Perfil p = new com.lumina.backend.model.Perfil(); p.setIdPerfil(domain.getFkPerfil()); model.setPerfil(p); }
         model.setCro(domain.getCro());
         model.setAtivo(domain.getAtivo());
         return model;

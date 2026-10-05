@@ -1,6 +1,7 @@
 package com.lumina.backend.infrastructure.persistence.jpa;
 
 import jakarta.persistence.*;
+import com.lumina.backend.model.Perfil;
 
 @Entity
 @Table(name = "usuario")
@@ -12,7 +13,9 @@ public class UsuarioJpaEntity {
     private String cpf;
     private String email;
     private String senha;
-    private Integer fkPerfil;
+        @ManyToOne
+    @JoinColumn(name = "fk_perfil")
+    private Perfil perfil;
     private String cro;
     private Boolean ativo;
 
@@ -60,12 +63,12 @@ public class UsuarioJpaEntity {
         this.senha = senha;
     }
 
-    public Integer getFkPerfil() {
-        return fkPerfil;
+    public Perfil getPerfil() {
+        return perfil;
     }
 
-    public void setFkPerfil(Integer fkPerfil) {
-        this.fkPerfil = fkPerfil;
+    public void setPerfil(Perfil perfil) {
+        this.perfil = perfil;
     }
 
     public String getCro() {
