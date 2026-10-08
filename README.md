@@ -80,7 +80,7 @@ cp src/main/resources/application.properties.example src/main/resources/applicat
 | :--- | :--- | :--- |
 | `DB_URL` | `jdbc:mysql://localhost:3306/Lumina` | URL de conexão JDBC com o MySQL |
 | `DB_USERNAME` | `root` | Usuário de acesso ao banco |
-| `DB_PASSWORD` | `2741` | Senha de acesso ao banco |
+| `DB_PASSWORD` | `lumina_dev_pass_8492` | Senha de acesso ao banco |
 | `JWT_SECRET` | *(chave Base64)* | Chave HMAC-SHA256 para assinatura dos tokens JWT |
 | `JWT_VALIDITY` | `3600` | Validade do token em segundos (1 hora) |
 | `GEMINI_API_KEY` | *(opcional)* | Chave de API do Google Gemini para IA |

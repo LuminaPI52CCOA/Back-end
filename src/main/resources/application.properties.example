@@ -1,7 +1,7 @@
 spring.application.name=backend
 spring.datasource.url=${DB_URL:jdbc:mysql://localhost:3306/Lumina}
 spring.datasource.username=${DB_USERNAME:root}
-spring.datasource.password=${DB_PASSWORD:2741}
+spring.datasource.password=${DB_PASSWORD:lumina_dev_pass_8492}
 spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 
 # Limites para Upload de Arquivos (Protecao contra DoS)
