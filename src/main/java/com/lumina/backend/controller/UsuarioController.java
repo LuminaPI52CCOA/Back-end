@@ -53,6 +53,7 @@ public class UsuarioController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPCIONISTA')")
     @Operation(
             summary = "Cadastra um novo usuario",
             description = "Recebe os dados do usuario, valida as informacoes e registra o usuario no sistema."
@@ -154,7 +155,7 @@ public class UsuarioController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPCIONISTA')")
     @Operation(
             summary = "Lista todos os usuarios",
             description = "Retorna a lista de usuarios cadastrados. Caso nao existam registros, retorna 204."
@@ -192,7 +193,7 @@ public class UsuarioController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPCIONISTA')")
     @Operation(
             summary = "Inativa usuario por ID",
             description = "Realiza a inativacao logica do usuario com base no ID informado e retorna 204."
