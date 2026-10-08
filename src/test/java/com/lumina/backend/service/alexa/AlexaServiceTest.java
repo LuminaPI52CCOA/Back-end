@@ -95,7 +95,7 @@ class AlexaServiceTest {
             vinculo.setIdUsuarioAlexa(10L);
             vinculo.setUsuario(usuario);
             vinculo.setCodigoPareamento("123456");
-            vinculo.setCodigoExpiracao(LocalDateTime.now().plusMinutes(5));
+            vinculo.setCodigoExpiracao(LocalDateTime.now(AlexaService.ZONE_SAO_PAULO).plusMinutes(5));
             vinculo.setAtivo(false);
 
             when(usuarioAlexaRepository.findByCodigoPareamento("123456")).thenReturn(Optional.of(vinculo));
@@ -122,7 +122,7 @@ class AlexaServiceTest {
             UsuarioAlexa vinculo = new UsuarioAlexa();
             vinculo.setUsuario(usuario);
             vinculo.setCodigoPareamento("123456");
-            vinculo.setCodigoExpiracao(LocalDateTime.now().minusMinutes(1));
+            vinculo.setCodigoExpiracao(LocalDateTime.now(AlexaService.ZONE_SAO_PAULO).minusMinutes(1));
 
             when(usuarioAlexaRepository.findByCodigoPareamento("123456")).thenReturn(Optional.of(vinculo));
 
