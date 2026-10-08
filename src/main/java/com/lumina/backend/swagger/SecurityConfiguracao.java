@@ -84,7 +84,7 @@ public class SecurityConfiguracao {
                 // Define quais URLs são públicas e quais exigem autenticação
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(URLS_PERMITIDAS).permitAll()  // rotas públicas e probes de saúde
-                        .requestMatchers("/actuator/**").hasRole("ADMIN") // métricas e endpoints internos restritos ao ADMIN
+                        .requestMatchers("/actuator/**").hasAnyRole("ADMIN", "RECEPCIONISTA") // métricas e endpoints internos restritos ao ADMIN
                         .anyRequest().authenticated()                  // todas as outras exigem token
                 )
 
