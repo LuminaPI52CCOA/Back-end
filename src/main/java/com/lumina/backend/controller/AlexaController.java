@@ -55,7 +55,7 @@ public class AlexaController {
     }
 
     @PostMapping("/gerar-pin")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DENTISTA')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DENTISTA', 'RECEPCIONISTA')")
     @Operation(
             summary = "Gera PIN de pareamento para a Alexa",
             description = "Gera um código temporário de 6 dígitos (válido por 10 minutos) para vincular o dispositivo Amazon Echo à conta do dentista."
@@ -82,7 +82,7 @@ public class AlexaController {
     }
 
     @GetMapping("/status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DENTISTA')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DENTISTA', 'RECEPCIONISTA')")
     @Operation(
             summary = "Consulta status de integração com a Alexa",
             description = "Retorna se o dentista possui um dispositivo Alexa vinculado, dados de conexão e nome do dentista."
@@ -109,7 +109,7 @@ public class AlexaController {
     }
 
     @DeleteMapping("/desconectar")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DENTISTA')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DENTISTA', 'RECEPCIONISTA')")
     @Operation(
             summary = "Desconecta dispositivo Alexa da conta do dentista",
             description = "Desativa o vínculo ativo do dentista com o dispositivo Amazon Echo."
