@@ -18,7 +18,7 @@ import java.io.IOException;
 @Slf4j
 @RestController
 @RequestMapping("/anamneses")
-@PreAuthorize("hasAnyRole('ADMIN', 'DENTISTA')")
+@PreAuthorize("hasAnyRole('ADMIN', 'DENTISTA', 'RECEPCIONISTA')")
 public class AnamneseController {
 
     private final AnamneseService service;
