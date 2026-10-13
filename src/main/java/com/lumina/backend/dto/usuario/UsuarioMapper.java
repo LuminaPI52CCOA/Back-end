@@ -60,7 +60,7 @@ public class UsuarioMapper {
                 model.getCpf(),
                 model.getEmail(),
                 model.getSenha(),
-                model.getFkPerfil(),
+                model.getPerfil() != null ? model.getPerfil().getIdPerfil() : null,
                 model.getCro(),
                 model.getAtivo()
         );

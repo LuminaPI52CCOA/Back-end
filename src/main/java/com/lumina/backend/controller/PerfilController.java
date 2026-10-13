@@ -18,7 +18,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/perfis")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'RECEPCIONISTA')")
 @Tag(name = "Perfis", description = "Endpoints para consulta de perfis de acesso do sistema Lumina")
 public class PerfilController {
 

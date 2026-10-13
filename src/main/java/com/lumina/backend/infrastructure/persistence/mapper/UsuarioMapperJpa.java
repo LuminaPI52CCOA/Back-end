@@ -4,6 +4,7 @@ import com.lumina.backend.domain.usuario.Usuario;
 import com.lumina.backend.domain.usuario.UsuarioCommand;
 import com.lumina.backend.domain.usuario.UsuarioId;
 import com.lumina.backend.infrastructure.persistence.jpa.UsuarioJpaEntity;
+import com.lumina.backend.model.Perfil;
 
 public class UsuarioMapperJpa {
 
@@ -20,7 +21,11 @@ public class UsuarioMapperJpa {
         entity.setCpf(usuario.getCpf());
         entity.setEmail(usuario.getEmail());
         entity.setSenha(usuario.getSenha());
-        entity.setFkPerfil(usuario.getFkPerfil());
+        if (usuario.getFkPerfil() != null) {
+            Perfil perfil = new Perfil();
+            perfil.setIdPerfil(usuario.getFkPerfil());
+            entity.setPerfil(perfil);
+        }
         entity.setCro(usuario.getCro());
         entity.setAtivo(usuario.getAtivo());
 
@@ -39,7 +44,7 @@ public class UsuarioMapperJpa {
             entity.getCpf(),
             entity.getEmail(),
             entity.getSenha(),
-            entity.getFkPerfil(),
+            entity.getPerfil() != null ? entity.getPerfil().getIdPerfil() : null,
             entity.getCro(),
             entity.getAtivo()
         );

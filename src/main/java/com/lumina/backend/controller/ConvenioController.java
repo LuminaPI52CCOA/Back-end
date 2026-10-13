@@ -42,7 +42,7 @@ public class ConvenioController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPCIONISTA')")
     @Operation(summary = "Cadastra convenio", description = "Cadastra um novo convenio no sistema.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Convenio cadastrado com sucesso",
@@ -57,7 +57,7 @@ public class ConvenioController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPCIONISTA')")
     @Operation(summary = "Atualiza convenio", description = "Atualiza os dados de um convenio pelo identificador.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Convenio atualizado com sucesso",
@@ -75,7 +75,7 @@ public class ConvenioController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPCIONISTA')")
     @Operation(summary = "Exclui convenio", description = "Remove um convenio existente pelo identificador.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "Convenio removido com sucesso", content = @Content),
