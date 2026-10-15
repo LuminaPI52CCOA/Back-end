@@ -17,7 +17,9 @@ import com.lumina.backend.model.Convenio;
 import com.lumina.backend.model.EstadoCivil;
 import com.lumina.backend.service.cliente.ClienteService;
 import com.lumina.backend.service.convenio.ConvenioService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -27,6 +29,9 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDate;
 import java.util.Collections;
@@ -45,8 +50,28 @@ class ClienteControllerTest {
     @Mock
     private ConvenioService convenioService;
 
+    @Mock
+    private com.lumina.backend.repository.UsuarioRepository usuarioRepository;
+
+    @Mock
+    private com.lumina.backend.repository.ConsultaRepository consultaRepository;
+
     @InjectMocks
     private ClienteController clienteController;
+
+    @BeforeEach
+    void autenticarComoAdmin() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        "admin@lumina.com",
+                        null,
+                        List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+    }
+
+    @AfterEach
+    void limparContextoDeSeguranca() {
+        SecurityContextHolder.clearContext();
+    }
 
     private Cliente criarClienteDomain(Long id, String nome, String cpf, String email) {
         ClienteCommand command = new ClienteCommand(

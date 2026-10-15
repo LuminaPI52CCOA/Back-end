@@ -8,7 +8,9 @@ import com.lumina.backend.model.Cliente;
 import com.lumina.backend.model.Consulta;
 import com.lumina.backend.model.Usuario;
 import com.lumina.backend.service.consulta.ConsultaService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -18,6 +20,9 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -42,6 +47,20 @@ class ConsultaControllerTest {
 
     @InjectMocks
     private ConsultaController consultaController;
+
+    @BeforeEach
+    void autenticarComoAdmin() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        "admin@lumina.com",
+                        null,
+                        List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+    }
+
+    @AfterEach
+    void limparContextoDeSeguranca() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Nested
     @DisplayName("1. Teste de listagem de consultas")
