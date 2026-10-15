@@ -45,8 +45,27 @@ class ClienteControllerTest {
     @Mock
     private ConvenioService convenioService;
 
+    @Mock
+    private com.lumina.backend.repository.UsuarioRepository usuarioRepository;
+
+    @Mock
+    private com.lumina.backend.repository.ConsultaRepository consultaRepository;
+
     @InjectMocks
     private ClienteController clienteController;
+
+    @org.junit.jupiter.api.BeforeEach
+    void autenticar() {
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                        "admin@lumina.com", null,
+                        List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"))));
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void limparAutenticacao() {
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+    }
 
     private Cliente criarClienteDomain(Long id, String nome, String cpf, String email) {
         ClienteCommand command = new ClienteCommand(

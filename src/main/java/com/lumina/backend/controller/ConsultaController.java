@@ -54,7 +54,45 @@ public class ConsultaController {
                     content = @Content(schema = @Schema(implementation = ConsultaResponse.class)))
     })
     public ResponseEntity<List<ConsultaResponse>> listar() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        Boolean isRecepcionista = auth.getAuthorities()
+                .stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_RECEPCIONISTA") || a.getAuthority().equals("ROLE_ADMIN"));
+
+        if(!isRecepcionista){
+            return ResponseEntity.status(403).build();
+        }
+
         return ResponseEntity.status(200).body(ConsultaMapper.toResponse(consultaService.listar()));
+    }
+
+    @GetMapping("/dentista/{id}")
+    @io.swagger.v3.oas.annotations.security.SecurityRequirements
+    @Operation(summary = "Lista consultas do dentista", description = "Retorna as consultas cadastradas no sistema.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Consultas retornadas com sucesso",
+                    content = @Content(schema = @Schema(implementation = ConsultaResponse.class)))
+    })
+    public ResponseEntity<List<ConsultaResponse>> listarConsultasDentista(
+            @PathVariable Long id
+    ){
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        Boolean isApenasDentista = auth.getAuthorities()
+                .stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_DENTISTA"))
+                && auth.getAuthorities()
+                .stream()
+                .noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_RECEPCIONISTA"));
+
+        Long usuarioLogadoId = obterUsuarioIdAutenticado();
+
+        if(isApenasDentista && !id.equals(usuarioLogadoId)){
+            return ResponseEntity.status(403).build();
+        }
+
+        return ResponseEntity.status(200).body(ConsultaMapper.toResponse(consultaService.listarPorDentista(id)));
     }
 
     @PostMapping
@@ -68,6 +106,17 @@ public class ConsultaController {
             @RequestBody(description = "Dados de cadastro da consulta", required = true,
                     content = @Content(schema = @Schema(implementation = ConsultaRequest.class)))
             @Valid @org.springframework.web.bind.annotation.RequestBody ConsultaRequest consulta) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        Boolean isRecepcionista = auth.getAuthorities()
+                .stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_RECEPCIONISTA") || a.getAuthority().equals("ROLE_ADMIN"));
+
+        if(!isRecepcionista){
+            return ResponseEntity.status(403).build();
+        }
+
+
         return ResponseEntity.status(201).body(ConsultaMapper.toResponse(consultaService.cadastrar(consulta)));
     }
 
@@ -80,7 +129,25 @@ public class ConsultaController {
     })
     public ResponseEntity<ConsultaResponse> buscarPorId(
             @Parameter(description = "ID da consulta", example = "1") @PathVariable Long id) {
-        return ResponseEntity.status(200).body(ConsultaMapper.toResponse(consultaService.buscarPorId(id)));
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        Boolean isApenasDentista = auth.getAuthorities()
+                .stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_DENTISTA"))
+                && auth.getAuthorities()
+                .stream()
+                .noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_RECEPCIONISTA"));
+
+        Long usuarioLogadoId = obterUsuarioIdAutenticado();
+
+        Consulta consulta = consultaService.buscarPorId(id);
+
+        if(isApenasDentista && !consulta.getUsuario().getIdUsuario().equals(usuarioLogadoId)){
+            return ResponseEntity.status(403).build();
+        }
+
+        return ResponseEntity.status(200).body(ConsultaMapper.toResponse(consulta));
     }
 
     @PutMapping("/{id}")
@@ -97,6 +164,22 @@ public class ConsultaController {
                     content = @Content(schema = @Schema(implementation = ConsultaRequest.class)))
             @Valid @org.springframework.web.bind.annotation.RequestBody ConsultaRequest consultaRequest) {
 
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        Boolean isApenasDentista = auth.getAuthorities()
+                .stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_DENTISTA"))
+                && auth.getAuthorities()
+                .stream()
+                .noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_RECEPCIONISTA"));
+
+        Long usuarioLogadoId = obterUsuarioIdAutenticado();
+        Consulta consultaExistente = consultaService.buscarPorId(id);
+
+        if(isApenasDentista && !consultaExistente.getUsuario().getIdUsuario().equals(usuarioLogadoId)){
+            return ResponseEntity.status(403).build();
+        }
+
         Consulta consultaAtualizada = consultaService.reagendar(id, consultaRequest);
         return ResponseEntity.status(200).body(ConsultaMapper.toResponse(consultaAtualizada));
     }
@@ -109,6 +192,23 @@ public class ConsultaController {
     })
     public ResponseEntity<Void> cancelar(
             @Parameter(description = "ID da consulta", example = "1") @PathVariable Long id) {
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        Boolean isApenasDentista = auth.getAuthorities()
+                .stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_DENTISTA"))
+                && auth.getAuthorities()
+                .stream()
+                .noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_RECEPCIONISTA"));
+
+        Long usuarioLogadoId = obterUsuarioIdAutenticado();
+
+        Consulta consulta = consultaService.buscarPorId(id);
+
+        if(isApenasDentista && !consulta.getUsuario().getIdUsuario().equals(usuarioLogadoId)){
+            return ResponseEntity.status(403).build();
+        }
 
         consultaService.cancelar(id);
         return ResponseEntity.noContent().build();
