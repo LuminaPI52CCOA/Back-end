@@ -1,6 +1,5 @@
 package com.lumina.backend.dto.usuario;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "Dados de resposta de usuario")
@@ -76,7 +75,6 @@ public class UsuarioResponse {
         this.email = email;
     }
 
-    @JsonIgnore
     public String getSenha() {
         return senha;
     }
