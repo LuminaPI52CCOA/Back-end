@@ -23,7 +23,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(EntidadeNaoEncontrada.class)
     public ResponseEntity<ErroRespostaDto> handleEntidadeNaoEncontrada(EntidadeNaoEncontrada ex, HttpServletRequest request) {
-        log.warn("Recurso nao encontrado: {} no caminho {}", ex.getMessage(), request.getRequestURI());
+        log.warn("Recurso não encontrado: {} no caminho {}", ex.getMessage(), request.getRequestURI());
         ErroRespostaDto erro = new ErroRespostaDto(
                 HttpStatus.NOT_FOUND.value(),
                 HttpStatus.NOT_FOUND.getReasonPhrase(),
@@ -59,7 +59,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(FormatoArquivoInvalidoException.class)
     public ResponseEntity<ErroRespostaDto> handleFormatoArquivoInvalido(FormatoArquivoInvalidoException ex, HttpServletRequest request) {
-        log.warn("Arquivo invalido: {} no caminho {}", ex.getMessage(), request.getRequestURI());
+        log.warn("Arquivo inválido: {} no caminho {}", ex.getMessage(), request.getRequestURI());
         ErroRespostaDto erro = new ErroRespostaDto(
                 HttpStatus.BAD_REQUEST.value(),
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
@@ -75,11 +75,11 @@ public class GlobalExceptionHandler {
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             campos.put(fieldError.getField(), fieldError.getDefaultMessage());
         }
-        log.warn("Falha de validacao de campos no caminho {}: {}", request.getRequestURI(), campos);
+        log.warn("Falha de validação de campos no caminho {}: {}", request.getRequestURI(), campos);
         ErroRespostaDto erro = new ErroRespostaDto(
                 HttpStatus.BAD_REQUEST.value(),
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                "Erro de validacao nos campos informados",
+                "Erro de validação nos campos informados.",
                 request.getRequestURI(),
                 campos
         );
@@ -92,7 +92,7 @@ public class GlobalExceptionHandler {
         ErroRespostaDto erro = new ErroRespostaDto(
                 HttpStatus.PAYLOAD_TOO_LARGE.value(),
                 HttpStatus.PAYLOAD_TOO_LARGE.getReasonPhrase(),
-                "Tamanho do arquivo excede o limite maximo permitido de 10MB.",
+                "Tamanho do arquivo excede o limite máximo permitido de 10MB.",
                 request.getRequestURI()
         );
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(erro);
@@ -100,11 +100,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({BadCredentialsException.class, org.springframework.security.core.AuthenticationException.class})
     public ResponseEntity<ErroRespostaDto> handleBadCredentials(Exception ex, HttpServletRequest request) {
-        log.warn("Credenciais invalidas no caminho {}: {}", request.getRequestURI(), ex.getMessage());
+        log.warn("Credenciais inválidas no caminho {}: {}", request.getRequestURI(), ex.getMessage());
         ErroRespostaDto erro = new ErroRespostaDto(
                 HttpStatus.UNAUTHORIZED.value(),
                 HttpStatus.UNAUTHORIZED.getReasonPhrase(),
-                "Credenciais invalidas. Verifique seu e-mail e senha.",
+                "Credenciais inválidas. Verifique seu e-mail e senha.",
                 request.getRequestURI()
         );
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(erro);
@@ -116,7 +116,7 @@ public class GlobalExceptionHandler {
         ErroRespostaDto erro = new ErroRespostaDto(
                 HttpStatus.FORBIDDEN.value(),
                 HttpStatus.FORBIDDEN.getReasonPhrase(),
-                "Acesso negado. Voce nao possui permissao para acessar este recurso.",
+                "Acesso negado. Você não possui permissão para acessar este recurso.",
                 request.getRequestURI()
         );
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(erro);
