@@ -31,6 +31,7 @@ import org.springframework.http.ResponseEntity;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -110,6 +111,36 @@ class ClienteControllerTest {
             Assertions.assertNull(response.getBody());
 
             Mockito.verify(clienteService, Mockito.times(1)).listarComFiltros(null, null);
+        }
+
+        @Test
+        @DisplayName("1.3 Deve enriquecer clientes com plano e proximaConsulta quando disponiveis")
+        void deveEnriquecerClientesComPlanoEConsulta() {
+            Cliente c1 = criarClienteDomain(1L, "Ana Souza Lima", "123.456.789-01", "ana.souza@email.com");
+            Mockito.when(clienteService.listarComFiltros(null, null)).thenReturn(List.of(c1));
+
+            Convenio conv = new Convenio();
+            conv.setIdConvenio(2L);
+            conv.setNome("Amil Dental");
+            Mockito.when(convenioService.listarConveniosPorClientes(List.of(1L)))
+                    .thenReturn(Map.of(1L, List.of(conv)));
+
+            com.lumina.backend.model.Cliente clienteModel = new com.lumina.backend.model.Cliente();
+            clienteModel.setIdCliente(1L);
+            com.lumina.backend.model.Consulta consulta = new com.lumina.backend.model.Consulta();
+            consulta.setCliente(clienteModel);
+            consulta.setData(LocalDate.of(2026, 10, 25));
+            Mockito.when(consultaRepository.findConsultasFuturasPorClientes(Mockito.eq(List.of(1L)), Mockito.any(LocalDate.class)))
+                    .thenReturn(List.of(consulta));
+
+            ResponseEntity<List<ClienteResponse>> response = clienteController.listar(null, null);
+
+            Assertions.assertEquals(200, response.getStatusCodeValue());
+            Assertions.assertNotNull(response.getBody());
+            ClienteResponse resp = response.getBody().get(0);
+            Assertions.assertEquals("Amil Dental", resp.getPlano());
+            Assertions.assertEquals(List.of("Amil Dental"), resp.getConvenios());
+            Assertions.assertEquals(LocalDate.of(2026, 10, 25), resp.getProximaConsulta());
         }
     }
 

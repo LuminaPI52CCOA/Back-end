@@ -12,6 +12,8 @@ import com.lumina.backend.dto.convenio.ConvenioResponse;
 import com.lumina.backend.dto.estado_civil.EstadoCivilMapper;
 import com.lumina.backend.dto.estado_civil.EstadoCivilResponse;
 import com.lumina.backend.model.Anamnese;
+import com.lumina.backend.model.Consulta;
+import com.lumina.backend.model.Convenio;
 import com.lumina.backend.model.EstadoCivil;
 import com.lumina.backend.model.Usuario;
 import com.lumina.backend.repository.UsuarioRepository;
@@ -33,7 +35,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -98,6 +105,7 @@ public class ClienteController {
             return ResponseEntity.noContent().build();
         }
         List<ClienteResponse> response = ClienteMapper.toDto(clientes);
+        enriquecerClientesComConveniosEConsultas(response);
         return ResponseEntity.ok(response);
     }
 
@@ -158,6 +166,7 @@ public class ClienteController {
         log.info("AUDIT: Usuario [{}] consultou dados do cliente ID [{}]", usuario, id);
         Cliente cliente = service.buscarPorId(id);
         ClienteResponse response = ClienteMapper.toDto(cliente);
+        enriquecerClienteComConveniosEConsulta(response);
         return ResponseEntity.ok(response);
     }
 
@@ -241,5 +250,64 @@ public class ClienteController {
                     .orElse(null);
         }
         return null;
+    }
+
+    private void enriquecerClientesComConveniosEConsultas(List<ClienteResponse> responses) {
+        if (responses == null || responses.isEmpty()) {
+            return;
+        }
+
+        List<Long> ids = responses.stream()
+                .map(ClienteResponse::getIdCliente)
+                .filter(Objects::nonNull)
+                .toList();
+
+        if (ids.isEmpty()) {
+            return;
+        }
+
+        Map<Long, List<Convenio>> conveniosPorCliente = Collections.emptyMap();
+        if (convenioService != null) {
+            try {
+                conveniosPorCliente = convenioService.listarConveniosPorClientes(ids);
+                if (conveniosPorCliente == null) {
+                    conveniosPorCliente = Collections.emptyMap();
+                }
+            } catch (Exception e) {
+                log.warn("Erro ao carregar convenios dos clientes em lote: {}", e.getMessage());
+            }
+        }
+
+        Map<Long, LocalDate> proximaConsultaPorCliente = Collections.emptyMap();
+        if (consultaRepository != null) {
+            try {
+                List<Consulta> consultasFuturas = consultaRepository.findConsultasFuturasPorClientes(ids, LocalDate.now());
+                if (consultasFuturas != null) {
+                    proximaConsultaPorCliente = consultasFuturas.stream()
+                            .filter(c -> c.getCliente() != null && c.getCliente().getIdCliente() != null && c.getData() != null)
+                            .collect(Collectors.toMap(
+                                    c -> c.getCliente().getIdCliente(),
+                                    Consulta::getData,
+                                    (primeira, segunda) -> primeira
+                            ));
+                }
+            } catch (Exception e) {
+                log.warn("Erro ao carregar proximas consultas dos clientes em lote: {}", e.getMessage());
+            }
+        }
+
+        for (ClienteResponse resp : responses) {
+            List<Convenio> convs = conveniosPorCliente.getOrDefault(resp.getIdCliente(), Collections.emptyList());
+            List<String> nomesConvs = convs.stream().map(Convenio::getNome).filter(Objects::nonNull).toList();
+            resp.setConvenios(nomesConvs);
+            resp.setPlano(nomesConvs.isEmpty() ? "Particular" : nomesConvs.get(0));
+            resp.setProximaConsulta(proximaConsultaPorCliente.get(resp.getIdCliente()));
+        }
+    }
+
+    private void enriquecerClienteComConveniosEConsulta(ClienteResponse response) {
+        if (response != null) {
+            enriquecerClientesComConveniosEConsultas(List.of(response));
+        }
     }
 }
