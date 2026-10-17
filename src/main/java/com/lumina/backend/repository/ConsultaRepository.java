@@ -62,4 +62,16 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Long> {
     List<Consulta> findByUsuarioIdUsuario(Long idUsuario);
 
     boolean existsByClienteIdClienteAndUsuarioIdUsuario(Long idCliente, Long idUsuario);
+
+    @Query("""
+        SELECT c FROM Consulta c 
+        WHERE c.cliente.idCliente IN :clienteIds 
+          AND c.data >= :dataAtual 
+          AND (c.status IS NULL OR UPPER(c.status) NOT IN ('CANCELADA', 'CANCELADO'))
+        ORDER BY c.data ASC, c.horarioInicio ASC
+    """)
+    List<Consulta> findConsultasFuturasPorClientes(
+            @Param("clienteIds") List<Long> clienteIds,
+            @Param("dataAtual") LocalDate dataAtual
+    );
 }
