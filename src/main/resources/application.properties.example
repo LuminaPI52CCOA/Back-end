@@ -27,6 +27,8 @@ gemini.api.key=${GEMINI_API_KEY:test-gemini-key}
 aws.access-key=${AWS_ACCESS_KEY:test-key}
 aws.secret-key=${AWS_SECRET_KEY:test-secret}
 aws.region=${AWS_REGION:us-east-1}
+aws.s3.bucket-name=${AWS_S3_BUCKET_NAME:lumina-storage}
+
 
 # =============================================================================
 # Actuator e Logs
