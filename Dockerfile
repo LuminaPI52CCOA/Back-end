@@ -1,14 +1,12 @@
-# Estágio de Build
-FROM maven:3.9.6-eclipse-temurin-21 AS builder
-WORKDIR /app
-COPY pom.xml .
-RUN mvn dependency:go-offline
-COPY src ./src
-RUN mvn clean package -DskipTests
-
-# Estágio de Execução
 FROM eclipse-temurin:21-jre-alpine
+# Define o diretório de trabalho dentro do container
 WORKDIR /app
-COPY --from=builder /app/target/*.jar app.jar
+
+# Copia o arquivo .jar gerado pelo 'mvn package' da pasta target para dentro do container
+COPY target/backend-0.0.1-SNAPSHOT.jar app.jar
+
+# Expõe a porta em que o Spring Boot roda por padrão (geralmente 8080)
 EXPOSE 8080
+
+# Comando para iniciar a aplicação Spring Boot
 ENTRYPOINT ["java", "-jar", "app.jar"]

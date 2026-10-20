@@ -1,0 +1,91 @@
+services:
+  # ============================================================================
+  # 1. Banco de Dados MySQL Oficial do Lumina
+  # ============================================================================
+  mysql:
+    image: mysql:8.0
+    container_name: lumina-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-mafalu09}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-Lumina}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # 2. Aplicação Backend (Spring Boot + Java 21)
+  # ============================================================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lumina-backend
+    restart: always
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://mysql:3306/Lumina?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true}
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-mafalu09}
+      LOGGING_FILE_NAME: /var/log/backend/app.log
+      LOGGING_PATTERN_FILE: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level %pid --- [%t] %-40.40logger{39} : %m%n"
+    ports:
+      - "8081:8080"
+    volumes:
+      - backend_logs:/var/log/backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # ============================================================================
+  # 3. Nginx (Proxy Reverso e Geração de Logs de Acesso/Erro)
+  # ============================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: lumina-nginx
+    restart: always
+    ports:
+      - "8888:80"
+    volumes:
+      - ./nginx-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - backend
+
+  # ============================================================================
+  # 4. Agente de Telemetria e Coleta de Logs: Fluent Bit
+  # ============================================================================
+  fluent-bit:
+    image: fluent/fluent-bit:latest
+    container_name: lumina-fluent-bit
+    restart: always
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      BUCKET_BRONZE: ${BUCKET_BRONZE:-lumina-bronze}
+      ENVIRONMENT: ${ENVIRONMENT:-dev}
+    ports:
+      - "2020:2020" # API e métricas Prometheus/Healthcheck
+    volumes:
+      - ./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./parsers.conf:/fluent-bit/etc/parsers.conf:ro
+      - backend_logs:/var/log/backend:ro
+      - nginx_logs:/var/log/nginx:ro
+      - ./evidencias/system.log:/var/log/auth.log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - backend
+      - nginx
+
+volumes:
+  mysql_data:
+  backend_logs:
+  nginx_logs:
