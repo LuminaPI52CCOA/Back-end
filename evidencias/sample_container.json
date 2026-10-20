@@ -1,0 +1,3 @@
+{"log":"2026-10-15T14:10:00.123456789Z Tomcat initialized with port 8080 (http)\n","stream":"stdout","time":"2026-10-15T14:10:00.123456789Z","project":"lumina","tier":"bronze","environment":"dev"}
+{"log":"2026-10-15T14:10:05.987654321Z Started BackendApplication in 5.842 seconds\n","stream":"stdout","time":"2026-10-15T14:10:05.987654321Z","project":"lumina","tier":"bronze","environment":"dev"}
+{"log":"2026-10-15T14:18:22.999111222Z java.net.SocketTimeoutException: Connect timed out at java.base/sun.nio.ch.SocketChannelImpl.finishConnect\n","stream":"stderr","time":"2026-10-15T14:18:22.999111222Z","project":"lumina","tier":"bronze","environment":"dev"}
