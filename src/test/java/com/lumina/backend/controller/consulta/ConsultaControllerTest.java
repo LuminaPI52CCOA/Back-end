@@ -34,8 +34,27 @@ class ConsultaControllerTest {
     @Mock
     private ConsultaService consultaService;
 
+    @Mock
+    private com.lumina.backend.service.alexa.AlexaService alexaService;
+
+    @Mock
+    private com.lumina.backend.repository.UsuarioRepository usuarioRepository;
+
     @InjectMocks
     private ConsultaController consultaController;
+
+    @org.junit.jupiter.api.BeforeEach
+    void autenticar() {
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                        "admin@lumina.com", null,
+                        List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"))));
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void limparAutenticacao() {
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+    }
 
     @Nested
     @DisplayName("1. Teste de listagem de consultas")

@@ -35,4 +35,5 @@ build/
 ### Projeto ###
 src/main/resources/application.properties
 .env
-*.zip
+.env.local
+*.zip

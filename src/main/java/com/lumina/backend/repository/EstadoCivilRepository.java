@@ -6,6 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-@Tag(name = "RepositorioEstadoCivil", description = "Repositorio JPA para operacoes de persistencia de estado civil")
 public interface EstadoCivilRepository extends JpaRepository<EstadoCivil, Integer> {
 }

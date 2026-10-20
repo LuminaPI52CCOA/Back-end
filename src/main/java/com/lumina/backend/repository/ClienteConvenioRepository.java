@@ -12,4 +12,7 @@ public interface ClienteConvenioRepository extends JpaRepository<ClienteConvenio
 
     @Query("SELECT cc.convenio FROM ClienteConvenio cc WHERE cc.cliente.idCliente = :clienteId")
     List<Convenio> findConveniosByClienteId(@Param("clienteId") Long clienteId);
+
+    @Query("SELECT cc FROM ClienteConvenio cc JOIN FETCH cc.convenio WHERE cc.cliente.idCliente IN :clienteIds")
+    List<ClienteConvenio> findByClienteIdsWithConvenio(@Param("clienteIds") List<Long> clienteIds);
 }

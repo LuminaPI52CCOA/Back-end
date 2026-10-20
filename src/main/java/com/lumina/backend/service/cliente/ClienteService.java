@@ -5,14 +5,16 @@ import com.lumina.backend.dto.anamnese.AnamneseRequest;
 import com.lumina.backend.dto.cliente.ClienteMapper;
 import com.lumina.backend.dto.cliente.ClienteRequest;
 import com.lumina.backend.dto.cliente.ResponsavelRequest;
+import com.lumina.backend.domain.cliente.Cliente;
+import com.lumina.backend.domain.cliente.ClienteCommand;
+import com.lumina.backend.domain.cliente.ClienteId;
+import com.lumina.backend.domain.cliente.ClienteRepositoryPort;
 import com.lumina.backend.exception.CpfDuplicadoException;
 import com.lumina.backend.exception.EmailDuplicadoException;
 import com.lumina.backend.exception.EntidadeNaoEncontrada;
 import com.lumina.backend.model.Anamnese;
-import com.lumina.backend.model.Cliente;
 import com.lumina.backend.model.EstadoCivil;
 import com.lumina.backend.repository.AnamneseRepository;
-import com.lumina.backend.repository.ClienteRepository;
 import com.lumina.backend.repository.EstadoCivilRepository;
 import org.springframework.stereotype.Service;
 
@@ -22,14 +24,14 @@ import java.util.List;
 @Service
 public class ClienteService {
 
-    private final ClienteRepository repository;
+    private final ClienteRepositoryPort repositoryPort;
     private final AnamneseRepository anamneseRepository;
     private final EstadoCivilRepository estadoCivilRepository;
 
-    public ClienteService(ClienteRepository repository,
+    public ClienteService(ClienteRepositoryPort repositoryPort,
                           AnamneseRepository anamneseRepository,
                           EstadoCivilRepository estadoCivilRepository) {
-        this.repository = repository;
+        this.repositoryPort = repositoryPort;
         this.anamneseRepository = anamneseRepository;
         this.estadoCivilRepository = estadoCivilRepository;
     }
@@ -39,132 +41,198 @@ public class ClienteService {
     }
 
     public List<Cliente> listar(){
-        return repository.findAll();
+        return repositoryPort.buscarTodos();
     }
 
     public List<Cliente> listarComFiltros(String nome, String cpf) {
         if (cpf != null && !cpf.isBlank()) {
-            return repository.findByCpf(cpf)
+            return repositoryPort.buscarPorCpf(cpf)
                     .map(List::of)
                     .orElse(Collections.emptyList());
         }
         if (nome != null && !nome.isBlank()) {
-            return repository.findByNomeContainingIgnoreCase(nome);
+            return repositoryPort.buscarPorNome(nome);
         }
-        return repository.findAll();
+        return repositoryPort.buscarTodos();
     }
 
     public Cliente cadastrar(ClienteRequest request){
-        if((repository.findByEmail(request.getEmail()).isPresent())){
+        if(repositoryPort.existePorEmail(request.getEmail())){
             throw new EmailDuplicadoException("Email " + request.getEmail() + " já existe");
         }
-        if((repository.findByCpf(request.getCpf()).isPresent())){
+        if(repositoryPort.existePorCpf(request.getCpf())){
             throw new CpfDuplicadoException("Cpf " + request.getCpf() + " já existe");
         }
 
-        Cliente cliente = ClienteMapper.toEntity(request);
+        ClienteCommand command = ClienteMapper.toCommand(request);
 
+        // Tratar cliente indicacao
         if (request.getFkClienteIndicacao() != null) {
-            Cliente indicacao = repository.findById(request.getFkClienteIndicacao().longValue())
+            Cliente indicacao = repositoryPort.buscarPorId(ClienteId.of(request.getFkClienteIndicacao().longValue()))
                     .orElseThrow(() -> new EntidadeNaoEncontrada("Cliente indicador não encontrado!"));
-            cliente.setClienteIndicacao(indicacao);
+            command = new ClienteCommand(
+                command.nome(),
+                command.cpf(),
+                command.rg(),
+                command.dataNascimento(),
+                command.naturalidade(),
+                command.nacionalidade(),
+                command.sexo(),
+                command.cep(),
+                command.enderecoResidencial(),
+                command.email(),
+                command.numeroCelular(),
+                command.fkEstadoCivil(),
+                indicacao,
+                command.responsavel(),
+                command.grauParentescoResponsavel()
+            );
         }
 
+        // Tratar responsavel
         if (request.getResponsavel() != null) {
             ResponsavelRequest respDto = request.getResponsavel();
             Cliente responsavel = null;
 
             if (respDto.getIdCliente() != null) {
-                responsavel = repository.findById(respDto.getIdCliente())
+                responsavel = repositoryPort.buscarPorId(ClienteId.of(respDto.getIdCliente()))
                         .orElseThrow(() -> new EntidadeNaoEncontrada("Responsável não encontrado!"));
             } else if (respDto.getCpf() != null && !respDto.getCpf().isBlank()) {
-                responsavel = repository.findByCpf(respDto.getCpf())
+                responsavel = repositoryPort.buscarPorCpf(respDto.getCpf())
                         .orElseGet(() -> {
-                            Cliente novoResp = new Cliente();
-                            novoResp.setNome(respDto.getNome());
-                            novoResp.setCpf(respDto.getCpf());
-                            novoResp.setRg(respDto.getRg());
-                            novoResp.setNumeroCelular(respDto.getNumeroCelular());
-                            novoResp.setEmail(respDto.getEmail());
-                            novoResp.setSexo(respDto.getSexo());
-                            novoResp.setDataNascimento(respDto.getDataNascimento());
-                            novoResp.setEnderecoResidencial(respDto.getEnderecoResidencial());
-                            novoResp.setCep(respDto.getCep());
-                            novoResp.setNaturalidade(respDto.getNaturalidade());
-                            novoResp.setNacionalidade(respDto.getNacionalidade());
-                            novoResp.setFkEstadoCivil(respDto.getFkEstadoCivil());
-                            return repository.save(novoResp);
+                            ClienteCommand respCommand = new ClienteCommand(
+                                respDto.getNome(),
+                                respDto.getCpf(),
+                                respDto.getRg(),
+                                respDto.getDataNascimento(),
+                                respDto.getNaturalidade(),
+                                respDto.getNacionalidade(),
+                                respDto.getSexo(),
+                                respDto.getCep(),
+                                respDto.getEnderecoResidencial(),
+                                respDto.getEmail(),
+                                respDto.getNumeroCelular(),
+                                respDto.getFkEstadoCivil(),
+                                null,
+                                null,
+                                null
+                            );
+                            Cliente novoResp = Cliente.criar(respCommand);
+                            return repositoryPort.salvar(novoResp);
                         });
             }
-            cliente.setResponsavel(responsavel);
+            
+            command = new ClienteCommand(
+                command.nome(),
+                command.cpf(),
+                command.rg(),
+                command.dataNascimento(),
+                command.naturalidade(),
+                command.nacionalidade(),
+                command.sexo(),
+                command.cep(),
+                command.enderecoResidencial(),
+                command.email(),
+                command.numeroCelular(),
+                command.fkEstadoCivil(),
+                command.clienteIndicacao(),
+                responsavel,
+                command.grauParentescoResponsavel()
+            );
         }
 
-        return repository.save(cliente);
+        Cliente cliente = Cliente.criar(command);
+        return repositoryPort.salvar(cliente);
     }
 
     public Cliente buscarPorId(Long id){
-        return repository.findById(id)
+        return repositoryPort.buscarPorId(ClienteId.of(id))
                 .orElseThrow(() -> new EntidadeNaoEncontrada("Cliente não encontrado!"));
     }
 
     public Cliente atualizar(ClienteRequest request, Long id){
-        Cliente cliente = repository.findById(id)
+        Cliente clienteExistente = repositoryPort.buscarPorId(ClienteId.of(id))
                 .orElseThrow(() -> new EntidadeNaoEncontrada("Cliente não encontrado!"));
 
-        cliente.setNome(request.getNome());
-        cliente.setCpf(request.getCpf());
-        cliente.setRg(request.getRg());
-        cliente.setDataNascimento(request.getDataNascimento());
-        cliente.setNumeroCelular(request.getNumeroCelular());
-        cliente.setEmail(request.getEmail());
-        cliente.setSexo(request.getSexo());
-        cliente.setNaturalidade(request.getNaturalidade());
-        cliente.setNacionalidade(request.getNacionalidade());
-        cliente.setFkEstadoCivil(request.getFkEstadoCivil());
-        cliente.setEnderecoResidencial(request.getEnderecoResidencial());
-        cliente.setCep(request.getCep());
-        cliente.setGrauParentescoResponsavel(request.getGrauParentescoResponsavel());
+        ClienteCommand command = ClienteMapper.toCommand(request);
 
+        // Tratar cliente indicacao
         if (request.getFkClienteIndicacao() != null) {
-            Cliente indicacao = repository.findById(request.getFkClienteIndicacao().longValue())
+            Cliente indicacao = repositoryPort.buscarPorId(ClienteId.of(request.getFkClienteIndicacao().longValue()))
                     .orElseThrow(() -> new EntidadeNaoEncontrada("Cliente indicador não encontrado!"));
-            cliente.setClienteIndicacao(indicacao);
-        } else {
-            cliente.setClienteIndicacao(null);
+            command = new ClienteCommand(
+                command.nome(),
+                command.cpf(),
+                command.rg(),
+                command.dataNascimento(),
+                command.naturalidade(),
+                command.nacionalidade(),
+                command.sexo(),
+                command.cep(),
+                command.enderecoResidencial(),
+                command.email(),
+                command.numeroCelular(),
+                command.fkEstadoCivil(),
+                indicacao,
+                command.responsavel(),
+                command.grauParentescoResponsavel()
+            );
         }
 
+        // Tratar responsavel
         if (request.getResponsavel() != null) {
             ResponsavelRequest respDto = request.getResponsavel();
             Cliente responsavel = null;
 
             if (respDto.getIdCliente() != null) {
-                responsavel = repository.findById(respDto.getIdCliente())
+                responsavel = repositoryPort.buscarPorId(ClienteId.of(respDto.getIdCliente()))
                         .orElseThrow(() -> new EntidadeNaoEncontrada("Responsável não encontrado!"));
             } else if (respDto.getCpf() != null && !respDto.getCpf().isBlank()) {
-                responsavel = repository.findByCpf(respDto.getCpf())
+                responsavel = repositoryPort.buscarPorCpf(respDto.getCpf())
                         .orElseGet(() -> {
-                            Cliente novoResp = new Cliente();
-                            novoResp.setNome(respDto.getNome());
-                            novoResp.setCpf(respDto.getCpf());
-                            novoResp.setRg(respDto.getRg());
-                            novoResp.setNumeroCelular(respDto.getNumeroCelular());
-                            novoResp.setEmail(respDto.getEmail());
-                            novoResp.setSexo(respDto.getSexo());
-                            novoResp.setDataNascimento(respDto.getDataNascimento());
-                            novoResp.setEnderecoResidencial(respDto.getEnderecoResidencial());
-                            novoResp.setCep(respDto.getCep());
-                            novoResp.setNaturalidade(respDto.getNaturalidade());
-                            novoResp.setNacionalidade(respDto.getNacionalidade());
-                            novoResp.setFkEstadoCivil(respDto.getFkEstadoCivil());
-                            return repository.save(novoResp);
+                            ClienteCommand respCommand = new ClienteCommand(
+                                respDto.getNome(),
+                                respDto.getCpf(),
+                                respDto.getRg(),
+                                respDto.getDataNascimento(),
+                                respDto.getNaturalidade(),
+                                respDto.getNacionalidade(),
+                                respDto.getSexo(),
+                                respDto.getCep(),
+                                respDto.getEnderecoResidencial(),
+                                respDto.getEmail(),
+                                respDto.getNumeroCelular(),
+                                respDto.getFkEstadoCivil(),
+                                null,
+                                null,
+                                null
+                            );
+                            Cliente novoResp = Cliente.criar(respCommand);
+                            return repositoryPort.salvar(novoResp);
                         });
             }
-            cliente.setResponsavel(responsavel);
-        } else {
-            cliente.setResponsavel(null);
+            
+            command = new ClienteCommand(
+                command.nome(),
+                command.cpf(),
+                command.rg(),
+                command.dataNascimento(),
+                command.naturalidade(),
+                command.nacionalidade(),
+                command.sexo(),
+                command.cep(),
+                command.enderecoResidencial(),
+                command.email(),
+                command.numeroCelular(),
+                command.fkEstadoCivil(),
+                command.clienteIndicacao(),
+                responsavel,
+                command.grauParentescoResponsavel()
+            );
         }
 
-        return repository.save(cliente);
+        Cliente clienteAtualizado = clienteExistente.atualizar(command);
+        return repositoryPort.salvar(clienteAtualizado);
     }
 
     public List<Anamnese> listarAnamnese(Integer id){
@@ -174,7 +242,7 @@ public class ClienteService {
     }
 
     public Anamnese cadastrarAnamnese(Long id, AnamneseRequest request){
-        repository.findById(id)
+        repositoryPort.buscarPorId(ClienteId.of(id))
                 .orElseThrow(() -> new EntidadeNaoEncontrada("Cliente não encontrado!"));
         Anamnese anamnese = new Anamnese();
         anamnese.setIdAnamnese(request.getIdAnamnese());
