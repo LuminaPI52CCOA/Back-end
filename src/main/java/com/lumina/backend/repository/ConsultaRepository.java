@@ -74,4 +74,18 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Long> {
             @Param("clienteIds") List<Long> clienteIds,
             @Param("dataAtual") LocalDate dataAtual
     );
+
+    @Query("""
+        SELECT c FROM Consulta c
+        WHERE c.data = :dataAlvo
+          AND (c.status IS NULL OR UPPER(c.status) NOT IN ('CANCELADA', 'CANCELADO', 'FINALIZADA', 'CONCLUIDA'))
+          AND NOT EXISTS (
+              SELECT 1 FROM NotificacaoWhatsapp n
+              WHERE n.consulta.idConsulta = c.idConsulta
+          )
+        ORDER BY c.horarioInicio ASC
+    """)
+    List<Consulta> findConsultasElegiveisD1SemNotificacao(
+            @Param("dataAlvo") LocalDate dataAlvo
+    );
 }
