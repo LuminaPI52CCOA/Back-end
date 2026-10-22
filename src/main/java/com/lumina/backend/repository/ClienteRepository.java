@@ -2,6 +2,8 @@ package com.lumina.backend.repository;
 
 import com.lumina.backend.model.Cliente;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -16,4 +18,6 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     Optional<Cliente> findByCpf(String cpf);
 
     List<Cliente> findByNomeContainingIgnoreCase(String nome);
+
+    Page<Cliente> findByNomeContainingIgnoreCase(String nome, Pageable pageable);
 }

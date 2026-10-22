@@ -16,6 +16,11 @@ import com.lumina.backend.model.Anamnese;
 import com.lumina.backend.model.EstadoCivil;
 import com.lumina.backend.repository.AnamneseRepository;
 import com.lumina.backend.repository.EstadoCivilRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -44,6 +49,14 @@ public class ClienteService {
         return repositoryPort.buscarTodos();
     }
 
+    public Page<Cliente> listarPaginado(Pageable pageable) {
+        Sort sort = pageable.getSort().isSorted()
+                ? pageable.getSort()
+                : Sort.by(Sort.Direction.ASC, "nome");
+        PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+        return repositoryPort.buscarTodos(pageRequest);
+    }
+
     public List<Cliente> listarComFiltros(String nome, String cpf) {
         if (cpf != null && !cpf.isBlank()) {
             return repositoryPort.buscarPorCpf(cpf)
@@ -54,6 +67,24 @@ public class ClienteService {
             return repositoryPort.buscarPorNome(nome);
         }
         return repositoryPort.buscarTodos();
+    }
+
+    public Page<Cliente> listarComFiltrosPaginado(String nome, String cpf, Pageable pageable) {
+        Sort sort = pageable.getSort().isSorted()
+                ? pageable.getSort()
+                : Sort.by(Sort.Direction.ASC, "nome");
+        PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+
+        if (cpf != null && !cpf.isBlank()) {
+            List<Cliente> encontrados = repositoryPort.buscarPorCpf(cpf)
+                    .map(List::of)
+                    .orElse(Collections.emptyList());
+            return new PageImpl<>(encontrados, pageRequest, encontrados.size());
+        }
+        if (nome != null && !nome.isBlank()) {
+            return repositoryPort.buscarPorNome(nome, pageRequest);
+        }
+        return repositoryPort.buscarTodos(pageRequest);
     }
 
     public Cliente cadastrar(ClienteRequest request){
