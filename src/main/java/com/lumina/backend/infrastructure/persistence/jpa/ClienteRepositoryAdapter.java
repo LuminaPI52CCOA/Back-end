@@ -4,6 +4,8 @@ import com.lumina.backend.domain.cliente.Cliente;
 import com.lumina.backend.domain.cliente.ClienteId;
 import com.lumina.backend.domain.cliente.ClienteRepositoryPort;
 import com.lumina.backend.infrastructure.persistence.mapper.ClienteMapperJpa;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -55,11 +57,23 @@ public class ClienteRepositoryAdapter implements ClienteRepositoryPort {
     }
 
     @Override
+    public Page<Cliente> buscarPorNome(String nome, Pageable pageable) {
+        return jpaRepository.findByNomeContainingIgnoreCase(nome, pageable)
+                .map(ClienteMapperJpa::toDomain);
+    }
+
+    @Override
     public List<Cliente> buscarTodos() {
         return jpaRepository.findAll()
                 .stream()
                 .map(ClienteMapperJpa::toDomain)
                 .toList();
+    }
+
+    @Override
+    public Page<Cliente> buscarTodos(Pageable pageable) {
+        return jpaRepository.findAll(pageable)
+                .map(ClienteMapperJpa::toDomain);
     }
 
     @Override

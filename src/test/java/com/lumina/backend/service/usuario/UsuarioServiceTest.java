@@ -15,6 +15,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import static org.mockito.Mockito.*;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -60,6 +65,21 @@ public class UsuarioServiceTest {
             Assertions.assertEquals(usuariosEsperados.size(),usuarios.size());
             Mockito.verify(usuarioRepository,Mockito.times(1)).findAll();
 
+        }
+
+        @Test
+        @DisplayName("1.1.1 Deve retornar página de usuários filtrada por perfil")
+        void deveRetornarPaginaDeUsuariosPorPerfil() {
+            Usuario u1 = criarUsuario(1L, "ana@email.com");
+            Pageable pageable = PageRequest.of(0, 6, Sort.by(Sort.Direction.ASC, "nome"));
+            Page<Usuario> pageModels = new PageImpl<>(List.of(u1), pageable, 1);
+
+            when(usuarioRepository.findByPerfil_IdPerfil(2, pageable)).thenReturn(pageModels);
+
+            Page<com.lumina.backend.domain.usuario.Usuario> resultado = usuarioService.listarPaginado(2, null, pageable);
+
+            Assertions.assertEquals(1, resultado.getTotalElements());
+            Mockito.verify(usuarioRepository, Mockito.times(1)).findByPerfil_IdPerfil(2, pageable);
         }
 
         @Test

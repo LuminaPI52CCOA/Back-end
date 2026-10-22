@@ -11,6 +11,10 @@ import com.lumina.backend.exception.EntidadeNaoEncontrada;
 import com.lumina.backend.repository.UsuarioRepository;
 import com.lumina.backend.swagger.GerenciadorTokenJwt;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -82,6 +86,37 @@ public class UsuarioService {
                     .toList();
         }
         return List.of();
+    }
+
+    public Page<Usuario> listarPaginado(Integer fkPerfil, String nome, Pageable pageable) {
+        Sort sort = pageable.getSort().isSorted()
+                ? pageable.getSort()
+                : Sort.by(Sort.Direction.ASC, "nome");
+        PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+
+        if (repositoryPort != null) {
+            return repositoryPort.buscarPaginado(fkPerfil, nome, pageRequest);
+        }
+        if (usuarioRepository != null) {
+            boolean temPerfil = fkPerfil != null;
+            boolean temNome = nome != null && !nome.isBlank();
+
+            if (temPerfil && temNome) {
+                return usuarioRepository.findByPerfil_IdPerfilAndNomeContainingIgnoreCase(fkPerfil, nome, pageRequest)
+                        .map(this::toDomain);
+            }
+            if (temPerfil) {
+                return usuarioRepository.findByPerfil_IdPerfil(fkPerfil, pageRequest)
+                        .map(this::toDomain);
+            }
+            if (temNome) {
+                return usuarioRepository.findByNomeContainingIgnoreCase(nome, pageRequest)
+                        .map(this::toDomain);
+            }
+            return usuarioRepository.findAll(pageRequest)
+                    .map(this::toDomain);
+        }
+        return Page.empty(pageRequest);
     }
 
     public Optional<Usuario> buscarPorId(Long id) {

@@ -29,6 +29,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -78,17 +82,19 @@ public class ClienteController {
     }
 
     @GetMapping
-    @Operation(summary = "Lista ou busca clientes", description = "Retorna os clientes cadastrados no sistema, permitindo filtrar por nome ou CPF.")
+    @Operation(summary = "Lista ou busca clientes com paginacao em offset", description = "Retorna os clientes cadastrados de forma paginada (offset), permitindo filtrar por nome ou CPF e ordenar.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Clientes retornados com sucesso",
+            @ApiResponse(responseCode = "200", description = "Pagina de clientes retornada com sucesso",
                     content = @Content(schema = @Schema(implementation = ClienteResponse.class))),
             @ApiResponse(responseCode = "204", description = "Nenhum cliente encontrado", content = @Content)
     })
-    public ResponseEntity<List<ClienteResponse>> listar(
+    public ResponseEntity<Page<ClienteResponse>> listar(
             @Parameter(description = "Nome para busca parcial de clientes", example = "Maria")
             @RequestParam(required = false) String nome,
             @Parameter(description = "CPF exato do cliente", example = "12345678901")
-            @RequestParam(required = false) String cpf){
+            @RequestParam(required = false) String cpf,
+            @PageableDefault(page = 0, size = 6, sort = "nome", direction = Sort.Direction.ASC)
+            Pageable pageable){
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
@@ -100,12 +106,12 @@ public class ClienteController {
             return ResponseEntity.status(403).build();
         }
 
-        List<Cliente> clientes = service.listarComFiltros(nome, cpf);
-        if(clientes.isEmpty()) {
+        Page<Cliente> clientesPage = service.listarComFiltrosPaginado(nome, cpf, pageable);
+        if(clientesPage.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
-        List<ClienteResponse> response = ClienteMapper.toDto(clientes);
-        enriquecerClientesComConveniosEConsultas(response);
+        Page<ClienteResponse> response = clientesPage.map(ClienteMapper::toDto);
+        enriquecerClientesComConveniosEConsultas(response.getContent());
         return ResponseEntity.ok(response);
     }
 

@@ -26,6 +26,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
@@ -77,47 +82,52 @@ class ClienteControllerTest {
     }
 
     @Nested
-    @DisplayName("1. Teste de listagem de todos os clientes")
+    @DisplayName("1. Teste de listagem paginada de clientes")
     class ListarTest {
 
         @Test
-        @DisplayName("1.1 Deve retornar uma lista cheia de clientes com status 200")
+        @DisplayName("1.1 Deve retornar uma página cheia de clientes com status 200")
         void deveRetornarListaCheiaComSucesso() {
             Cliente c1 = criarClienteDomain(1L, "Ana Souza Lima", "123.456.789-01", "ana.souza@email.com");
             Cliente c2 = criarClienteDomain(2L, "Bruno Oliveira Santos", "987.654.321-00", "bruno.oliveira@email.com");
 
-            List<Cliente> listaCheia = List.of(c1, c2);
+            Pageable pageable = PageRequest.of(0, 6, Sort.by(Sort.Direction.ASC, "nome"));
+            Page<Cliente> paginaCheia = new PageImpl<>(List.of(c1, c2), pageable, 2);
 
-            Mockito.when(clienteService.listarComFiltros(null, null)).thenReturn(listaCheia);
+            Mockito.when(clienteService.listarComFiltrosPaginado(null, null, pageable)).thenReturn(paginaCheia);
 
-            ResponseEntity<List<ClienteResponse>> response = clienteController.listar(null, null);
+            ResponseEntity<Page<ClienteResponse>> response = clienteController.listar(null, null, pageable);
 
             Assertions.assertEquals(200, response.getStatusCodeValue());
             Assertions.assertNotNull(response.getBody());
             Assertions.assertFalse(response.getBody().isEmpty());
-            Assertions.assertEquals(2, response.getBody().size());
+            Assertions.assertEquals(2, response.getBody().getTotalElements());
+            Assertions.assertEquals(2, response.getBody().getContent().size());
 
-            Mockito.verify(clienteService, Mockito.times(1)).listarComFiltros(null, null);
+            Mockito.verify(clienteService, Mockito.times(1)).listarComFiltrosPaginado(null, null, pageable);
         }
 
         @Test
-        @DisplayName("1.2 Deve retornar status 204 quando a lista estiver vazia")
+        @DisplayName("1.2 Deve retornar status 204 quando a página estiver vazia")
         void deveRetornarStatus204QuandoListaVazia() {
-            Mockito.when(clienteService.listarComFiltros(null, null)).thenReturn(Collections.emptyList());
+            Pageable pageable = PageRequest.of(0, 6, Sort.by(Sort.Direction.ASC, "nome"));
+            Mockito.when(clienteService.listarComFiltrosPaginado(null, null, pageable)).thenReturn(Page.empty(pageable));
 
-            ResponseEntity<List<ClienteResponse>> response = clienteController.listar(null, null);
+            ResponseEntity<Page<ClienteResponse>> response = clienteController.listar(null, null, pageable);
 
             Assertions.assertEquals(204, response.getStatusCodeValue());
             Assertions.assertNull(response.getBody());
 
-            Mockito.verify(clienteService, Mockito.times(1)).listarComFiltros(null, null);
+            Mockito.verify(clienteService, Mockito.times(1)).listarComFiltrosPaginado(null, null, pageable);
         }
 
         @Test
         @DisplayName("1.3 Deve enriquecer clientes com plano e proximaConsulta quando disponiveis")
         void deveEnriquecerClientesComPlanoEConsulta() {
             Cliente c1 = criarClienteDomain(1L, "Ana Souza Lima", "123.456.789-01", "ana.souza@email.com");
-            Mockito.when(clienteService.listarComFiltros(null, null)).thenReturn(List.of(c1));
+            Pageable pageable = PageRequest.of(0, 6, Sort.by(Sort.Direction.ASC, "nome"));
+            Page<Cliente> pagina = new PageImpl<>(List.of(c1), pageable, 1);
+            Mockito.when(clienteService.listarComFiltrosPaginado(null, null, pageable)).thenReturn(pagina);
 
             Convenio conv = new Convenio();
             conv.setIdConvenio(2L);
@@ -133,11 +143,11 @@ class ClienteControllerTest {
             Mockito.when(consultaRepository.findConsultasFuturasPorClientes(Mockito.eq(List.of(1L)), Mockito.any(LocalDate.class)))
                     .thenReturn(List.of(consulta));
 
-            ResponseEntity<List<ClienteResponse>> response = clienteController.listar(null, null);
+            ResponseEntity<Page<ClienteResponse>> response = clienteController.listar(null, null, pageable);
 
             Assertions.assertEquals(200, response.getStatusCodeValue());
             Assertions.assertNotNull(response.getBody());
-            ClienteResponse resp = response.getBody().get(0);
+            ClienteResponse resp = response.getBody().getContent().get(0);
             Assertions.assertEquals("Amil Dental", resp.getPlano());
             Assertions.assertEquals(List.of("Amil Dental"), resp.getConvenios());
             Assertions.assertEquals(LocalDate.of(2026, 10, 25), resp.getProximaConsulta());
