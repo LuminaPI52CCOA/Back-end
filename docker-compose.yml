@@ -27,11 +27,15 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: lumina-backend
-    restart: always
+    user: root
     environment:
       SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://mysql:3306/Lumina?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
       DB_USERNAME: ${DB_USERNAME:-root}
       DB_PASSWORD: ${DB_PASSWORD:-mafalu09}
+      AWS_ACCESS_KEY: ${AWS_ACCESS_KEY_ID:-test-key}
+      AWS_SECRET_KEY: ${AWS_SECRET_ACCESS_KEY:-test-secret}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
       LOGGING_FILE_NAME: /var/log/backend/app.log
       LOGGING_PATTERN_FILE: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level %pid --- [%t] %-40.40logger{39} : %m%n"
     ports:
@@ -69,7 +73,7 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
       AWS_REGION: ${AWS_REGION:-us-east-1}
-      BUCKET_BRONZE: ${BUCKET_BRONZE:-lumina-bronze}
+      BUCKET_BRONZE: ${BUCKET_BRONZE:-lumina-sptech-bronze}
       ENVIRONMENT: ${ENVIRONMENT:-dev}
     ports:
       - "2020:2020" # API e métricas Prometheus/Healthcheck
