@@ -16,6 +16,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -157,20 +161,26 @@ public class UsuarioController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'RECEPCIONISTA')")
     @Operation(
-            summary = "Lista todos os usuarios",
-            description = "Retorna a lista de usuarios cadastrados. Caso nao existam registros, retorna 204."
+            summary = "Lista usuarios com paginacao em offset",
+            description = "Retorna a pagina de usuarios cadastrados (com filtro opcional por perfil ou nome). Caso nao existam registros, retorna 204."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Lista de usuarios retornada com sucesso",
+            @ApiResponse(responseCode = "200", description = "Pagina de usuarios retornada com sucesso",
                     content = @Content(schema = @Schema(implementation = UsuarioResponse.class))),
             @ApiResponse(responseCode = "204", description = "Nao ha usuarios cadastrados", content = @Content)
     })
-    public ResponseEntity<List<UsuarioResponse>> listarUsuarios(){
-        List<Usuario> usuarios =service.listar();
+    public ResponseEntity<Page<UsuarioResponse>> listarUsuarios(
+            @Parameter(description = "ID do perfil para filtrar (ex: 2 para Dentista)", example = "2")
+            @RequestParam(required = false) Integer fkPerfil,
+            @Parameter(description = "Nome parcial para busca", example = "Ana")
+            @RequestParam(required = false) String nome,
+            @PageableDefault(page = 0, size = 6, sort = "nome", direction = Sort.Direction.ASC)
+            Pageable pageable){
+        Page<Usuario> usuarios = service.listarPaginado(fkPerfil, nome, pageable);
         if(usuarios.isEmpty()){
             return ResponseEntity.noContent().build();
         }
-        return ResponseEntity.status(200).body(UsuarioMapper.toDto(usuarios));
+        return ResponseEntity.status(200).body(usuarios.map(UsuarioMapper::toDto));
     }
 
     @GetMapping("/{id}")
