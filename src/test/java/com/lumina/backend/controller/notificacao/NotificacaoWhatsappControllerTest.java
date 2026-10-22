@@ -101,4 +101,24 @@ class NotificacaoWhatsappControllerTest {
         assertNotNull(response.getBody());
         assertEquals("Enzo Silva", response.getBody().paciente());
     }
+
+    @Test
+    @DisplayName("PATCH /api/notificacoes/whatsapp/{id}/disparar deve marcar notificação como disparada")
+    void deveMarcarNotificacaoComoDisparada() {
+        LocalDate data = LocalDate.of(2026, 10, 21);
+        NotificacaoWhatsappResponse item = new NotificacaoWhatsappResponse(
+                1L, 1042L, "Enzo Silva", "Mariana Silva", "Mãe",
+                "(11) 99888-7766", data, LocalTime.of(14, 30), "Dr. Carlos Eduardo",
+                "DISPARADO", null, "https://wa.me/5511998887766?text=...", false,
+                null, null, null
+        );
+        when(notificacaoWhatsappService.marcarComoDisparado(1L, null)).thenReturn(item);
+
+        ResponseEntity<NotificacaoWhatsappResponse> response =
+                notificacaoController.marcarComoDisparado(1L);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("DISPARADO", response.getBody().status());
+    }
 }
