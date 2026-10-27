@@ -4,6 +4,7 @@ import com.lumina.backend.domain.usuario.UsuarioCommand;
 import com.lumina.backend.domain.usuario.UsuarioId;
 import com.lumina.backend.domain.usuario.UsuarioRepositoryPort;
 import com.lumina.backend.domain.usuario.Usuario;
+import com.lumina.backend.dto.permissao.PermissaoRequest;
 import com.lumina.backend.dto.usuario.UsuarioMapper;
 import com.lumina.backend.dto.usuario.UsuarioRequest;
 import com.lumina.backend.dto.usuario.UsuarioTokenDto;
@@ -82,6 +83,62 @@ public class UsuarioService {
                     .toList();
         }
         return List.of();
+    }
+
+    public List<Usuario> listarDentistas() {
+        return listar().stream()
+                .filter(u -> (u.getFkPerfil() != null && u.getFkPerfil() == 2)
+                        || (u.getCro() != null && !u.getCro().isBlank() && !"N/A".equalsIgnoreCase(u.getCro().trim())))
+                .toList();
+    }
+
+    public Usuario atualizarPermissao(Long id, PermissaoRequest request) {
+        Usuario usuarioExistente = buscarPorId(id)
+                .orElseThrow(() -> new EntidadeNaoEncontrada("Usuario de id: %d não encontrado".formatted(id)));
+
+        Integer novoFkPerfil = usuarioExistente.getFkPerfil();
+        Boolean novoAtivo = usuarioExistente.getAtivo();
+
+        if (request != null) {
+            if (request.getNivelAcesso() != null && !request.getNivelAcesso().isBlank()) {
+                String nivel = request.getNivelAcesso().trim().toLowerCase();
+                switch (nivel) {
+                    case "todos", "total", "admin" -> {
+                        novoFkPerfil = 1;
+                        novoAtivo = true;
+                    }
+                    case "recepcionista" -> {
+                        novoFkPerfil = 3;
+                        novoAtivo = true;
+                    }
+                    case "restrito", "dentista", "padrao" -> {
+                        novoFkPerfil = 2;
+                        novoAtivo = true;
+                    }
+                    case "nenhum", "inativo", "bloqueado" -> {
+                        novoFkPerfil = 2;
+                        novoAtivo = false;
+                    }
+                    default -> throw new IllegalArgumentException("Nível de acesso inválido: " + request.getNivelAcesso());
+                }
+            }
+            if (request.getFkPerfil() != null) {
+                novoFkPerfil = request.getFkPerfil();
+            }
+            if (request.getAtivo() != null) {
+                novoAtivo = request.getAtivo();
+            }
+        }
+
+        UsuarioRequest updateRequest = new UsuarioRequest();
+        updateRequest.setNome(usuarioExistente.getNome());
+        updateRequest.setCpf(usuarioExistente.getCpf());
+        updateRequest.setEmail(usuarioExistente.getEmail());
+        updateRequest.setFkPerfil(novoFkPerfil);
+        updateRequest.setCro(usuarioExistente.getCro());
+        updateRequest.setAtivo(novoAtivo);
+
+        return atualizar(updateRequest, id);
     }
 
     public Optional<Usuario> buscarPorId(Long id) {
