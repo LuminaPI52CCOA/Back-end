@@ -57,3 +57,10 @@ spring.rabbitmq.listener.simple.retry.enabled=true
 spring.rabbitmq.listener.simple.retry.max-attempts=3
 spring.rabbitmq.listener.simple.retry.initial-interval=1000ms
 spring.rabbitmq.listener.simple.retry.multiplier=2.0
+
+# =============================================================================
+# Agenda de consultas
+# =============================================================================
+lumina.agenda.fuso-horario=${AGENDA_FUSO_HORARIO:America/Sao_Paulo}
+lumina.agenda.inicio-jornada=${AGENDA_INICIO_JORNADA:08:00}
+lumina.agenda.fim-jornada=${AGENDA_FIM_JORNADA:18:00}
