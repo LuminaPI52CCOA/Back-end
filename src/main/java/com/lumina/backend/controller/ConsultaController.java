@@ -1,12 +1,17 @@
 package com.lumina.backend.controller;
 
+import com.lumina.backend.dto.consulta.AlterarStatusConsultaRequest;
 import com.lumina.backend.dto.consulta.ConsultaMapper;
 import com.lumina.backend.dto.consulta.ConsultaRequest;
 import com.lumina.backend.dto.consulta.ConsultaResponse;
+import com.lumina.backend.dto.consulta.HorarioDisponivelResponse;
+import com.lumina.backend.dto.consulta.ReagendamentoRequest;
+import com.lumina.backend.exception.dto.ErroRespostaDto;
 import com.lumina.backend.model.Consulta;
 import com.lumina.backend.service.consulta.ConsultaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
@@ -14,6 +19,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +33,7 @@ import com.lumina.backend.service.alexa.AlexaService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -48,71 +55,112 @@ public class ConsultaController {
     }
 
     @GetMapping
-    @Operation(summary = "Lista consultas", description = "Retorna as consultas cadastradas no sistema.")
+    @Operation(summary = "Lista consultas", description = "Retorna as consultas cadastradas no sistema (ADMIN e RECEPCIONISTA). "
+            + "Sem parametros retorna todas; com dataInicio/dataFim (inclusivos, ate 366 dias) filtra o periodo. "
+            + "Consultas canceladas sao retornadas com status CANCELADA.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Consultas retornadas com sucesso",
-                    content = @Content(schema = @Schema(implementation = ConsultaResponse.class)))
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = ConsultaResponse.class)))),
+            @ApiResponse(responseCode = "400", description = "Periodo invalido",
+                    content = @Content(schema = @Schema(implementation = ErroRespostaDto.class))),
+            @ApiResponse(responseCode = "401", description = "Nao autenticado", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Perfil sem permissao", content = @Content)
     })
-    public ResponseEntity<List<ConsultaResponse>> listar() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-        Boolean isRecepcionista = auth.getAuthorities()
-                .stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_RECEPCIONISTA") || a.getAuthority().equals("ROLE_ADMIN"));
-
-        if(!isRecepcionista){
+    public ResponseEntity<List<ConsultaResponse>> listar(
+            @Parameter(description = "Data inicial (inclusiva)", example = "2026-11-02")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
+            @Parameter(description = "Data final (inclusiva)", example = "2026-11-08")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim) {
+        if(!isRecepcionistaOuAdmin()){
             return ResponseEntity.status(403).build();
         }
 
-        return ResponseEntity.status(200).body(ConsultaMapper.toResponse(consultaService.listar()));
+        return ResponseEntity.status(200).body(ConsultaMapper.toResponse(consultaService.listar(dataInicio, dataFim)));
     }
 
     @GetMapping("/dentista/{id}")
     @io.swagger.v3.oas.annotations.security.SecurityRequirements
-    @Operation(summary = "Lista consultas do dentista", description = "Retorna as consultas cadastradas no sistema.")
+    @Operation(summary = "Lista consultas do dentista", description = "Retorna as consultas do dentista informado. "
+            + "Um DENTISTA so pode consultar a propria agenda. Aceita o mesmo filtro opcional de periodo de GET /consultas.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Consultas retornadas com sucesso",
-                    content = @Content(schema = @Schema(implementation = ConsultaResponse.class)))
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = ConsultaResponse.class)))),
+            @ApiResponse(responseCode = "400", description = "Periodo invalido",
+                    content = @Content(schema = @Schema(implementation = ErroRespostaDto.class))),
+            @ApiResponse(responseCode = "403", description = "Dentista consultando agenda de outro dentista", content = @Content)
     })
     public ResponseEntity<List<ConsultaResponse>> listarConsultasDentista(
-            @PathVariable Long id
+            @PathVariable Long id,
+            @Parameter(description = "Data inicial (inclusiva)", example = "2026-11-02")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
+            @Parameter(description = "Data final (inclusiva)", example = "2026-11-08")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim
     ){
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-        Boolean isApenasDentista = auth.getAuthorities()
-                .stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_DENTISTA"))
-                && auth.getAuthorities()
-                .stream()
-                .noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_RECEPCIONISTA"));
-
-        Long usuarioLogadoId = obterUsuarioIdAutenticado();
-
-        if(isApenasDentista && !id.equals(usuarioLogadoId)){
+        if(isApenasDentista() && !id.equals(obterUsuarioIdAutenticado())){
             return ResponseEntity.status(403).build();
         }
 
-        return ResponseEntity.status(200).body(ConsultaMapper.toResponse(consultaService.listarPorDentista(id)));
+        return ResponseEntity.status(200).body(ConsultaMapper.toResponse(consultaService.listarPorDentista(id, dataInicio, dataFim)));
+    }
+
+    @GetMapping("/horarios-disponiveis")
+    @Operation(summary = "Lista horarios disponiveis do dentista",
+            description = "Retorna os intervalos livres (inicios a cada 15 minutos) com a duracao pedida, aplicando as mesmas "
+                    + "regras do cadastro: jornada 08:00-18:00 (o termino nao passa de 18:00), horarios ja passados de hoje "
+                    + "excluidos, duracoes de 15/30/45/60 minutos e conflito com consultas nao canceladas do dentista. "
+                    + "Datas passadas retornam lista vazia. A disponibilidade e revalidada no POST/PUT.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Intervalos disponiveis (lista possivelmente vazia)",
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = HorarioDisponivelResponse.class)))),
+            @ApiResponse(responseCode = "400", description = "Parametros ausentes/invalidos ou usuario que nao e dentista ativo",
+                    content = @Content(schema = @Schema(implementation = ErroRespostaDto.class))),
+            @ApiResponse(responseCode = "401", description = "Nao autenticado", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Dentista consultando agenda de outro dentista", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Dentista nao encontrado",
+                    content = @Content(schema = @Schema(implementation = ErroRespostaDto.class)))
+    })
+    public ResponseEntity<List<HorarioDisponivelResponse>> listarHorariosDisponiveis(
+            @Parameter(description = "ID do dentista", example = "2", required = true)
+            @RequestParam Long idUsuario,
+            @Parameter(description = "Data desejada", example = "2026-11-03", required = true)
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data,
+            @Parameter(description = "Duracao em minutos (15, 30, 45 ou 60)", example = "30", required = true)
+            @RequestParam Integer duracaoMinutos,
+            @Parameter(description = "Consulta em reagendamento, desconsiderada na verificacao de conflitos", example = "10")
+            @RequestParam(required = false) Long idConsulta) {
+        if (isApenasDentista() && !idUsuario.equals(obterUsuarioIdAutenticado())) {
+            return ResponseEntity.status(403).build();
+        }
+
+        List<HorarioDisponivelResponse> horarios = consultaService
+                .listarHorariosDisponiveis(idUsuario, data, duracaoMinutos, idConsulta).stream()
+                .map(intervalo -> new HorarioDisponivelResponse(intervalo.inicio(), intervalo.fim()))
+                .toList();
+        return ResponseEntity.ok(horarios);
     }
 
     @PostMapping
-    @Operation(summary = "Cadastra consulta", description = "Cadastra uma nova consulta com cliente, usuario e horarios informados.")
+    @Operation(summary = "Cadastra consulta", description = "Cadastra uma consulta com status inicial AGENDADA (ADMIN e RECEPCIONISTA). "
+            + "Valida paciente ativo, dentista ativo, especialidade, dentes do odontograma, duracao (15/30/45/60), jornada "
+            + "08:00-18:00, data/horario futuros e conflito com outras consultas do dentista. Requisicoes simultaneas para o "
+            + "mesmo dentista sao serializadas por bloqueio no banco.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Consulta cadastrada com sucesso",
                     content = @Content(schema = @Schema(implementation = ConsultaResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Dados invalidos para cadastro", content = @Content)
+            @ApiResponse(responseCode = "400", description = "Dados invalidos (campos, duracao, jornada, horario passado, dentes, dentista/paciente inativo)",
+                    content = @Content(schema = @Schema(implementation = ErroRespostaDto.class))),
+            @ApiResponse(responseCode = "401", description = "Nao autenticado", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Perfil sem permissao para cadastrar", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Paciente, dentista, especialidade ou dente inexistente",
+                    content = @Content(schema = @Schema(implementation = ErroRespostaDto.class))),
+            @ApiResponse(responseCode = "409", description = "Conflito com outra consulta do dentista",
+                    content = @Content(schema = @Schema(implementation = ErroRespostaDto.class)))
     })
     public ResponseEntity<ConsultaResponse> cadastrar(
             @RequestBody(description = "Dados de cadastro da consulta", required = true,
                     content = @Content(schema = @Schema(implementation = ConsultaRequest.class)))
             @Valid @org.springframework.web.bind.annotation.RequestBody ConsultaRequest consulta) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-        Boolean isRecepcionista = auth.getAuthorities()
-                .stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_RECEPCIONISTA") || a.getAuthority().equals("ROLE_ADMIN"));
-
-        if(!isRecepcionista){
+        if(!isRecepcionistaOuAdmin()){
             return ResponseEntity.status(403).build();
         }
 
@@ -125,25 +173,15 @@ public class ConsultaController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Consulta encontrada",
                     content = @Content(schema = @Schema(implementation = ConsultaResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Consulta de outro dentista", content = @Content),
             @ApiResponse(responseCode = "404", description = "Consulta nao encontrada", content = @Content)
     })
     public ResponseEntity<ConsultaResponse> buscarPorId(
             @Parameter(description = "ID da consulta", example = "1") @PathVariable Long id) {
 
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-        Boolean isApenasDentista = auth.getAuthorities()
-                .stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_DENTISTA"))
-                && auth.getAuthorities()
-                .stream()
-                .noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_RECEPCIONISTA"));
-
-        Long usuarioLogadoId = obterUsuarioIdAutenticado();
-
         Consulta consulta = consultaService.buscarPorId(id);
 
-        if(isApenasDentista && !consulta.getUsuario().getIdUsuario().equals(usuarioLogadoId)){
+        if(!podeAcessar(consulta)){
             return ResponseEntity.status(403).build();
         }
 
@@ -151,62 +189,79 @@ public class ConsultaController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Reagendar consulta", description = "Atualiza as informações de data e horário de uma consulta específica.")
+    @Operation(summary = "Reagendar consulta", description = "Altera data e horarios (e opcionalmente observacoes) preservando paciente, "
+            + "dentista, especialidade e odontograma. Aplica as mesmas validacoes e o mesmo bloqueio do cadastro, ignorando a "
+            + "propria consulta na busca de conflitos. Uma consulta CONFIRMADA volta para AGENDADA, o lembrete Alexa e "
+            + "rearmado e a notificacao WhatsApp existente recebe novo horario e novo link de confirmacao.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Consulta reagendada com sucesso",
                     content = @Content(schema = @Schema(implementation = ConsultaResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Dados inválidos para reagendamento", content = @Content),
-            @ApiResponse(responseCode = "404", description = "Consulta não encontrada", content = @Content)
+            @ApiResponse(responseCode = "400", description = "Dados inválidos para reagendamento ou consulta cancelada/concluida",
+                    content = @Content(schema = @Schema(implementation = ErroRespostaDto.class))),
+            @ApiResponse(responseCode = "403", description = "Consulta de outro dentista", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Consulta não encontrada", content = @Content),
+            @ApiResponse(responseCode = "409", description = "Conflito com outra consulta do dentista",
+                    content = @Content(schema = @Schema(implementation = ErroRespostaDto.class)))
     })
     public ResponseEntity<ConsultaResponse> reagendar(
             @Parameter(description = "ID da consulta", example = "1") @PathVariable Long id,
             @RequestBody(description = "Novos dados para a consulta", required = true,
-                    content = @Content(schema = @Schema(implementation = ConsultaRequest.class)))
-            @Valid @org.springframework.web.bind.annotation.RequestBody ConsultaRequest consultaRequest) {
+                    content = @Content(schema = @Schema(implementation = ReagendamentoRequest.class)))
+            @Valid @org.springframework.web.bind.annotation.RequestBody ReagendamentoRequest reagendamentoRequest) {
 
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-        Boolean isApenasDentista = auth.getAuthorities()
-                .stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_DENTISTA"))
-                && auth.getAuthorities()
-                .stream()
-                .noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_RECEPCIONISTA"));
-
-        Long usuarioLogadoId = obterUsuarioIdAutenticado();
         Consulta consultaExistente = consultaService.buscarPorId(id);
 
-        if(isApenasDentista && !consultaExistente.getUsuario().getIdUsuario().equals(usuarioLogadoId)){
+        if(!podeAcessar(consultaExistente)){
             return ResponseEntity.status(403).build();
         }
 
-        Consulta consultaAtualizada = consultaService.reagendar(id, consultaRequest);
+        Consulta consultaAtualizada = consultaService.reagendar(id, reagendamentoRequest);
         return ResponseEntity.status(200).body(ConsultaMapper.toResponse(consultaAtualizada));
     }
 
+    @PatchMapping("/{id}/status")
+    @Operation(summary = "Altera status da consulta", description = "Transicoes aceitas: AGENDADA -> CONFIRMADA, CONFIRMADA -> AGENDADA "
+            + "e AGENDADA/CONFIRMADA -> CANCELADA (mesmo efeito do DELETE). Consultas CANCELADA/CONCLUIDA nao mudam de status. "
+            + "Repetir o status atual nao altera nada.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Status alterado",
+                    content = @Content(schema = @Schema(implementation = ConsultaResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Status invalido ou transicao nao permitida",
+                    content = @Content(schema = @Schema(implementation = ErroRespostaDto.class))),
+            @ApiResponse(responseCode = "403", description = "Consulta de outro dentista", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Consulta nao encontrada", content = @Content)
+    })
+    public ResponseEntity<ConsultaResponse> alterarStatus(
+            @Parameter(description = "ID da consulta", example = "1") @PathVariable Long id,
+            @RequestBody(description = "Novo status", required = true,
+                    content = @Content(schema = @Schema(implementation = AlterarStatusConsultaRequest.class)))
+            @Valid @org.springframework.web.bind.annotation.RequestBody AlterarStatusConsultaRequest request) {
+
+        Consulta consulta = consultaService.buscarPorId(id);
+
+        if(!podeAcessar(consulta)){
+            return ResponseEntity.status(403).build();
+        }
+
+        return ResponseEntity.ok(ConsultaMapper.toResponse(consultaService.alterarStatus(id, request.getStatus())));
+    }
+
     @DeleteMapping("/{id}")
-    @Operation(summary = "Cancela consulta", description = "Remove uma consulta da agenda pelo identificador informado.")
+    @Operation(summary = "Cancela consulta", description = "Cancelamento logico: a consulta passa a CANCELADA, permanece no historico "
+            + "e libera o horario. A notificacao WhatsApp vinculada e marcada como CANCELADO.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "Consulta cancelada com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Consulta concluida nao pode ser cancelada",
+                    content = @Content(schema = @Schema(implementation = ErroRespostaDto.class))),
+            @ApiResponse(responseCode = "403", description = "Consulta de outro dentista", content = @Content),
             @ApiResponse(responseCode = "404", description = "Consulta não encontrada", content = @Content)
     })
     public ResponseEntity<Void> cancelar(
             @Parameter(description = "ID da consulta", example = "1") @PathVariable Long id) {
 
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-        Boolean isApenasDentista = auth.getAuthorities()
-                .stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_DENTISTA"))
-                && auth.getAuthorities()
-                .stream()
-                .noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_RECEPCIONISTA"));
-
-        Long usuarioLogadoId = obterUsuarioIdAutenticado();
-
         Consulta consulta = consultaService.buscarPorId(id);
 
-        if(isApenasDentista && !consulta.getUsuario().getIdUsuario().equals(usuarioLogadoId)){
+        if(!podeAcessar(consulta)){
             return ResponseEntity.status(403).build();
         }
 
@@ -248,6 +303,32 @@ public class ConsultaController {
             @RequestHeader(value = "X-Alexa-User-Id", required = false) String alexaUserId) {
         Long usuarioAuthId = obterUsuarioIdAutenticado();
         return ResponseEntity.ok(alexaService.obterAlertaAnamneseProxima(alexaUserId, usuarioAuthId));
+    }
+
+    private boolean isRecepcionistaOuAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities()
+                .stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_RECEPCIONISTA") || a.getAuthority().equals("ROLE_ADMIN"));
+    }
+
+    private boolean isApenasDentista() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities()
+                .stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_DENTISTA"))
+                && !isRecepcionistaOuAdmin();
+    }
+
+    /**
+     * DENTISTA acessa e altera somente as proprias consultas; ADMIN e RECEPCIONISTA acessam todas.
+     */
+    private boolean podeAcessar(Consulta consulta) {
+        if (!isApenasDentista()) {
+            return true;
+        }
+        Long usuarioLogadoId = obterUsuarioIdAutenticado();
+        return consulta.getUsuario() != null && consulta.getUsuario().getIdUsuario().equals(usuarioLogadoId);
     }
 
     private Long obterUsuarioIdAutenticado() {
