@@ -5,6 +5,7 @@ import com.lumina.backend.domain.usuario.UsuarioId;
 import com.lumina.backend.domain.usuario.Usuario;
 
 import java.util.List;
+import java.util.Locale;
 
 public class UsuarioMapper {
 
@@ -93,11 +94,14 @@ public class UsuarioMapper {
 
     public static UsuarioTokenDto of(com.lumina.backend.model.Usuario usuario, String token) {
         UsuarioTokenDto usuarioTokenDto = new UsuarioTokenDto();
-        Long idUsuario = Long.valueOf(usuario.getIdUsuario());;
+        Long idUsuario = Long.valueOf(usuario.getIdUsuario());
 
         usuarioTokenDto.setUserId(idUsuario);
         usuarioTokenDto.setEmail(usuario.getEmail());
         usuarioTokenDto.setNome(usuario.getNome());
+        if (usuario.getPerfil() != null && usuario.getPerfil().getNome() != null) {
+            usuarioTokenDto.setPerfil(usuario.getPerfil().getNome().trim().toUpperCase(Locale.ROOT));
+        }
         usuarioTokenDto.setToken(token);
 
         return usuarioTokenDto;
@@ -116,6 +120,7 @@ public class UsuarioMapper {
         dto.setUserId(tokenDto.getUserId());
         dto.setEmail(tokenDto.getEmail());
         dto.setNome(tokenDto.getNome());
+        dto.setPerfil(tokenDto.getPerfil());
 
         return dto;
     }
