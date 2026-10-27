@@ -34,7 +34,7 @@ public enum StatusConsulta {
                 }
             }
         }
-        throw new AgendamentoInvalidoException("Status inválido: " + valor + ". Use AGENDADA, CONFIRMADA ou CANCELADA.");
+        throw new AgendamentoInvalidoException("Status inválido: " + valor + ". Use AGENDADA, CONFIRMADA, CONCLUIDA ou CANCELADA.");
     }
 
     public boolean finalizado() {

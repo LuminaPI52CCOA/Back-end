@@ -359,6 +359,12 @@ class ConsultaAgendamentoIntegrationTest {
                         .content("{\"status\":\"CONFIRMADA\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CONFIRMADA"));
+
+        mockMvc.perform(patch("/consultas/" + id + "/status").with(user("john@doe.com").roles("DENTISTA"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"CONCLUIDA\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONCLUIDA"));
     }
 
     @Test

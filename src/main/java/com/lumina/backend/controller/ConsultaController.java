@@ -220,9 +220,9 @@ public class ConsultaController {
     }
 
     @PatchMapping("/{id}/status")
-    @Operation(summary = "Altera status da consulta", description = "Transicoes aceitas: AGENDADA -> CONFIRMADA, CONFIRMADA -> AGENDADA "
-            + "e AGENDADA/CONFIRMADA -> CANCELADA (mesmo efeito do DELETE). Consultas CANCELADA/CONCLUIDA nao mudam de status. "
-            + "Repetir o status atual nao altera nada.")
+    @Operation(summary = "Altera status da consulta", description = "Transicoes aceitas: AGENDADA -> CONFIRMADA, CONFIRMADA -> AGENDADA, "
+            + "AGENDADA/CONFIRMADA -> CONCLUIDA e AGENDADA/CONFIRMADA -> CANCELADA (mesmo efeito do DELETE). "
+            + "Consultas CANCELADA/CONCLUIDA nao mudam de status. Repetir o status atual nao altera nada.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Status alterado",
                     content = @Content(schema = @Schema(implementation = ConsultaResponse.class))),

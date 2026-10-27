@@ -620,12 +620,18 @@ class ConsultaServiceTest {
         }
 
         @Test
-        @DisplayName("6.3 Transições a partir de CANCELADA e status desconhecido são rejeitados")
+        @DisplayName("6.3 Transições a partir de CANCELADA/CONCLUIDA e status desconhecido são rejeitados")
         void deveRejeitarTransicoesInvalidas() {
             consultaCom("CANCELADA");
 
             assertThrows(AgendamentoInvalidoException.class, () -> consultaService.alterarStatus(1L, "CONFIRMADA"));
+            assertThrows(AgendamentoInvalidoException.class, () -> consultaService.alterarStatus(1L, "CONCLUIDA"));
             assertThrows(AgendamentoInvalidoException.class, () -> consultaService.alterarStatus(1L, "ATRASADA"));
+
+            consultaCom("CONCLUIDA");
+            assertThrows(AgendamentoInvalidoException.class, () -> consultaService.alterarStatus(1L, "AGENDADA"));
+            assertThrows(AgendamentoInvalidoException.class, () -> consultaService.alterarStatus(1L, "CANCELADA"));
+
             Mockito.verify(consultaRepository, Mockito.never()).save(any(Consulta.class));
         }
 
@@ -636,6 +642,18 @@ class ConsultaServiceTest {
             Mockito.when(consultaRepository.save(consulta)).thenReturn(consulta);
 
             Assertions.assertEquals("CANCELADA", consultaService.alterarStatus(1L, "CANCELADA").getStatus());
+        }
+
+        @Test
+        @DisplayName("6.5 AGENDADA/CONFIRMADA -> CONCLUIDA finaliza a consulta")
+        void deveConcluirConsulta() {
+            Consulta agendada = consultaCom("AGENDADA");
+            Mockito.when(consultaRepository.save(agendada)).thenReturn(agendada);
+            Assertions.assertEquals("CONCLUIDA", consultaService.alterarStatus(1L, "CONCLUIDA").getStatus());
+
+            Consulta confirmada = consultaCom("CONFIRMADA");
+            Mockito.when(consultaRepository.save(confirmada)).thenReturn(confirmada);
+            Assertions.assertEquals("CONCLUIDA", consultaService.alterarStatus(1L, "concluida").getStatus());
         }
     }
 

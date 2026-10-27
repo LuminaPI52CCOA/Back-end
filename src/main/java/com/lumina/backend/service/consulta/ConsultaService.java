@@ -203,9 +203,6 @@ public class ConsultaService {
         if (atual.finalizado()) {
             throw new AgendamentoInvalidoException("Consulta " + atual.name() + " não pode ter o status alterado.");
         }
-        if (destino == StatusConsulta.CONCLUIDA) {
-            throw new AgendamentoInvalidoException("Status CONCLUIDA não pode ser definido por esta operação.");
-        }
 
         consulta.setStatus(destino.name());
         if (destino == StatusConsulta.AGENDADA) {
