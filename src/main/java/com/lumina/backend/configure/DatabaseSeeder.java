@@ -3,12 +3,16 @@ package com.lumina.backend.configure;
 import com.lumina.backend.model.Cliente;
 import com.lumina.backend.model.ClienteConvenio;
 import com.lumina.backend.model.Convenio;
+import com.lumina.backend.model.Dente;
+import com.lumina.backend.model.Especialidade;
 import com.lumina.backend.model.EstadoCivil;
 import com.lumina.backend.model.Perfil;
 import com.lumina.backend.model.Usuario;
 import com.lumina.backend.repository.ClienteConvenioRepository;
 import com.lumina.backend.repository.ClienteRepository;
 import com.lumina.backend.repository.ConvenioRepository;
+import com.lumina.backend.repository.DenteRepository;
+import com.lumina.backend.repository.EspecialidadeRepository;
 import com.lumina.backend.repository.EstadoCivilRepository;
 import com.lumina.backend.repository.PerfilRespository;
 import com.lumina.backend.repository.UsuarioRepository;
@@ -17,6 +21,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -31,19 +36,25 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final UsuarioRepository usuarioRepository;
     private final ClienteRepository clienteRepository;
     private final ClienteConvenioRepository clienteConvenioRepository;
+    private final EspecialidadeRepository especialidadeRepository;
+    private final DenteRepository denteRepository;
 
     public DatabaseSeeder(PerfilRespository perfilRepository,
                           EstadoCivilRepository estadoCivilRepository,
                           ConvenioRepository convenioRepository,
                           UsuarioRepository usuarioRepository,
                           ClienteRepository clienteRepository,
-                          ClienteConvenioRepository clienteConvenioRepository) {
+                          ClienteConvenioRepository clienteConvenioRepository,
+                          EspecialidadeRepository especialidadeRepository,
+                          DenteRepository denteRepository) {
         this.perfilRepository = perfilRepository;
         this.estadoCivilRepository = estadoCivilRepository;
         this.convenioRepository = convenioRepository;
         this.usuarioRepository = usuarioRepository;
         this.clienteRepository = clienteRepository;
         this.clienteConvenioRepository = clienteConvenioRepository;
+        this.especialidadeRepository = especialidadeRepository;
+        this.denteRepository = denteRepository;
     }
 
     @Override
@@ -51,12 +62,50 @@ public class DatabaseSeeder implements CommandLineRunner {
         try {
             seedPerfis();
             seedEstadosCivis();
+            seedEspecialidades();
+            seedDentes();
             List<Convenio> convenios = seedConvenios();
             seedUsuarios();
             seedClientes(convenios);
         } catch (Exception e) {
             log.warn("Aviso ao executar DatabaseSeeder: {}", e.getMessage());
         }
+    }
+
+    private void seedEspecialidades() {
+        if (especialidadeRepository.count() == 0) {
+            especialidadeRepository.saveAll(List.of(
+                    new Especialidade(null, "Clínica Geral"),
+                    new Especialidade(null, "Ortodontia"),
+                    new Especialidade(null, "Endodontia"),
+                    new Especialidade(null, "Periodontia")
+            ));
+        }
+    }
+
+    private void seedDentes() {
+        if (denteRepository.count() > 0) {
+            return;
+        }
+        String[] nomes = {
+                "Incisivo Central",
+                "Incisivo Lateral",
+                "Canino",
+                "1º Pré-molar",
+                "2º Pré-molar",
+                "1º Molar",
+                "2º Molar",
+                "3º Molar (Siso)"
+        };
+        List<Dente> dentes = new ArrayList<>();
+        for (int quadrante = 1; quadrante <= 4; quadrante++) {
+            String arcada = quadrante <= 2 ? "SUPERIOR" : "INFERIOR";
+            for (int posicao = 1; posicao <= 8; posicao++) {
+                int numero = quadrante * 10 + posicao;
+                dentes.add(new Dente(numero, nomes[posicao - 1] + " (" + numero + ")", arcada, quadrante));
+            }
+        }
+        denteRepository.saveAll(dentes);
     }
 
     private void seedPerfis() {
