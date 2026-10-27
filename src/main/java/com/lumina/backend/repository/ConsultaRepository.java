@@ -7,10 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-
-import java.util.List;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -60,6 +58,46 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Long> {
     );
 
     List<Consulta> findByUsuarioIdUsuario(Long idUsuario);
+
+    @Query("""
+        SELECT c FROM Consulta c
+        WHERE (:idUsuario IS NULL OR c.usuario.idUsuario = :idUsuario)
+          AND (:dataInicio IS NULL OR c.data >= :dataInicio)
+          AND (:dataFim IS NULL OR c.data <= :dataFim)
+        ORDER BY c.data ASC, c.horarioInicio ASC
+    """)
+    List<Consulta> buscarPorPeriodo(
+            @Param("idUsuario") Long idUsuario,
+            @Param("dataInicio") LocalDate dataInicio,
+            @Param("dataFim") LocalDate dataFim
+    );
+
+    /**
+     * Intervalos que ocupam a agenda do dentista no dia. Consultas canceladas liberam o horário;
+     * {@code idConsultaIgnorada} exclui a própria consulta durante um reagendamento.
+     */
+    @Query("""
+        SELECT new com.lumina.backend.repository.IntervaloHorario(c.horarioInicio, c.horarioFim)
+        FROM Consulta c
+        WHERE c.usuario.idUsuario = :idUsuario
+          AND c.data = :data
+          AND (c.status IS NULL OR UPPER(c.status) NOT IN ('CANCELADA', 'CANCELADO'))
+          AND (:idConsultaIgnorada IS NULL OR c.idConsulta <> :idConsultaIgnorada)
+        ORDER BY c.horarioInicio ASC
+    """)
+    List<IntervaloHorario> buscarIntervalosOcupados(
+            @Param("idUsuario") Long idUsuario,
+            @Param("data") LocalDate data,
+            @Param("idConsultaIgnorada") Long idConsultaIgnorada
+    );
+
+    /**
+     * Bloqueia (SELECT ... FOR UPDATE) a linha da consulta e devolve o dentista dono dela.
+     * Deve ser a primeira leitura da transação de reagendamento.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    @Query(value = "SELECT fk_usuario FROM consulta WHERE id_consulta = :idConsulta FOR UPDATE", nativeQuery = true)
+    List<Number> bloquearParaAtualizacao(@Param("idConsulta") Long idConsulta);
 
     boolean existsByClienteIdClienteAndUsuarioIdUsuario(Long idCliente, Long idUsuario);
 

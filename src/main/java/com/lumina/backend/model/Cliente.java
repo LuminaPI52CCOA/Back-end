@@ -32,6 +32,9 @@ public class Cliente {
     private Cliente responsavel;
     private String grauParentescoResponsavel;
 
+    @Column(name = "ativo")
+    private Boolean ativo;
+
     public Long getIdCliente() {
         return idCliente;
     }
@@ -158,5 +161,13 @@ public class Cliente {
 
     public void setGrauParentescoResponsavel(String grauParentescoResponsavel) {
         this.grauParentescoResponsavel = grauParentescoResponsavel;
+    }
+
+    public Boolean getAtivo() {
+        return ativo;
+    }
+
+    public void setAtivo(Boolean ativo) {
+        this.ativo = ativo;
     }
 }

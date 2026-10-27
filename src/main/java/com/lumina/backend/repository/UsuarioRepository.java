@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -32,4 +33,22 @@ WHERE u.idUsuario = :id
     Page<Usuario> findByNomeContainingIgnoreCase(String nome, Pageable pageable);
 
     Page<Usuario> findByPerfil_IdPerfilAndNomeContainingIgnoreCase(Integer idPerfil, String nome, Pageable pageable);
+
+    @Query("""
+        SELECT u FROM Usuario u
+        WHERE UPPER(u.perfil.nome) = 'DENTISTA'
+          AND (u.ativo IS NULL OR u.ativo = true)
+          AND (:nome IS NULL OR LOWER(u.nome) LIKE LOWER(CONCAT('%', :nome, '%')))
+    """)
+    Page<Usuario> buscarDentistasAtivos(@Param("nome") String nome, Pageable pageable);
+
+    /**
+     * Bloqueia (SELECT ... FOR UPDATE) a linha do dentista para serializar agendamentos
+     * concorrentes na agenda dele, inclusive quando ainda não existe consulta no dia.
+     * Usa SQL nativo para travar somente a tabela usuario (sem o JOIN EAGER com perfil).
+     */
+    @org.springframework.transaction.annotation.Transactional(
+            propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    @Query(value = "SELECT id_usuario FROM usuario WHERE id_usuario = :idUsuario FOR UPDATE", nativeQuery = true)
+    List<Number> bloquearParaAgendamento(@Param("idUsuario") Long idUsuario);
 }
