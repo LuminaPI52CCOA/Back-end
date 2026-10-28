@@ -1,12 +1,17 @@
 package com.lumina.backend.controller.consulta;
 
 import com.lumina.backend.controller.ConsultaController;
+import com.lumina.backend.dto.consulta.AlterarStatusConsultaRequest;
 import com.lumina.backend.dto.consulta.ConsultaRequest;
 import com.lumina.backend.dto.consulta.ConsultaResponse;
+import com.lumina.backend.dto.consulta.HorarioDisponivelResponse;
+import com.lumina.backend.dto.consulta.ReagendamentoRequest;
 import com.lumina.backend.exception.EntidadeNaoEncontrada;
 import com.lumina.backend.model.Cliente;
 import com.lumina.backend.model.Consulta;
+import com.lumina.backend.model.Especialidade;
 import com.lumina.backend.model.Usuario;
+import com.lumina.backend.repository.IntervaloHorario;
 import com.lumina.backend.service.consulta.ConsultaService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
@@ -18,11 +23,15 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -45,15 +54,45 @@ class ConsultaControllerTest {
 
     @org.junit.jupiter.api.BeforeEach
     void autenticar() {
-        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
-                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
-                        "admin@lumina.com", null,
-                        List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"))));
+        autenticarComo("admin@lumina.com", "ROLE_ADMIN");
     }
 
     @org.junit.jupiter.api.AfterEach
     void limparAutenticacao() {
-        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        SecurityContextHolder.clearContext();
+    }
+
+    private static void autenticarComo(String email, String role) {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(email, null, List.of(new SimpleGrantedAuthority(role))));
+    }
+
+    private void autenticarDentista(Long idUsuario) {
+        autenticarComo("dentista@lumina.com", "ROLE_DENTISTA");
+        Usuario logado = new Usuario();
+        logado.setIdUsuario(idUsuario);
+        Mockito.when(usuarioRepository.findByEmail("dentista@lumina.com")).thenReturn(Optional.of(logado));
+    }
+
+    private static Consulta consultaDoDentista(Long idConsulta, Long idDentista) {
+        Cliente cliente = new Cliente();
+        cliente.setIdCliente(1L);
+        cliente.setNome("Ana Souza");
+
+        Usuario usuario = new Usuario();
+        usuario.setIdUsuario(idDentista);
+        usuario.setNome("Dr. Carlos");
+        usuario.setSenha("hash-secreto");
+
+        Consulta consulta = new Consulta();
+        consulta.setIdConsulta(idConsulta);
+        consulta.setCliente(cliente);
+        consulta.setUsuario(usuario);
+        consulta.setEspecialidade(new Especialidade(1, "Clínica Geral"));
+        consulta.setData(LocalDate.of(2026, 6, 10));
+        consulta.setHorarioInicio(LocalTime.of(9, 0));
+        consulta.setHorarioFim(LocalTime.of(9, 30));
+        return consulta;
     }
 
     @Nested
@@ -63,56 +102,54 @@ class ConsultaControllerTest {
         @Test
         @DisplayName("1.1 Deve retornar lista de consultas com status 200")
         void deveRetornarListaDeConsultasComSucesso() {
-            Cliente cliente = new Cliente();
-            cliente.setIdCliente(1L);
-            cliente.setNome("Ana Souza");
+            Mockito.when(consultaService.listar(null, null))
+                    .thenReturn(List.of(consultaDoDentista(1L, 1L), consultaDoDentista(2L, 1L)));
 
-            Usuario usuario = new Usuario();
-            usuario.setIdUsuario(1L);
-            usuario.setNome("Dr. Carlos");
+            ResponseEntity<List<ConsultaResponse>> response = consultaController.listar(null, null);
 
-            Consulta c1 = new Consulta();
-            c1.setIdConsulta(1L);
-            c1.setCliente(cliente);
-            c1.setUsuario(usuario);
-            c1.setData(LocalDate.of(2026, 6, 10));
-            c1.setHorarioInicio(LocalTime.of(9, 0));
-            c1.setHorarioFim(LocalTime.of(9, 30));
-
-            Consulta c2 = new Consulta();
-            c2.setIdConsulta(2L);
-            c2.setCliente(cliente);
-            c2.setUsuario(usuario);
-            c2.setData(LocalDate.of(2026, 6, 11));
-            c2.setHorarioInicio(LocalTime.of(10, 0));
-            c2.setHorarioFim(LocalTime.of(10, 30));
-
-            List<Consulta> consultas = List.of(c1, c2);
-
-            Mockito.when(consultaService.listar()).thenReturn(consultas);
-
-            ResponseEntity<List<ConsultaResponse>> response = consultaController.listar();
-
-            Assertions.assertEquals(200, response.getStatusCodeValue());
-            Assertions.assertNotNull(response.getBody());
-            Assertions.assertFalse(response.getBody().isEmpty());
+            Assertions.assertEquals(200, response.getStatusCode().value());
             Assertions.assertEquals(2, response.getBody().size());
-
-            Mockito.verify(consultaService, Mockito.times(1)).listar();
+            Assertions.assertNull(response.getBody().get(0).getUsuario().getSenha());
         }
 
         @Test
         @DisplayName("1.2 Deve retornar lista vazia de consultas com status 200")
         void deveRetornarListaVaziaDeConsultas() {
-            Mockito.when(consultaService.listar()).thenReturn(Collections.emptyList());
+            Mockito.when(consultaService.listar(null, null)).thenReturn(Collections.emptyList());
 
-            ResponseEntity<List<ConsultaResponse>> response = consultaController.listar();
+            ResponseEntity<List<ConsultaResponse>> response = consultaController.listar(null, null);
 
-            Assertions.assertEquals(200, response.getStatusCodeValue());
-            Assertions.assertNotNull(response.getBody());
+            Assertions.assertEquals(200, response.getStatusCode().value());
             Assertions.assertTrue(response.getBody().isEmpty());
+        }
 
-            Mockito.verify(consultaService, Mockito.times(1)).listar();
+        @Test
+        @DisplayName("1.3 Deve repassar o filtro de período")
+        void deveRepassarPeriodo() {
+            LocalDate inicio = LocalDate.of(2026, 11, 2);
+            LocalDate fim = LocalDate.of(2026, 11, 8);
+            Mockito.when(consultaService.listar(inicio, fim)).thenReturn(List.of(consultaDoDentista(1L, 1L)));
+
+            Assertions.assertEquals(1, consultaController.listar(inicio, fim).getBody().size());
+        }
+
+        @Test
+        @DisplayName("1.4 Dentista não lista a agenda geral (403)")
+        void dentistaNaoListaAgendaGeral() {
+            autenticarComo("dentista@lumina.com", "ROLE_DENTISTA");
+
+            Assertions.assertEquals(403, consultaController.listar(null, null).getStatusCode().value());
+            Mockito.verifyNoInteractions(consultaService);
+        }
+
+        @Test
+        @DisplayName("1.5 Dentista só lista a própria agenda")
+        void dentistaListaSomenteAPropriaAgenda() {
+            autenticarDentista(1L);
+            Mockito.when(consultaService.listarPorDentista(1L, null, null)).thenReturn(List.of(consultaDoDentista(1L, 1L)));
+
+            Assertions.assertEquals(200, consultaController.listarConsultasDentista(1L, null, null).getStatusCode().value());
+            Assertions.assertEquals(403, consultaController.listarConsultasDentista(2L, null, null).getStatusCode().value());
         }
     }
 
@@ -120,77 +157,63 @@ class ConsultaControllerTest {
     @DisplayName("2. Teste de cadastro de consulta")
     class CadastrarTest {
 
+        private ConsultaRequest request() {
+            return new ConsultaRequest(1L, 1L, 1, LocalDate.of(2026, 6, 15),
+                    LocalTime.of(9, 0), LocalTime.of(9, 30), "Obs", List.of(16), "Primeiro Molar", false);
+        }
+
         @Test
-        @DisplayName("2.1 Deve cadastrar consulta com sucesso e retornar status 201")
+        @DisplayName("2.1 Deve cadastrar consulta com sucesso e retornar status 201 com os campos adicionais")
         void deveCadastrarConsultaComSucesso() {
-            ConsultaRequest request = new ConsultaRequest();
-            request.setIdCliente(1L);
-            request.setIdUsuario(1L);
-            request.setData(LocalDate.of(2026, 6, 15));
-            request.setHorarioInicio(LocalTime.of(9, 0));
-            request.setHorarioFim(LocalTime.of(9, 30));
-
-            Cliente cliente = new Cliente();
-            cliente.setIdCliente(1L);
-
-            Usuario usuario = new Usuario();
-            usuario.setIdUsuario(1L);
-
-            Consulta consultaSalva = new Consulta();
-            consultaSalva.setIdConsulta(1L);
-            consultaSalva.setCliente(cliente);
-            consultaSalva.setUsuario(usuario);
-            consultaSalva.setData(LocalDate.of(2026, 6, 15));
-            consultaSalva.setHorarioInicio(LocalTime.of(9, 0));
-            consultaSalva.setHorarioFim(LocalTime.of(9, 30));
+            Consulta consultaSalva = consultaDoDentista(1L, 1L);
+            consultaSalva.setStatus("AGENDADA");
+            consultaSalva.setObservacoes("Obs");
+            consultaSalva.setDentes(List.of(16));
+            consultaSalva.setTipoDente("Primeiro Molar");
 
             Mockito.when(consultaService.cadastrar(any(ConsultaRequest.class))).thenReturn(consultaSalva);
 
-            ResponseEntity<ConsultaResponse> response = consultaController.cadastrar(request);
+            ResponseEntity<ConsultaResponse> response = consultaController.cadastrar(request());
 
-            Assertions.assertEquals(201, response.getStatusCodeValue());
-            Assertions.assertNotNull(response.getBody());
-            Assertions.assertEquals(1L, response.getBody().getId());
-
-            Mockito.verify(consultaService, Mockito.times(1)).cadastrar(any(ConsultaRequest.class));
+            Assertions.assertEquals(201, response.getStatusCode().value());
+            ConsultaResponse body = response.getBody();
+            Assertions.assertEquals(1L, body.getId());
+            Assertions.assertEquals("AGENDADA", body.getStatus());
+            Assertions.assertEquals(30, body.getDuracaoMinutos());
+            Assertions.assertEquals("Clínica Geral", body.getEspecialidade().getNome());
+            Assertions.assertEquals(List.of(16), body.getDentes());
+            Assertions.assertEquals("Primeiro Molar", body.getTipoDente());
+            Assertions.assertEquals("Obs", body.getObservacoes());
         }
 
         @Test
         @DisplayName("2.2 Deve lançar EntidadeNaoEncontrada ao tentar cadastrar consulta com cliente inexistente")
         void deveLancarExcecaoQuandoClienteNaoEncontrado() {
-            ConsultaRequest request = new ConsultaRequest();
-            request.setIdCliente(99L);
-            request.setIdUsuario(1L);
-
             Mockito.when(consultaService.cadastrar(any(ConsultaRequest.class)))
                     .thenThrow(new EntidadeNaoEncontrada("Cliente não encontrado"));
 
-            EntidadeNaoEncontrada exception = assertThrows(
-                    EntidadeNaoEncontrada.class,
-                    () -> consultaController.cadastrar(request)
-            );
+            EntidadeNaoEncontrada exception = assertThrows(EntidadeNaoEncontrada.class,
+                    () -> consultaController.cadastrar(request()));
 
             Assertions.assertEquals("Cliente não encontrado", exception.getMessage());
-            Mockito.verify(consultaService, Mockito.times(1)).cadastrar(any(ConsultaRequest.class));
         }
 
         @Test
-        @DisplayName("2.3 Deve lançar EntidadeNaoEncontrada ao tentar cadastrar consulta com usuário inexistente")
-        void deveLancarExcecaoQuandoUsuarioNaoEncontrado() {
-            ConsultaRequest request = new ConsultaRequest();
-            request.setIdCliente(1L);
-            request.setIdUsuario(99L);
+        @DisplayName("2.3 Dentista não pode cadastrar consulta (403)")
+        void dentistaNaoPodeCadastrar() {
+            autenticarComo("dentista@lumina.com", "ROLE_DENTISTA");
 
-            Mockito.when(consultaService.cadastrar(any(ConsultaRequest.class)))
-                    .thenThrow(new EntidadeNaoEncontrada("Usuário não encontrado"));
+            Assertions.assertEquals(403, consultaController.cadastrar(request()).getStatusCode().value());
+            Mockito.verifyNoInteractions(consultaService);
+        }
 
-            EntidadeNaoEncontrada exception = assertThrows(
-                    EntidadeNaoEncontrada.class,
-                    () -> consultaController.cadastrar(request)
-            );
+        @Test
+        @DisplayName("2.4 Recepcionista pode cadastrar consulta")
+        void recepcionistaPodeCadastrar() {
+            autenticarComo("recepcao@lumina.com", "ROLE_RECEPCIONISTA");
+            Mockito.when(consultaService.cadastrar(any(ConsultaRequest.class))).thenReturn(consultaDoDentista(1L, 1L));
 
-            Assertions.assertEquals("Usuário não encontrado", exception.getMessage());
-            Mockito.verify(consultaService, Mockito.times(1)).cadastrar(any(ConsultaRequest.class));
+            Assertions.assertEquals(201, consultaController.cadastrar(request()).getStatusCode().value());
         }
     }
 
@@ -201,29 +224,12 @@ class ConsultaControllerTest {
         @Test
         @DisplayName("3.1 Deve retornar consulta encontrada com status 200")
         void deveRetornarConsultaEncontradaComSucesso() {
-            Cliente cliente = new Cliente();
-            cliente.setIdCliente(1L);
-
-            Usuario usuario = new Usuario();
-            usuario.setIdUsuario(1L);
-
-            Consulta consulta = new Consulta();
-            consulta.setIdConsulta(1L);
-            consulta.setCliente(cliente);
-            consulta.setUsuario(usuario);
-            consulta.setData(LocalDate.of(2026, 6, 10));
-            consulta.setHorarioInicio(LocalTime.of(9, 0));
-            consulta.setHorarioFim(LocalTime.of(9, 30));
-
-            Mockito.when(consultaService.buscarPorId(1L)).thenReturn(consulta);
+            Mockito.when(consultaService.buscarPorId(1L)).thenReturn(consultaDoDentista(1L, 1L));
 
             ResponseEntity<ConsultaResponse> response = consultaController.buscarPorId(1L);
 
-            Assertions.assertEquals(200, response.getStatusCodeValue());
-            Assertions.assertNotNull(response.getBody());
+            Assertions.assertEquals(200, response.getStatusCode().value());
             Assertions.assertEquals(1L, response.getBody().getId());
-
-            Mockito.verify(consultaService, Mockito.times(1)).buscarPorId(1L);
         }
 
         @Test
@@ -232,13 +238,16 @@ class ConsultaControllerTest {
             Mockito.when(consultaService.buscarPorId(99L))
                     .thenThrow(new EntidadeNaoEncontrada("Consulta não encontrada"));
 
-            EntidadeNaoEncontrada exception = assertThrows(
-                    EntidadeNaoEncontrada.class,
-                    () -> consultaController.buscarPorId(99L)
-            );
+            assertThrows(EntidadeNaoEncontrada.class, () -> consultaController.buscarPorId(99L));
+        }
 
-            Assertions.assertEquals("Consulta não encontrada", exception.getMessage());
-            Mockito.verify(consultaService, Mockito.times(1)).buscarPorId(99L);
+        @Test
+        @DisplayName("3.3 Dentista não acessa consulta de outro dentista")
+        void dentistaNaoAcessaConsultaDeOutro() {
+            autenticarDentista(1L);
+            Mockito.when(consultaService.buscarPorId(5L)).thenReturn(consultaDoDentista(5L, 2L));
+
+            Assertions.assertEquals(403, consultaController.buscarPorId(5L).getStatusCode().value());
         }
     }
 
@@ -246,88 +255,129 @@ class ConsultaControllerTest {
     @DisplayName("4. Teste de reagendamento de consulta")
     class ReagendarTest {
 
+        private final ReagendamentoRequest request =
+                new ReagendamentoRequest(LocalDate.of(2026, 6, 20), LocalTime.of(14, 0), LocalTime.of(14, 30), null);
+
         @Test
         @DisplayName("4.1 Deve reagendar consulta com sucesso e retornar status 200")
         void deveReagendarConsultaComSucesso() {
-            ConsultaRequest request = new ConsultaRequest();
-            request.setData(LocalDate.of(2026, 6, 20));
-            request.setHorarioInicio(LocalTime.of(14, 0));
-            request.setHorarioFim(LocalTime.of(14, 30));
-
-            Cliente cliente = new Cliente();
-            cliente.setIdCliente(1L);
-
-            Usuario usuario = new Usuario();
-            usuario.setIdUsuario(1L);
-
-            Consulta consultaAtualizada = new Consulta();
-            consultaAtualizada.setIdConsulta(1L);
-            consultaAtualizada.setCliente(cliente);
-            consultaAtualizada.setUsuario(usuario);
+            Consulta consultaAtualizada = consultaDoDentista(1L, 1L);
             consultaAtualizada.setData(LocalDate.of(2026, 6, 20));
-            consultaAtualizada.setHorarioInicio(LocalTime.of(14, 0));
-            consultaAtualizada.setHorarioFim(LocalTime.of(14, 30));
-
-            Mockito.when(consultaService.reagendar(anyLong(), any(ConsultaRequest.class)))
+            Mockito.when(consultaService.buscarPorId(1L)).thenReturn(consultaDoDentista(1L, 1L));
+            Mockito.when(consultaService.reagendar(anyLong(), any(ReagendamentoRequest.class)))
                     .thenReturn(consultaAtualizada);
 
             ResponseEntity<ConsultaResponse> response = consultaController.reagendar(1L, request);
 
-            Assertions.assertEquals(200, response.getStatusCodeValue());
-            Assertions.assertNotNull(response.getBody());
+            Assertions.assertEquals(200, response.getStatusCode().value());
             Assertions.assertEquals(LocalDate.of(2026, 6, 20), response.getBody().getData());
-
-            Mockito.verify(consultaService, Mockito.times(1)).reagendar(anyLong(), any(ConsultaRequest.class));
         }
 
         @Test
         @DisplayName("4.2 Deve lançar EntidadeNaoEncontrada ao tentar reagendar consulta inexistente")
         void deveLancarExcecaoAoReagendarConsultaInexistente() {
-            ConsultaRequest request = new ConsultaRequest();
-            request.setData(LocalDate.of(2026, 6, 20));
-
-            Mockito.when(consultaService.reagendar(anyLong(), any(ConsultaRequest.class)))
+            Mockito.when(consultaService.buscarPorId(99L))
                     .thenThrow(new EntidadeNaoEncontrada("Consulta não encontrada"));
 
-            EntidadeNaoEncontrada exception = assertThrows(
-                    EntidadeNaoEncontrada.class,
-                    () -> consultaController.reagendar(99L, request)
-            );
+            assertThrows(EntidadeNaoEncontrada.class, () -> consultaController.reagendar(99L, request));
+            Mockito.verify(consultaService, Mockito.never()).reagendar(anyLong(), any(ReagendamentoRequest.class));
+        }
 
-            Assertions.assertEquals("Consulta não encontrada", exception.getMessage());
-            Mockito.verify(consultaService, Mockito.times(1)).reagendar(anyLong(), any(ConsultaRequest.class));
+        @Test
+        @DisplayName("4.3 Dentista reagenda somente as próprias consultas")
+        void dentistaReagendaSomenteAsProprias() {
+            autenticarDentista(1L);
+            Mockito.when(consultaService.buscarPorId(5L)).thenReturn(consultaDoDentista(5L, 2L));
+            Mockito.when(consultaService.buscarPorId(6L)).thenReturn(consultaDoDentista(6L, 1L));
+            Mockito.when(consultaService.reagendar(Mockito.eq(6L), any(ReagendamentoRequest.class)))
+                    .thenReturn(consultaDoDentista(6L, 1L));
+
+            Assertions.assertEquals(403, consultaController.reagendar(5L, request).getStatusCode().value());
+            Assertions.assertEquals(200, consultaController.reagendar(6L, request).getStatusCode().value());
+            Mockito.verify(consultaService, Mockito.never()).reagendar(Mockito.eq(5L), any(ReagendamentoRequest.class));
         }
     }
 
     @Nested
-    @DisplayName("5. Teste de cancelamento de consulta")
+    @DisplayName("5. Teste de cancelamento e status de consulta")
     class CancelarTest {
 
         @Test
         @DisplayName("5.1 Deve cancelar consulta com sucesso e retornar status 204")
         void deveCancelarConsultaComSucesso() {
-            Mockito.doNothing().when(consultaService).cancelar(1L);
+            Mockito.when(consultaService.buscarPorId(1L)).thenReturn(consultaDoDentista(1L, 1L));
 
             ResponseEntity<Void> response = consultaController.cancelar(1L);
 
-            Assertions.assertEquals(204, response.getStatusCodeValue());
-
+            Assertions.assertEquals(204, response.getStatusCode().value());
             Mockito.verify(consultaService, Mockito.times(1)).cancelar(1L);
         }
 
         @Test
         @DisplayName("5.2 Deve lançar EntidadeNaoEncontrada ao tentar cancelar consulta inexistente")
         void deveLancarExcecaoAoCancelarConsultaInexistente() {
-            Mockito.doThrow(new EntidadeNaoEncontrada("Consulta não encontrada"))
-                    .when(consultaService).cancelar(99L);
+            Mockito.when(consultaService.buscarPorId(99L))
+                    .thenThrow(new EntidadeNaoEncontrada("Consulta não encontrada"));
 
-            EntidadeNaoEncontrada exception = assertThrows(
-                    EntidadeNaoEncontrada.class,
-                    () -> consultaController.cancelar(99L)
-            );
+            assertThrows(EntidadeNaoEncontrada.class, () -> consultaController.cancelar(99L));
+            Mockito.verify(consultaService, Mockito.never()).cancelar(anyLong());
+        }
 
-            Assertions.assertEquals("Consulta não encontrada", exception.getMessage());
-            Mockito.verify(consultaService, Mockito.times(1)).cancelar(99L);
+        @Test
+        @DisplayName("5.3 Dentista não cancela nem altera status de consulta de outro dentista")
+        void dentistaNaoCancelaConsultaDeOutro() {
+            autenticarDentista(1L);
+            Mockito.when(consultaService.buscarPorId(5L)).thenReturn(consultaDoDentista(5L, 2L));
+
+            Assertions.assertEquals(403, consultaController.cancelar(5L).getStatusCode().value());
+            Assertions.assertEquals(403, consultaController
+                    .alterarStatus(5L, new AlterarStatusConsultaRequest("CONFIRMADA")).getStatusCode().value());
+            Mockito.verify(consultaService, Mockito.never()).cancelar(anyLong());
+            Mockito.verify(consultaService, Mockito.never()).alterarStatus(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("5.4 Deve alterar status explicitamente")
+        void deveAlterarStatus() {
+            Consulta confirmada = consultaDoDentista(1L, 1L);
+            confirmada.setStatus("CONFIRMADA");
+            Mockito.when(consultaService.buscarPorId(1L)).thenReturn(consultaDoDentista(1L, 1L));
+            Mockito.when(consultaService.alterarStatus(1L, "CONFIRMADA")).thenReturn(confirmada);
+
+            ResponseEntity<ConsultaResponse> response =
+                    consultaController.alterarStatus(1L, new AlterarStatusConsultaRequest("CONFIRMADA"));
+
+            Assertions.assertEquals(200, response.getStatusCode().value());
+            Assertions.assertEquals("CONFIRMADA", response.getBody().getStatus());
+        }
+    }
+
+    @Nested
+    @DisplayName("6. Teste de horários disponíveis")
+    class HorariosDisponiveisTest {
+
+        @Test
+        @DisplayName("6.1 Deve converter os intervalos livres")
+        void deveRetornarHorarios() {
+            LocalDate data = LocalDate.of(2026, 11, 3);
+            Mockito.when(consultaService.listarHorariosDisponiveis(2L, data, 30, null))
+                    .thenReturn(List.of(new IntervaloHorario(LocalTime.of(8, 0), LocalTime.of(8, 30))));
+
+            ResponseEntity<List<HorarioDisponivelResponse>> response =
+                    consultaController.listarHorariosDisponiveis(2L, data, 30, null);
+
+            Assertions.assertEquals(200, response.getStatusCode().value());
+            Assertions.assertEquals(LocalTime.of(8, 30), response.getBody().get(0).getHorarioFim());
+        }
+
+        @Test
+        @DisplayName("6.2 Dentista só consulta a própria disponibilidade")
+        void dentistaConsultaSomenteAPropriaDisponibilidade() {
+            autenticarDentista(1L);
+
+            Assertions.assertEquals(403, consultaController
+                    .listarHorariosDisponiveis(2L, LocalDate.of(2026, 11, 3), 30, null).getStatusCode().value());
+            Mockito.verifyNoInteractions(consultaService);
         }
     }
 }

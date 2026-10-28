@@ -5,6 +5,7 @@ public class UsuarioTokenDto {
     private Long userId;
     private String nome;
     private String email;
+    private String perfil;
     private String token;
 
     public Long getUserId() {
@@ -29,6 +30,14 @@ public class UsuarioTokenDto {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getPerfil() {
+        return perfil;
+    }
+
+    public void setPerfil(String perfil) {
+        this.perfil = perfil;
     }
 
     public String getToken() {

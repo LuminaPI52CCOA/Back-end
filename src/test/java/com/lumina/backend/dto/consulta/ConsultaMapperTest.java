@@ -2,6 +2,7 @@ package com.lumina.backend.dto.consulta;
 
 import com.lumina.backend.model.Cliente;
 import com.lumina.backend.model.Consulta;
+import com.lumina.backend.model.Especialidade;
 import com.lumina.backend.model.Usuario;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -53,5 +54,31 @@ class ConsultaMapperTest {
         assertEquals(50L, responses.get(0).getId());
         assertEquals("Ana", responses.get(0).getCliente().getNome());
         assertEquals("Dr. Carlos", responses.get(0).getUsuario().getNome());
+    }
+
+    @Test
+    @DisplayName("Deve mapear especialidade, status, duração, odontograma e ocultar a senha do dentista")
+    void deveMapearCamposDoAgendamento() {
+        ConsultaRequest request = new ConsultaRequest(1L, 2L, 1, LocalDate.of(2026, 11, 3),
+                LocalTime.of(9, 0), LocalTime.of(9, 45), "Obs", List.of(26, 16), "Primeiro Molar", false);
+
+        Consulta entity = ConsultaMapper.toEntity(request);
+        Usuario usuario = new Usuario();
+        usuario.setIdUsuario(2L);
+        usuario.setSenha("hash");
+        entity.setUsuario(usuario);
+        entity.setEspecialidade(new Especialidade(1, "Clínica Geral"));
+        entity.setStatus(null);
+
+        ConsultaResponse response = ConsultaMapper.toResponse(entity);
+
+        assertEquals("AGENDADA", response.getStatus());
+        assertEquals(45, response.getDuracaoMinutos());
+        assertEquals("Clínica Geral", response.getEspecialidade().getNome());
+        assertEquals(List.of(16, 26), response.getDentes());
+        assertEquals("Primeiro Molar", response.getTipoDente());
+        assertEquals("Obs", response.getObservacoes());
+        assertFalse(response.getPularOdontograma());
+        assertNull(response.getUsuario().getSenha());
     }
 }

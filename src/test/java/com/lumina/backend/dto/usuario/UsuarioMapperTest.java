@@ -64,6 +64,7 @@ class UsuarioMapperTest {
 
         Perfil perfil = new Perfil();
         perfil.setIdPerfil(1);
+        perfil.setNome("Admin");
         fromReq.setIdUsuario(10L);
         fromReq.setPerfil(perfil);
 
@@ -73,11 +74,13 @@ class UsuarioMapperTest {
 
         UsuarioTokenDto tokenDto = UsuarioMapper.of(fromReq, "jwt-token");
         assertEquals(10L, tokenDto.getUserId());
+        assertEquals("ADMIN", tokenDto.getPerfil());
         assertEquals("jwt-token", tokenDto.getToken());
 
         UsuarioSessaoDto sessaoDto = UsuarioMapper.ofSessao(tokenDto);
         assertEquals(10L, sessaoDto.getUserId());
         assertEquals("ana@lumina.com", sessaoDto.getEmail());
+        assertEquals("ADMIN", sessaoDto.getPerfil());
 
         UsuarioListarDto listarDto = UsuarioMapper.of(fromReq);
         assertEquals(10L, listarDto.getId());

@@ -119,6 +119,21 @@ public class UsuarioService {
         return Page.empty(pageRequest);
     }
 
+    /**
+     * Dentistas ativos (perfil DENTISTA) para seletores de agendamento, com busca parcial por nome.
+     */
+    public Page<com.lumina.backend.model.Usuario> listarDentistasAtivos(String nome, Pageable pageable) {
+        Sort sort = pageable.getSort().isSorted()
+                ? pageable.getSort()
+                : Sort.by(Sort.Direction.ASC, "nome");
+        PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+        if (usuarioRepository == null) {
+            return Page.empty(pageRequest);
+        }
+        String filtro = (nome == null || nome.isBlank()) ? null : nome.trim();
+        return usuarioRepository.buscarDentistasAtivos(filtro, pageRequest);
+    }
+
     public Optional<Usuario> buscarPorId(Long id) {
         if (repositoryPort != null) {
             return repositoryPort.buscarPorId(UsuarioId.of(id));
