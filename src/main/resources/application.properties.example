@@ -5,8 +5,8 @@ spring.datasource.password=${DB_PASSWORD:lumina_dev_pass_8492}
 spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 
 # Limites para Upload de Arquivos (Protecao contra DoS)
-spring.servlet.multipart.max-file-size=10MB
-spring.servlet.multipart.max-request-size=10MB
+spring.servlet.multipart.max-file-size=55MB
+spring.servlet.multipart.max-request-size=55MB
 
 # =============================================================================
 # Configuracoes JWT
@@ -27,7 +27,7 @@ gemini.api.key=${GEMINI_API_KEY:test-gemini-key}
 aws.access-key=${AWS_ACCESS_KEY:test-key}
 aws.secret-key=${AWS_SECRET_KEY:test-secret}
 aws.region=${AWS_REGION:us-east-1}
-aws.s3.bucket-name=${AWS_S3_BUCKET_NAME:lumina-storage}
+aws.s3.bucket-name=${BUCKET_BRONZE:lumina-bronze}
 
 
 # =============================================================================

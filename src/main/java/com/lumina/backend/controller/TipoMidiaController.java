@@ -21,7 +21,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/tipos-midia")
-@PreAuthorize("hasAnyRole('ADMIN', 'DENTISTA')")
+@PreAuthorize("hasAnyRole('ADMIN', 'DENTISTA', 'RECEPCIONISTA')")
 @Tag(name = "Tipos de Mídia", description = "Endpoints para gerenciamento de categorias de fotos e exames clínicos")
 public class TipoMidiaController {
 

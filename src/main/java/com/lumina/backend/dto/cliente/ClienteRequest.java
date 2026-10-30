@@ -57,6 +57,8 @@ public class ClienteRequest {
     private ResponsavelRequest responsavel;
     @Schema(description = "Grau de parentesco do responsavel", example = "Mae", type = "string")
     private String grauParentescoResponsavel;
+    @Schema(description = "Consentimento LGPD do titular ou responsável legal para tratamento de dados pessoais e sensíveis", example = "true")
+    private Boolean consentimentoLgpd = true;
 
     public Long getIdCliente() {
         return idCliente;
@@ -184,5 +186,13 @@ public class ClienteRequest {
 
     public void setGrauParentescoResponsavel(String grauParentescoResponsavel) {
         this.grauParentescoResponsavel = grauParentescoResponsavel;
+    }
+
+    public Boolean getConsentimentoLgpd() {
+        return consentimentoLgpd;
+    }
+
+    public void setConsentimentoLgpd(Boolean consentimentoLgpd) {
+        this.consentimentoLgpd = consentimentoLgpd;
     }
 }

@@ -32,6 +32,22 @@ public class ClienteJpaEntity {
     private ClienteJpaEntity responsavel;
     private String grauParentescoResponsavel;
 
+    @Column(name = "consentimento_lgpd")
+    private Boolean consentimentoLgpd = true;
+
+    @Column(name = "data_consentimento_lgpd")
+    private java.time.LocalDateTime dataConsentimentoLgpd;
+
+    @PrePersist
+    protected void prePersistLgpd() {
+        if (this.consentimentoLgpd == null) {
+            this.consentimentoLgpd = true;
+        }
+        if (Boolean.TRUE.equals(this.consentimentoLgpd) && this.dataConsentimentoLgpd == null) {
+            this.dataConsentimentoLgpd = java.time.LocalDateTime.now();
+        }
+    }
+
     // Construtor padrão para JPA
     public ClienteJpaEntity() {}
 
@@ -162,5 +178,21 @@ public class ClienteJpaEntity {
 
     public void setGrauParentescoResponsavel(String grauParentescoResponsavel) {
         this.grauParentescoResponsavel = grauParentescoResponsavel;
+    }
+
+    public Boolean getConsentimentoLgpd() {
+        return consentimentoLgpd;
+    }
+
+    public void setConsentimentoLgpd(Boolean consentimentoLgpd) {
+        this.consentimentoLgpd = consentimentoLgpd;
+    }
+
+    public java.time.LocalDateTime getDataConsentimentoLgpd() {
+        return dataConsentimentoLgpd;
+    }
+
+    public void setDataConsentimentoLgpd(java.time.LocalDateTime dataConsentimentoLgpd) {
+        this.dataConsentimentoLgpd = dataConsentimentoLgpd;
     }
 }

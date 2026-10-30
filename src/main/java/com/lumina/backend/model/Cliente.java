@@ -35,6 +35,12 @@ public class Cliente {
     @Column(name = "ativo")
     private Boolean ativo;
 
+    @Column(name = "consentimento_lgpd")
+    private Boolean consentimentoLgpd = true;
+
+    @Column(name = "data_consentimento_lgpd")
+    private java.time.LocalDateTime dataConsentimentoLgpd;
+
     public Long getIdCliente() {
         return idCliente;
     }
@@ -169,5 +175,21 @@ public class Cliente {
 
     public void setAtivo(Boolean ativo) {
         this.ativo = ativo;
+    }
+
+    public Boolean getConsentimentoLgpd() {
+        return consentimentoLgpd;
+    }
+
+    public void setConsentimentoLgpd(Boolean consentimentoLgpd) {
+        this.consentimentoLgpd = consentimentoLgpd;
+    }
+
+    public java.time.LocalDateTime getDataConsentimentoLgpd() {
+        return dataConsentimentoLgpd;
+    }
+
+    public void setDataConsentimentoLgpd(java.time.LocalDateTime dataConsentimentoLgpd) {
+        this.dataConsentimentoLgpd = dataConsentimentoLgpd;
     }
 }

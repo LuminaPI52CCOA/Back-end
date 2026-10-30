@@ -1,6 +1,7 @@
 package com.lumina.backend.domain.cliente;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 public class Cliente {
@@ -20,12 +21,15 @@ public class Cliente {
     private final Cliente clienteIndicacao;
     private final Cliente responsavel;
     private final String grauParentescoResponsavel;
+    private final Boolean consentimentoLgpd;
+    private final LocalDateTime dataConsentimentoLgpd;
 
     private Cliente(ClienteId id, String nome, String cpf, String rg, LocalDate dataNascimento,
                    String naturalidade, String nacionalidade, Character sexo, String cep,
                    String enderecoResidencial, String email, String numeroCelular,
                    Integer fkEstadoCivil, Cliente clienteIndicacao, Cliente responsavel,
-                   String grauParentescoResponsavel) {
+                   String grauParentescoResponsavel, Boolean consentimentoLgpd,
+                   LocalDateTime dataConsentimentoLgpd) {
         this.id = id;
         this.nome = nome;
         this.cpf = cpf;
@@ -42,6 +46,8 @@ public class Cliente {
         this.clienteIndicacao = clienteIndicacao;
         this.responsavel = responsavel;
         this.grauParentescoResponsavel = grauParentescoResponsavel;
+        this.consentimentoLgpd = consentimentoLgpd;
+        this.dataConsentimentoLgpd = dataConsentimentoLgpd;
     }
 
     public static Cliente criar(ClienteCommand command) {
@@ -61,7 +67,9 @@ public class Cliente {
             command.fkEstadoCivil(),
             command.clienteIndicacao(),
             command.responsavel(),
-            command.grauParentescoResponsavel()
+            command.grauParentescoResponsavel(),
+            command.consentimentoLgpd(),
+            command.dataConsentimentoLgpd()
         );
     }
 
@@ -82,7 +90,9 @@ public class Cliente {
             command.fkEstadoCivil(),
             command.clienteIndicacao(),
             command.responsavel(),
-            command.grauParentescoResponsavel()
+            command.grauParentescoResponsavel(),
+            command.consentimentoLgpd(),
+            command.dataConsentimentoLgpd()
         );
     }
 
@@ -103,7 +113,9 @@ public class Cliente {
             command.fkEstadoCivil(),
             command.clienteIndicacao(),
             command.responsavel(),
-            command.grauParentescoResponsavel()
+            command.grauParentescoResponsavel(),
+            command.consentimentoLgpd(),
+            command.dataConsentimentoLgpd() != null ? command.dataConsentimentoLgpd() : this.dataConsentimentoLgpd
         );
     }
 
@@ -178,5 +190,13 @@ public class Cliente {
 
     public String getGrauParentescoResponsavel() {
         return grauParentescoResponsavel;
+    }
+
+    public Boolean getConsentimentoLgpd() {
+        return consentimentoLgpd;
+    }
+
+    public LocalDateTime getDataConsentimentoLgpd() {
+        return dataConsentimentoLgpd;
     }
 }

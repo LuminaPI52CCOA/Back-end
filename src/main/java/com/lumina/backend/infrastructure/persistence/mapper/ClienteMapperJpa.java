@@ -29,6 +29,8 @@ public class ClienteMapperJpa {
         entity.setNumeroCelular(cliente.getNumeroCelular());
         entity.setFkEstadoCivil(cliente.getFkEstadoCivil());
         entity.setGrauParentescoResponsavel(cliente.getGrauParentescoResponsavel());
+        entity.setConsentimentoLgpd(cliente.getConsentimentoLgpd());
+        entity.setDataConsentimentoLgpd(cliente.getDataConsentimentoLgpd());
 
         if (cliente.getClienteIndicacao() != null) {
             entity.setClienteIndicacao(toJpa(cliente.getClienteIndicacao()));
@@ -72,7 +74,9 @@ public class ClienteMapperJpa {
             entity.getFkEstadoCivil(),
             clienteIndicacao,
             responsavel,
-            entity.getGrauParentescoResponsavel()
+            entity.getGrauParentescoResponsavel(),
+            entity.getConsentimentoLgpd(),
+            entity.getDataConsentimentoLgpd()
         );
         
         Cliente cliente;
@@ -105,7 +109,9 @@ public class ClienteMapperJpa {
             cliente.getFkEstadoCivil(),
             cliente.getClienteIndicacao(),
             cliente.getResponsavel(),
-            cliente.getGrauParentescoResponsavel()
+            cliente.getGrauParentescoResponsavel(),
+            cliente.getConsentimentoLgpd(),
+            cliente.getDataConsentimentoLgpd()
         );
     }
 }

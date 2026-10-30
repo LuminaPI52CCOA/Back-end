@@ -11,6 +11,8 @@ public class ClienteMidiaResponse {
     private String mimeType;
     private Long tamanhoBytes;
     private String urlVisualizacao;
+    private String bucket;
+    private String chaveS3;
     private TipoResumoDto tipo;
     private ConsultaResumoDto consulta;
     private DentistaResumoDto dentista;
@@ -21,6 +23,10 @@ public class ClienteMidiaResponse {
     }
 
     public static ClienteMidiaResponse fromEntity(ClienteMidia entity, String urlVisualizacao) {
+        return fromEntity(entity, urlVisualizacao, null);
+    }
+
+    public static ClienteMidiaResponse fromEntity(ClienteMidia entity, String urlVisualizacao, String bucket) {
         if (entity == null) return null;
         ClienteMidiaResponse dto = new ClienteMidiaResponse();
         dto.setId(entity.getIdClienteMidia());
@@ -29,6 +35,8 @@ public class ClienteMidiaResponse {
         dto.setMimeType(entity.getMimeType());
         dto.setTamanhoBytes(entity.getTamanhoBytes());
         dto.setUrlVisualizacao(urlVisualizacao);
+        dto.setBucket(bucket);
+        dto.setChaveS3(entity.getChaveS3());
         dto.setLegenda(entity.getLegenda());
 
         if (entity.getTipoMidia() != null) {
@@ -147,6 +155,22 @@ public class ClienteMidiaResponse {
 
     public void setUrlVisualizacao(String urlVisualizacao) {
         this.urlVisualizacao = urlVisualizacao;
+    }
+
+    public String getBucket() {
+        return bucket;
+    }
+
+    public void setBucket(String bucket) {
+        this.bucket = bucket;
+    }
+
+    public String getChaveS3() {
+        return chaveS3;
+    }
+
+    public void setChaveS3(String chaveS3) {
+        this.chaveS3 = chaveS3;
     }
 
     public TipoResumoDto getTipo() {

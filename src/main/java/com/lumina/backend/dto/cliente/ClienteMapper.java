@@ -11,6 +11,11 @@ public class ClienteMapper {
             return null;
         }
 
+        Boolean consentimento = dto.getConsentimentoLgpd() != null ? dto.getConsentimentoLgpd() : true;
+        java.time.LocalDateTime dataConsentimento = Boolean.TRUE.equals(consentimento)
+                ? java.time.LocalDateTime.now()
+                : null;
+
         return new ClienteCommand(
             dto.getNome(),
             dto.getCpf(),
@@ -26,7 +31,9 @@ public class ClienteMapper {
             dto.getFkEstadoCivil(),
             null, // clienteIndicacao - será tratado no service
             null, // responsavel - será tratado no service
-            dto.getGrauParentescoResponsavel()
+            dto.getGrauParentescoResponsavel(),
+            consentimento,
+            dataConsentimento
         );
     }
 
@@ -63,6 +70,8 @@ public class ClienteMapper {
                 fkResponsavel,
                 model.getGrauParentescoResponsavel()
         );
+        dto.setConsentimentoLgpd(model.getConsentimentoLgpd());
+        dto.setDataConsentimentoLgpd(model.getDataConsentimentoLgpd());
 
         return dto;
     }
@@ -80,7 +89,7 @@ public class ClienteMapper {
                 ? model.getResponsavel().getIdCliente().intValue()
                 : null;
 
-        return new ClienteResponse(
+        ClienteResponse dto = new ClienteResponse(
                 model.getIdCliente(),
                 model.getNome(),
                 model.getCpf(),
@@ -98,6 +107,9 @@ public class ClienteMapper {
                 fkResponsavel,
                 model.getGrauParentescoResponsavel()
         );
+        dto.setConsentimentoLgpd(model.getConsentimentoLgpd());
+        dto.setDataConsentimentoLgpd(model.getDataConsentimentoLgpd());
+        return dto;
     }
 
     public static List<ClienteResponse> toDto(List<Cliente> entities) {
@@ -126,6 +138,11 @@ public class ClienteMapper {
         entity.setNumeroCelular(dto.getNumeroCelular());
         entity.setFkEstadoCivil(dto.getFkEstadoCivil());
         entity.setGrauParentescoResponsavel(dto.getGrauParentescoResponsavel());
+        Boolean consentimento = dto.getConsentimentoLgpd() != null ? dto.getConsentimentoLgpd() : true;
+        entity.setConsentimentoLgpd(consentimento);
+        if (Boolean.TRUE.equals(consentimento)) {
+            entity.setDataConsentimentoLgpd(java.time.LocalDateTime.now());
+        }
 
         return entity;
     }

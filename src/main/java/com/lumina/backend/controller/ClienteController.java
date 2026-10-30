@@ -138,8 +138,20 @@ public class ClienteController {
         String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
         Cliente clienteCadastrado = service.cadastrar(request);
         ClienteResponse response = ClienteMapper.toDto(clienteCadastrado);
-        log.info("AUDIT: Usuario [{}] cadastrou novo cliente ID [{}] CPF [{}]", usuario, response.getIdCliente(), clienteCadastrado.getCpf());
+        log.info("AUDIT: Usuario [{}] cadastrou novo cliente ID [{}] CPF [{}]",
+                usuario, response.getIdCliente(), mascararCpfLgpd(clienteCadastrado.getCpf()));
         return ResponseEntity.status(201).body(response);
+    }
+
+    private String mascararCpfLgpd(String cpf) {
+        if (cpf == null || cpf.isBlank()) {
+            return "***";
+        }
+        String digitos = cpf.replaceAll("\\D", "");
+        if (digitos.length() != 11) {
+            return "***.***.***-**";
+        }
+        return "***." + digitos.substring(3, 6) + "." + digitos.substring(6, 9) + "-**";
     }
 
     @GetMapping("/{id:\\d+}")
@@ -230,6 +242,9 @@ public class ClienteController {
     @GetMapping("/{id:\\d+}/anamneses")
     public ResponseEntity<List<AnamneseResponse>> listarAnamnese(@PathVariable Integer id){
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (isDentistaSemVinculoComPaciente(auth, id != null ? id.longValue() : null)) {
+            return ResponseEntity.status(403).build();
+        }
         String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
         log.info("AUDIT: Usuario [{}] listou anamneses do cliente ID [{}]", usuario, id);
         List<Anamnese> anamneseList = service.listarAnamnese(id);
@@ -241,11 +256,31 @@ public class ClienteController {
     public ResponseEntity<AnamneseResponse> cadastroAnamnese(@PathVariable Long id,
                                                              @org.springframework.web.bind.annotation.RequestBody AnamneseRequest request){
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (isDentistaSemVinculoComPaciente(auth, id)) {
+            return ResponseEntity.status(403).build();
+        }
         String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
         Anamnese anamnese = service.cadastrarAnamnese(id, request);
         log.info("AUDIT: Usuario [{}] cadastrou anamnese manual para o cliente ID [{}]", usuario, id);
         AnamneseResponse response = AnamneseMapper.toDto(anamnese);
         return ResponseEntity.ok(response);
+    }
+
+    private boolean isDentistaSemVinculoComPaciente(Authentication auth, Long clienteId) {
+        if (auth == null || auth.getAuthorities() == null || clienteId == null) {
+            return false;
+        }
+        boolean isApenasDentista = auth.getAuthorities()
+                .stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_DENTISTA"))
+                && auth.getAuthorities()
+                .stream()
+                .noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_RECEPCIONISTA"));
+        if (!isApenasDentista) {
+            return false;
+        }
+        Long usuarioLogadoId = obterUsuarioIdAutenticado();
+        return !consultaRepository.existsByClienteIdClienteAndUsuarioIdUsuario(clienteId, usuarioLogadoId);
     }
 
     private Long obterUsuarioIdAutenticado() {

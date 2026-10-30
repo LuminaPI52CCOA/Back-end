@@ -56,6 +56,8 @@ services:
       SPRING_RABBITMQ_USERNAME: ${SPRING_RABBITMQ_USERNAME:-guest}
       SPRING_RABBITMQ_PASSWORD: ${SPRING_RABBITMQ_PASSWORD:-guest}
       APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost:5173}
+      BUCKET_BRONZE: ${BUCKET_BRONZE:-lumina-bronze}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
       LOGGING_FILE_NAME: /var/log/backend/app.log
       LOGGING_PATTERN_FILE: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level %pid --- [%t] %-40.40logger{39} : %m%n"
     ports:

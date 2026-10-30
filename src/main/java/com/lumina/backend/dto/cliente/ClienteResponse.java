@@ -47,6 +47,10 @@ public class ClienteResponse {
     private List<String> convenios;
     @Schema(description = "Data da proxima consulta agendada", example = "2026-10-25", type = "string", format = "date")
     private LocalDate proximaConsulta;
+    @Schema(description = "Consentimento LGPD registrado para o paciente", example = "true")
+    private Boolean consentimentoLgpd;
+    @Schema(description = "Data e hora do registro do consentimento LGPD")
+    private java.time.LocalDateTime dataConsentimentoLgpd;
 
     public ClienteResponse(Long idCliente, String nome, String cpf, String rg, LocalDate dataNascimento, String numeroCelular, String email, Character sexo, String naturalidade, String nacionalidade, Integer fkEstadoCivil, String enderecoResidencial, String cep, Integer fkClienteIndicacao, Integer fkResponsavel, String grauParentescoResponsavel) {
         this.idCliente = idCliente;
@@ -221,5 +225,21 @@ public class ClienteResponse {
 
     public void setProximaConsulta(LocalDate proximaConsulta) {
         this.proximaConsulta = proximaConsulta;
+    }
+
+    public Boolean getConsentimentoLgpd() {
+        return consentimentoLgpd;
+    }
+
+    public void setConsentimentoLgpd(Boolean consentimentoLgpd) {
+        this.consentimentoLgpd = consentimentoLgpd;
+    }
+
+    public java.time.LocalDateTime getDataConsentimentoLgpd() {
+        return dataConsentimentoLgpd;
+    }
+
+    public void setDataConsentimentoLgpd(java.time.LocalDateTime dataConsentimentoLgpd) {
+        this.dataConsentimentoLgpd = dataConsentimentoLgpd;
     }
 }

@@ -16,16 +16,26 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Object;
+import software.amazon.awssdk.services.s3.model.ServerSideEncryption;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -51,8 +61,11 @@ public class ClienteMidiaService {
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
 
-    @Value("${aws.s3.bucket-name:lumina-storage}")
-    private String bucketName;
+    @Value("${aws.s3.bucket-name:${BUCKET_BRONZE:lumina-bronze}}")
+    private String bucketName = "lumina-bronze";
+
+    @Value("${lgpd.pseudonym.secret:${jwt.secret:lumina-lgpd-default-secret-key-2026}}")
+    private String lgpdSecret = "lumina-lgpd-default-secret-key-2026";
 
     public ClienteMidiaService(
             ClienteRepository clienteRepository,
@@ -67,6 +80,46 @@ public class ClienteMidiaService {
         this.clienteMidiaRepository = clienteMidiaRepository;
         this.s3Client = s3Client;
         this.s3Presigner = s3Presigner;
+    }
+
+    /**
+     * Gera um identificador pseudonimizado determinístico (HMAC-SHA256) para o cliente,
+     * em conformidade com a LGPD (Art. 13, § 4º e Art. 46), impedindo a identificação
+     * direta do titular caso os caminhos do bucket S3 sejam expostos.
+     */
+    public String gerarPseudonimoCliente(Long clienteId) {
+        try {
+            String chaveSecreta = (lgpdSecret != null && !lgpdSecret.isBlank())
+                    ? lgpdSecret
+                    : "lumina-lgpd-default-secret-key-2026";
+            Mac mac = Mac.getInstance("HmacSHA256");
+            SecretKeySpec secretKeySpec = new SecretKeySpec(chaveSecreta.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+            mac.init(secretKeySpec);
+            byte[] hmacBytes = mac.doFinal(("lumina:cliente:exames:" + clienteId).getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(24);
+            for (int i = 0; i < 12 && i < hmacBytes.length; i++) {
+                sb.append(String.format("%02x", hmacBytes[i]));
+            }
+            return "pac-" + sb;
+        } catch (Exception e) {
+            return "pac-" + UUID.nameUUIDFromBytes(("cliente-" + clienteId).getBytes(StandardCharsets.UTF_8))
+                    .toString().replace("-", "").substring(0, 24);
+        }
+    }
+
+    public String montarPrefixoExamesCliente(Long clienteId) {
+        return String.format("exames/%s/", gerarPseudonimoCliente(clienteId));
+    }
+
+    public Map<String, String> obterDestinoBucketCliente(Long clienteId) {
+        String pseudonimo = gerarPseudonimoCliente(clienteId);
+        String prefixo = montarPrefixoExamesCliente(clienteId);
+        return Map.of(
+                "bucket", bucketName,
+                "pseudonimoCliente", pseudonimo,
+                "prefixo", prefixo,
+                "s3Uri", String.format("s3://%s/%s", bucketName, prefixo)
+        );
     }
 
     @Transactional
@@ -84,18 +137,18 @@ public class ClienteMidiaService {
         }
 
         ZonedDateTime nowSp = ZonedDateTime.now(ZONE_SP);
-        int ano = nowSp.getYear();
-        int mes = nowSp.getMonthValue();
+        String prefixoPseudonimizado = montarPrefixoExamesCliente(clienteId);
 
         List<UploadPresignedItemResponse> resultado = new ArrayList<>();
 
         for (UploadArquivoItemRequest arquivo : request.getArquivos()) {
             validarArquivo(arquivo);
 
-            String extensao = extrairExtensao(arquivo.getNomeOriginal());
-            String nomeSanitizado = sanitizarNome(arquivo.getNomeOriginal());
+            String extensao = extrairExtensao(arquivo.getNomeOriginal()).toLowerCase();
             String uuid = UUID.randomUUID().toString();
-            String chaveS3 = String.format("clientes/%d/midias/%d/%02d/%s-%s", clienteId, ano, mes, uuid, nomeSanitizado);
+            // LGPD: Chave S3 utiliza pasta pseudonimizada (HMAC-SHA256) e apenas UUID + extensão,
+            // sem expor ID sequencial, CPF ou nome original do arquivo no bucket.
+            String chaveS3 = String.format("%s%s.%s", prefixoPseudonimizado, uuid, extensao);
 
             ClienteMidia midia = new ClienteMidia();
             midia.setCliente(cliente);
@@ -125,7 +178,8 @@ public class ClienteMidiaService {
         }
 
         String email = (usuario != null) ? usuario.getEmail() : "ANONYMOUS";
-        log.info("AUDIT: Usuario [{}] iniciou upload de [{}] arquivos para o paciente [{}]", email, request.getArquivos().size(), clienteId);
+        log.info("AUDIT: Usuario [{}] iniciou upload de [{}] arquivos para o paciente pseudonimizado [{}]",
+                email, request.getArquivos().size(), gerarPseudonimoCliente(clienteId));
 
         return resultado;
     }
@@ -157,10 +211,49 @@ public class ClienteMidiaService {
         log.info("AUDIT: Usuario [{}] confirmou upload da midia [{}] do paciente [{}]", email, midiaId, clienteId);
 
         String urlVisualizacao = gerarPresignedGetUrl(atualizado.getChaveS3());
-        return ClienteMidiaResponse.fromEntity(atualizado, urlVisualizacao);
+        return ClienteMidiaResponse.fromEntity(atualizado, urlVisualizacao, bucketName);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
+    public ClienteMidiaResponse enviarArquivoBucket(Long clienteId, Long midiaId, MultipartFile file, Usuario usuario) {
+        if (file == null || file.isEmpty()) {
+            throw new FormatoArquivoInvalidoException("Arquivo de exame vazio ou ausente.");
+        }
+
+        ClienteMidia midia = clienteMidiaRepository.findByIdClienteMidiaAndCliente_IdClienteAndAtivoTrue(midiaId, clienteId)
+                .orElseThrow(() -> new EntidadeNaoEncontrada(String.format("Mídia [%d] não encontrada para o paciente [%d]", midiaId, clienteId)));
+
+        try {
+            String contentType = (file.getContentType() != null && !file.getContentType().isBlank())
+                    ? file.getContentType()
+                    : midia.getMimeType();
+
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(midia.getChaveS3())
+                    .contentType(contentType)
+                    .serverSideEncryption(ServerSideEncryption.AES256)
+                    .build();
+
+            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(file.getBytes()));
+            midia.setStatus("ACTIVE");
+        } catch (IOException e) {
+            log.error("Falha ao ler bytes do arquivo para upload no S3: {}", e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erro ao processar o arquivo enviado.");
+        } catch (Exception e) {
+            log.error("Erro ao enviar exame para o bucket [{}] na chave [{}]: {}", bucketName, midia.getChaveS3(), e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Não foi possível gravar o exame no bucket S3.");
+        }
+
+        ClienteMidia atualizado = clienteMidiaRepository.save(midia);
+        String email = (usuario != null) ? usuario.getEmail() : "ANONYMOUS";
+        log.info("AUDIT: Usuario [{}] enviou exame diretamente ao bucket [{}] em [{}]", email, bucketName, atualizado.getChaveS3());
+
+        String urlVisualizacao = gerarPresignedGetUrl(atualizado.getChaveS3());
+        return ClienteMidiaResponse.fromEntity(atualizado, urlVisualizacao, bucketName);
+    }
+
+    @Transactional
     public List<ClienteMidiaResponse> listarMidias(
             Long clienteId,
             Long tipoId,
@@ -168,10 +261,24 @@ public class ClienteMidiaService {
             Long dentistaId,
             String dataStr,
             Usuario usuario) {
+        return listarMidias(clienteId, tipoId, consultaId, dentistaId, dataStr, null, usuario);
+    }
+
+    @Transactional
+    public List<ClienteMidiaResponse> listarMidias(
+            Long clienteId,
+            Long tipoId,
+            Long consultaId,
+            Long dentistaId,
+            String dataStr,
+            String busca,
+            Usuario usuario) {
 
         if (!clienteRepository.existsById(clienteId)) {
             throw new EntidadeNaoEncontrada("Paciente não encontrado com ID: " + clienteId);
         }
+
+        sincronizarExamesDoBucket(clienteId, usuario);
 
         LocalDateTime dataInicio = null;
         LocalDateTime dataFim = null;
@@ -194,14 +301,155 @@ public class ClienteMidiaService {
                 dataFim
         );
 
-        String email = (usuario != null) ? usuario.getEmail() : "ANONYMOUS";
-        log.info("AUDIT: Usuario [{}] solicitou visualizacao da lista de midias do paciente [{}] (total: {})", email, clienteId, midias.size());
+        String termoBusca = (busca != null && !busca.isBlank()) ? busca.trim().toLowerCase() : null;
 
-        return midias.stream().map(m -> {
-            String urlVisualizacao = gerarPresignedGetUrl(m.getChaveS3());
-            log.info("AUDIT: Usuario [{}] solicitou visualizacao da midia [{}] do paciente [{}]", email, m.getIdClienteMidia(), clienteId);
-            return ClienteMidiaResponse.fromEntity(m, urlVisualizacao);
-        }).toList();
+        String email = (usuario != null) ? usuario.getEmail() : "ANONYMOUS";
+        String pseudonimo = gerarPseudonimoCliente(clienteId);
+        log.info("AUDIT: Usuario [{}] solicitou visualizacao da lista de midias do paciente [{}] no bucket [{}] (total: {})",
+                email, pseudonimo, bucketName, midias.size());
+
+        return midias.stream()
+                .filter(m -> {
+                    if (termoBusca == null) return true;
+                    boolean matchNome = m.getNomeOriginal() != null && m.getNomeOriginal().toLowerCase().contains(termoBusca);
+                    boolean matchLegenda = m.getLegenda() != null && m.getLegenda().toLowerCase().contains(termoBusca);
+                    boolean matchChave = m.getChaveS3() != null && m.getChaveS3().toLowerCase().contains(termoBusca);
+                    boolean matchTipo = m.getTipoMidia() != null && m.getTipoMidia().getNome() != null
+                            && m.getTipoMidia().getNome().toLowerCase().contains(termoBusca);
+                    return matchNome || matchLegenda || matchChave || matchTipo;
+                })
+                .map(m -> {
+                    String urlVisualizacao = gerarPresignedGetUrl(m.getChaveS3());
+                    log.info("AUDIT: Usuario [{}] solicitou visualizacao da midia [{}] do paciente [{}]", email, m.getIdClienteMidia(), pseudonimo);
+                    return ClienteMidiaResponse.fromEntity(m, urlVisualizacao, bucketName);
+                }).toList();
+    }
+
+    @Transactional
+    public List<ClienteMidiaResponse> buscarExamesNoBucket(Long clienteId, Usuario usuario) {
+        if (!clienteRepository.existsById(clienteId)) {
+            throw new EntidadeNaoEncontrada("Paciente não encontrado com ID: " + clienteId);
+        }
+        sincronizarExamesDoBucket(clienteId, usuario);
+        return listarMidias(clienteId, null, null, null, null, null, usuario);
+    }
+
+    protected void sincronizarExamesDoBucket(Long clienteId, Usuario usuario) {
+        try {
+            String prefixoCliente = montarPrefixoExamesCliente(clienteId);
+            ListObjectsV2Request listRequest = ListObjectsV2Request.builder()
+                    .bucket(bucketName)
+                    .prefix(prefixoCliente)
+                    .build();
+
+            ListObjectsV2Response listResponse = s3Client.listObjectsV2(listRequest);
+            if (listResponse == null || listResponse.contents() == null || listResponse.contents().isEmpty()) {
+                return;
+            }
+
+            Cliente clienteRef = null;
+            List<TipoMidia> tiposGlobais = null;
+
+            for (S3Object s3Object : listResponse.contents()) {
+                String key = s3Object.key();
+                if (key == null || key.endsWith("/") || (s3Object.size() != null && s3Object.size() == 0L)) {
+                    continue;
+                }
+
+                Optional<ClienteMidia> existenteOpt = clienteMidiaRepository.findByChaveS3(key);
+                if (existenteOpt.isPresent()) {
+                    ClienteMidia existente = existenteOpt.get();
+                    if (Boolean.TRUE.equals(existente.getAtivo()) && "PENDING".equalsIgnoreCase(existente.getStatus())) {
+                        existente.setStatus("ACTIVE");
+                        clienteMidiaRepository.save(existente);
+                    }
+                    continue;
+                }
+
+                if (usuario == null) {
+                    continue;
+                }
+
+                if (clienteRef == null) {
+                    clienteRef = clienteRepository.findById(clienteId).orElseGet(() -> {
+                        Cliente c = new Cliente();
+                        c.setIdCliente(clienteId);
+                        return c;
+                    });
+                }
+                if (tiposGlobais == null) {
+                    tiposGlobais = tipoMidiaRepository.findGlobais();
+                }
+
+                String nomeExtraido = extrairNomeOriginalDaChave(key);
+                String extensao = extrairExtensao(nomeExtraido).toLowerCase();
+                if (extensao.isBlank()) {
+                    extensao = "pdf";
+                }
+                String mimeType = inferirMimeType(extensao);
+                TipoMidia tipoPadrao = escolherTipoPadrao(extensao, tiposGlobais);
+                if (tipoPadrao == null) {
+                    continue;
+                }
+
+                ClienteMidia novo = new ClienteMidia();
+                novo.setCliente(clienteRef);
+                novo.setUsuario(usuario);
+                novo.setTipoMidia(tipoPadrao);
+                novo.setChaveS3(key);
+                novo.setNomeOriginal(nomeExtraido);
+                novo.setExtensao(extensao);
+                novo.setMimeType(mimeType);
+                novo.setTamanhoBytes(s3Object.size() != null ? s3Object.size() : 1L);
+                novo.setStatus("ACTIVE");
+                novo.setAtivo(true);
+                if (s3Object.lastModified() != null) {
+                    novo.setCriadoEm(LocalDateTime.ofInstant(s3Object.lastModified(), ZONE_SP));
+                } else {
+                    novo.setCriadoEm(LocalDateTime.now(ZONE_SP));
+                }
+
+                clienteMidiaRepository.save(novo);
+                log.info("Exame sincronizado automaticamente do bucket [{}] chave [{}] para o paciente [{}]",
+                        bucketName, key, gerarPseudonimoCliente(clienteId));
+            }
+        } catch (Exception e) {
+            log.debug("Sincronização S3 ignorada para paciente [{}]: {}", gerarPseudonimoCliente(clienteId), e.getMessage());
+        }
+    }
+
+    private String extrairNomeOriginalDaChave(String key) {
+        int ultimaBarra = key.lastIndexOf('/');
+        String arquivo = (ultimaBarra >= 0 && ultimaBarra < key.length() - 1)
+                ? key.substring(ultimaBarra + 1)
+                : key;
+        if (arquivo.length() > 37 && arquivo.charAt(8) == '-' && arquivo.charAt(13) == '-' && arquivo.charAt(36) == '-') {
+            return arquivo.substring(37);
+        }
+        return arquivo;
+    }
+
+    private String inferirMimeType(String extensao) {
+        return switch (extensao.toLowerCase()) {
+            case "pdf" -> "application/pdf";
+            case "png" -> "image/png";
+            case "webp" -> "image/webp";
+            case "dcm" -> "application/dicom";
+            default -> "image/jpeg";
+        };
+    }
+
+    private TipoMidia escolherTipoPadrao(String extensao, List<TipoMidia> tipos) {
+        if (tipos == null || tipos.isEmpty()) {
+            return null;
+        }
+        if (EXTENSOES_DOCUMENTO.contains(extensao)) {
+            return tipos.stream()
+                    .filter(t -> t.getNome() != null && (t.getNome().toLowerCase().contains("laudo") || t.getNome().toLowerCase().contains("documento")))
+                    .findFirst()
+                    .orElse(tipos.get(0));
+        }
+        return tipos.get(0);
     }
 
     @Transactional
@@ -215,7 +463,8 @@ public class ClienteMidiaService {
         clienteMidiaRepository.save(midia);
 
         String email = (usuario != null) ? usuario.getEmail() : "ANONYMOUS";
-        log.info("AUDIT: Usuario [{}] executou soft delete na midia [{}] do paciente [{}]", email, midiaId, clienteId);
+        log.info("AUDIT: Usuario [{}] executou soft delete na midia [{}] do paciente [{}]",
+                email, midiaId, gerarPseudonimoCliente(clienteId));
     }
 
     private void validarArquivo(UploadArquivoItemRequest arquivo) {

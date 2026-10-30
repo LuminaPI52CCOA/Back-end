@@ -13,18 +13,20 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/clientes/{clienteId}/midias")
-@PreAuthorize("hasAnyRole('ADMIN', 'DENTISTA')")
-@Tag(name = "Mídias Clínicas", description = "Endpoints para upload, visualização e soft delete de fotos e laudos de pacientes")
+@PreAuthorize("hasAnyRole('ADMIN', 'DENTISTA', 'RECEPCIONISTA')")
+@Tag(name = "Mídias Clínicas", description = "Endpoints para upload, visualização e soft delete de fotos, exames e laudos de pacientes no Data Lake Bronze")
 public class ClienteMidiaController {
 
     private final ClienteMidiaService clienteMidiaService;
@@ -51,6 +53,18 @@ public class ClienteMidiaController {
         return ResponseEntity.status(HttpStatus.CREATED).body(urls);
     }
 
+    @PutMapping(value = "/{midiaId}/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Envia o arquivo de exame diretamente para o bucket bronze", description = "Realiza o upload do arquivo binário para a pasta exames/cliente-{id} no bucket bronze e ativa o registro.")
+    public ResponseEntity<ClienteMidiaResponse> enviarArquivoBucket(
+            @Parameter(description = "ID do paciente", example = "1") @PathVariable Long clienteId,
+            @Parameter(description = "ID da mídia", example = "101") @PathVariable Long midiaId,
+            @RequestParam("file") MultipartFile file) {
+
+        Usuario usuario = getUsuarioAutenticado();
+        ClienteMidiaResponse response = clienteMidiaService.enviarArquivoBucket(clienteId, midiaId, file, usuario);
+        return ResponseEntity.ok(response);
+    }
+
     @PatchMapping("/{midiaId}/confirmar")
     @Operation(summary = "Confirma a conclusão do upload no S3", description = "Verifica a integridade do objeto no S3 via headObject e altera o status para ACTIVE.")
     @ApiResponses(value = {
@@ -67,8 +81,17 @@ public class ClienteMidiaController {
         return ResponseEntity.ok(response);
     }
 
+    public ResponseEntity<List<ClienteMidiaResponse>> listarMidias(
+            Long clienteId,
+            Long tipoId,
+            Long consultaId,
+            Long dentistaId,
+            String data) {
+        return listarMidias(clienteId, tipoId, consultaId, dentistaId, data, null);
+    }
+
     @GetMapping
-    @Operation(summary = "Lista mídias clínicas ativas do paciente", description = "Retorna a galeria de mídias ativas com URLs pré-assinadas de visualização temporária (TTL 30 min).")
+    @Operation(summary = "Lista exames e mídias clínicas ativas do paciente no bucket bronze", description = "Retorna a galeria de exames e mídias ativas do cliente (exames/cliente-{id}/) com URLs pré-assinadas de visualização temporária (TTL 30 min).")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Mídias retornadas com sucesso"),
             @ApiResponse(responseCode = "204", description = "Nenhuma mídia localizada para os filtros informados"),
@@ -79,14 +102,40 @@ public class ClienteMidiaController {
             @Parameter(description = "Filtro por ID do tipo de mídia") @RequestParam(required = false) Long tipoId,
             @Parameter(description = "Filtro por ID da consulta associada") @RequestParam(required = false) Long consultaId,
             @Parameter(description = "Filtro por ID do dentista responsável") @RequestParam(required = false) Long dentistaId,
-            @Parameter(description = "Filtro por data no formato YYYY-MM-DD") @RequestParam(required = false) String data) {
+            @Parameter(description = "Filtro por data no formato YYYY-MM-DD") @RequestParam(required = false) String data,
+            @Parameter(description = "Busca textual por nome do exame ou legenda") @RequestParam(required = false) String busca) {
 
         Usuario usuario = getUsuarioAutenticado();
-        List<ClienteMidiaResponse> midias = clienteMidiaService.listarMidias(clienteId, tipoId, consultaId, dentistaId, data, usuario);
+        List<ClienteMidiaResponse> midias;
+        if (busca == null || busca.isBlank()) {
+            midias = clienteMidiaService.listarMidias(clienteId, tipoId, consultaId, dentistaId, data, usuario);
+        } else {
+            midias = clienteMidiaService.listarMidias(clienteId, tipoId, consultaId, dentistaId, data, busca, usuario);
+        }
         if (midias.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.ok(midias);
+    }
+
+    @GetMapping("/bucket")
+    @Operation(summary = "Busca e sincroniza os exames do cliente diretamente da pasta pseudonimizada no bucket bronze", description = "Consulta o prefixo s3://lumina-bronze/exames/pac-{hash}/ e retorna os exames disponíveis.")
+    public ResponseEntity<List<ClienteMidiaResponse>> buscarExamesNoBucket(
+            @Parameter(description = "ID do paciente", example = "1") @PathVariable Long clienteId) {
+
+        Usuario usuario = getUsuarioAutenticado();
+        List<ClienteMidiaResponse> midias = clienteMidiaService.buscarExamesNoBucket(clienteId, usuario);
+        if (midias.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(midias);
+    }
+
+    @GetMapping("/destino-bucket")
+    @Operation(summary = "Retorna o caminho pseudonimizado (LGPD) da pasta de exames do cliente no bucket bronze")
+    public ResponseEntity< java.util.Map<String, String>> obterDestinoBucket(
+            @Parameter(description = "ID do paciente", example = "1") @PathVariable Long clienteId) {
+        return ResponseEntity.ok(clienteMidiaService.obterDestinoBucketCliente(clienteId));
     }
 
     @DeleteMapping("/{midiaId}")
