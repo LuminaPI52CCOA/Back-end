@@ -26,7 +26,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/notificacoes")
+@RequestMapping({"/notificacoes"})
 @PreAuthorize("hasAnyRole('ADMIN', 'RECEPCIONISTA', 'RECEPCAO')")
 @Tag(name = "Notificações WhatsApp", description = "Endpoints da recepção e administração para lembretes de consultas D-1 via WhatsApp")
 public class NotificacaoWhatsappController {

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/public/consultas")
+@RequestMapping({"/public/consultas"})
 @SecurityRequirements
 @Tag(name = "Confirmação Pública de Consultas", description = "Endpoint público para confirmação 1-clique pelo paciente via token seguro")
 public class PublicConsultaController {
