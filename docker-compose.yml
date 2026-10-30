@@ -20,7 +20,26 @@ services:
       retries: 5
 
   # ============================================================================
-  # 2. Aplicação Backend (Spring Boot + Java 21)
+  # 2. Mensageria RabbitMQ (AMQP + Management Dashboard)
+  # ============================================================================
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: lumina-rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"   # Protocolo AMQP
+      - "15672:15672" # Dashboard Management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # 3. Aplicação Backend (Spring Boot + Java 21)
   # ============================================================================
   backend:
     build:
@@ -32,6 +51,11 @@ services:
       SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://mysql:3306/Lumina?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true}
       DB_USERNAME: ${DB_USERNAME:-root}
       DB_PASSWORD: ${DB_PASSWORD:-mafalu09}
+      SPRING_RABBITMQ_HOST: ${SPRING_RABBITMQ_HOST:-rabbitmq}
+      SPRING_RABBITMQ_PORT: ${SPRING_RABBITMQ_PORT:-5672}
+      SPRING_RABBITMQ_USERNAME: ${SPRING_RABBITMQ_USERNAME:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${SPRING_RABBITMQ_PASSWORD:-guest}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost:5173}
       LOGGING_FILE_NAME: /var/log/backend/app.log
       LOGGING_PATTERN_FILE: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level %pid --- [%t] %-40.40logger{39} : %m%n"
     ports:
@@ -40,6 +64,8 @@ services:
       - backend_logs:/var/log/backend
     depends_on:
       mysql:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   # ============================================================================

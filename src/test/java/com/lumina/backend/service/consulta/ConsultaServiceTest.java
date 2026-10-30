@@ -687,4 +687,42 @@ class ConsultaServiceTest {
                     () -> consultaService.listarHorariosDisponiveis(4L, AMANHA, 30, null));
         }
     }
+
+    @Nested
+    @DisplayName("8. Testes de dashboard de agendamento")
+    class DashboardAgendamentoServiceTest {
+
+        @Test
+        @DisplayName("8.1 Calcula realizadas, novos pacientes, taxa de ocupação e séries temporais")
+        void deveCalcularIndicadoresDashboard() {
+            LocalDate hoje = HOJE; // 2026-11-02
+            Consulta concluidaHoje = new Consulta(1L, cliente(1L), dentista(2L), hoje,
+                    LocalTime.of(9, 0), LocalTime.of(9, 45), "CONCLUIDA", true, null);
+            Consulta confirmadaOntem = new Consulta(2L, cliente(2L), dentista(2L), hoje.minusDays(1),
+                    LocalTime.of(10, 0), LocalTime.of(10, 45), "CONFIRMADA", true, null);
+            Consulta canceladaOntem = new Consulta(3L, cliente(3L), dentista(2L), hoje.minusDays(1),
+                    LocalTime.of(11, 0), LocalTime.of(11, 45), "CANCELADA", false, null);
+            Consulta concluidaMesAnterior = new Consulta(4L, cliente(1L), dentista(2L), hoje.minusDays(35),
+                    LocalTime.of(9, 0), LocalTime.of(9, 45), "CONCLUIDA", true, null);
+
+            Mockito.when(consultaRepository.buscarPorPeriodo(null, null, hoje))
+                    .thenReturn(List.of(concluidaMesAnterior, confirmadaOntem, canceladaOntem, concluidaHoje));
+
+            var resp = consultaService.obterDashboardAgendamento("30d", null);
+
+            Assertions.assertEquals("30d", resp.periodo());
+            Assertions.assertEquals(1L, resp.consultasRealizadas());
+            Assertions.assertEquals(1L, resp.consultasRealizadasPeriodoAnterior());
+            Assertions.assertEquals(1L, resp.novosPacientes()); // cliente 2 teve primeira consulta no periodo; cliente 1 ja tinha ha 35 dias
+            Assertions.assertEquals(6, resp.graficoVolume().size());
+            Assertions.assertEquals(6, resp.graficoConfirmacao().size());
+        }
+
+        @Test
+        @DisplayName("8.2 Rejeita período inválido no dashboard")
+        void deveRejeitarPeriodoInvalido() {
+            assertThrows(AgendamentoInvalidoException.class,
+                    () -> consultaService.obterDashboardAgendamento("invalido", null));
+        }
+    }
 }

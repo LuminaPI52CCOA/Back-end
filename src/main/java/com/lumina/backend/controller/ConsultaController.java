@@ -4,6 +4,7 @@ import com.lumina.backend.dto.consulta.AlterarStatusConsultaRequest;
 import com.lumina.backend.dto.consulta.ConsultaMapper;
 import com.lumina.backend.dto.consulta.ConsultaRequest;
 import com.lumina.backend.dto.consulta.ConsultaResponse;
+import com.lumina.backend.dto.consulta.DashboardAgendamentoResponse;
 import com.lumina.backend.dto.consulta.HorarioDisponivelResponse;
 import com.lumina.backend.dto.consulta.ReagendamentoRequest;
 import com.lumina.backend.exception.dto.ErroRespostaDto;
@@ -76,6 +77,29 @@ public class ConsultaController {
         }
 
         return ResponseEntity.status(200).body(ConsultaMapper.toResponse(consultaService.listar(dataInicio, dataFim)));
+    }
+
+    @GetMapping("/dashboard")
+    @Operation(summary = "Obtem indicadores do dashboard de agendamento",
+            description = "Retorna metricas consolidadas (consultas realizadas, novos pacientes, taxa de ocupacao) "
+                    + "e series temporais (volume de atendimentos e taxa de confirmacao) para o periodo informado (7d, 30d, 90d, ano).")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Indicadores retornados com sucesso",
+                    content = @Content(schema = @Schema(implementation = DashboardAgendamentoResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Periodo invalido",
+                    content = @Content(schema = @Schema(implementation = ErroRespostaDto.class))),
+            @ApiResponse(responseCode = "401", description = "Nao autenticado", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Perfil sem permissao", content = @Content)
+    })
+    public ResponseEntity<DashboardAgendamentoResponse> obterDashboard(
+            @Parameter(description = "Periodo de analise (7d, 30d, 90d, ano)", example = "30d")
+            @RequestParam(required = false, defaultValue = "30d") String periodo,
+            @Parameter(description = "ID opcional do dentista para filtrar indicadores", example = "1")
+            @RequestParam(required = false) Long idUsuario) {
+        if (isApenasDentista() && idUsuario != null && !idUsuario.equals(obterUsuarioIdAutenticado())) {
+            return ResponseEntity.status(403).build();
+        }
+        return ResponseEntity.ok(consultaService.obterDashboardAgendamento(periodo, idUsuario));
     }
 
     @GetMapping("/dentista/{id}")

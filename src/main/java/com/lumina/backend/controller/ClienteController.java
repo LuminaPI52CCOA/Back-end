@@ -239,7 +239,7 @@ public class ClienteController {
 
     @PostMapping("/{id:\\d+}/anamneses")
     public ResponseEntity<AnamneseResponse> cadastroAnamnese(@PathVariable Long id,
-                                                             @RequestBody AnamneseRequest request){
+                                                             @org.springframework.web.bind.annotation.RequestBody AnamneseRequest request){
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
         Anamnese anamnese = service.cadastrarAnamnese(id, request);

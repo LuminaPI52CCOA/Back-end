@@ -2,16 +2,21 @@ package com.lumina.backend.service.consulta;
 
 import com.lumina.backend.dto.consulta.ConsultaMapper;
 import com.lumina.backend.dto.consulta.ConsultaRequest;
+import com.lumina.backend.dto.consulta.DashboardAgendamentoResponse;
+import com.lumina.backend.dto.consulta.DashboardAgendamentoResponse.ItemDistribuicao;
+import com.lumina.backend.dto.consulta.DashboardAgendamentoResponse.PontoGrafico;
 import com.lumina.backend.dto.consulta.ReagendamentoRequest;
 import com.lumina.backend.exception.AgendamentoInvalidoException;
 import com.lumina.backend.exception.ConflitoHorarioException;
 import com.lumina.backend.exception.EntidadeNaoEncontrada;
 import com.lumina.backend.model.Cliente;
+import com.lumina.backend.model.ClienteConvenio;
 import com.lumina.backend.model.Consulta;
 import com.lumina.backend.model.Dente;
 import com.lumina.backend.model.Especialidade;
 import com.lumina.backend.model.NotificacaoWhatsapp;
 import com.lumina.backend.model.Usuario;
+import com.lumina.backend.repository.ClienteConvenioRepository;
 import com.lumina.backend.repository.ClienteRepository;
 import com.lumina.backend.repository.ConsultaRepository;
 import com.lumina.backend.repository.DenteRepository;
@@ -19,15 +24,26 @@ import com.lumina.backend.repository.EspecialidadeRepository;
 import com.lumina.backend.repository.IntervaloHorario;
 import com.lumina.backend.repository.NotificacaoWhatsappRepository;
 import com.lumina.backend.repository.UsuarioRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
@@ -44,6 +60,7 @@ public class ConsultaService {
     private final EspecialidadeRepository especialidadeRepository;
     private final DenteRepository denteRepository;
     private final NotificacaoWhatsappRepository notificacaoWhatsappRepository;
+    private final ClienteConvenioRepository clienteConvenioRepository;
     private final RegrasAgendamento regrasAgendamento;
 
     public ConsultaService(ConsultaRepository consultaRepository,
@@ -53,12 +70,27 @@ public class ConsultaService {
                            DenteRepository denteRepository,
                            NotificacaoWhatsappRepository notificacaoWhatsappRepository,
                            RegrasAgendamento regrasAgendamento) {
+        this(consultaRepository, usuarioRepository, clienteRepository,
+                especialidadeRepository, denteRepository, notificacaoWhatsappRepository,
+                null, regrasAgendamento);
+    }
+
+    @Autowired
+    public ConsultaService(ConsultaRepository consultaRepository,
+                           UsuarioRepository usuarioRepository,
+                           ClienteRepository clienteRepository,
+                           EspecialidadeRepository especialidadeRepository,
+                           DenteRepository denteRepository,
+                           NotificacaoWhatsappRepository notificacaoWhatsappRepository,
+                           ClienteConvenioRepository clienteConvenioRepository,
+                           RegrasAgendamento regrasAgendamento) {
         this.consultaRepository = consultaRepository;
         this.usuarioRepository = usuarioRepository;
         this.clienteRepository = clienteRepository;
         this.especialidadeRepository = especialidadeRepository;
         this.denteRepository = denteRepository;
         this.notificacaoWhatsappRepository = notificacaoWhatsappRepository;
+        this.clienteConvenioRepository = clienteConvenioRepository;
         this.regrasAgendamento = regrasAgendamento;
     }
 
@@ -84,6 +116,278 @@ public class ConsultaService {
         }
         validarPeriodo(dataInicio, dataFim);
         return consultaRepository.buscarPorPeriodo(idUsuario, dataInicio, dataFim);
+    }
+
+    @Transactional(readOnly = true)
+    public DashboardAgendamentoResponse obterDashboardAgendamento(String periodo, Long idUsuario) {
+        String periodoNormalizado = normalizarPeriodoDashboard(periodo);
+        LocalDate hoje = regrasAgendamento.agora().toLocalDate();
+
+        LocalDate dataInicio;
+        LocalDate dataFim = hoje;
+        LocalDate dataInicioAnterior;
+        LocalDate dataFimAnterior;
+
+        switch (periodoNormalizado) {
+            case "7d" -> {
+                dataInicio = hoje.minusDays(6);
+                dataInicioAnterior = dataInicio.minusDays(7);
+                dataFimAnterior = dataInicio.minusDays(1);
+            }
+            case "90d" -> {
+                dataInicio = hoje.minusDays(89);
+                dataInicioAnterior = dataInicio.minusDays(90);
+                dataFimAnterior = dataInicio.minusDays(1);
+            }
+            case "ano" -> {
+                dataInicio = LocalDate.of(hoje.getYear(), 1, 1);
+                long diasNoPeriodo = ChronoUnit.DAYS.between(dataInicio, dataFim) + 1;
+                dataFimAnterior = dataInicio.minusDays(1);
+                dataInicioAnterior = dataFimAnterior.minusDays(diasNoPeriodo - 1);
+            }
+            default -> {
+                dataInicio = hoje.minusDays(29);
+                dataInicioAnterior = dataInicio.minusDays(30);
+                dataFimAnterior = dataInicio.minusDays(1);
+            }
+        }
+
+        List<Consulta> todasConsultas = consultaRepository.buscarPorPeriodo(idUsuario, null, hoje);
+
+        Map<Long, LocalDate> primeiraConsultaCliente = new HashMap<>();
+        long consultasRealizadas = 0L;
+        long consultasRealizadasAnterior = 0L;
+        long minutosOcupados = 0L;
+        Set<String> diasDentistaAtivos = new HashSet<>();
+        List<Consulta> consultasNoPeriodo = new ArrayList<>();
+        Set<Long> idsClientesNoPeriodo = new HashSet<>();
+        long qtdConcluidas = 0L;
+        long qtdConfirmadas = 0L;
+        long qtdAgendadas = 0L;
+        long qtdCanceladas = 0L;
+
+        for (Consulta c : todasConsultas) {
+            if (c.getData() == null) {
+                continue;
+            }
+            StatusConsulta status = StatusConsulta.de(c.getStatus());
+            if (status != StatusConsulta.CANCELADA && c.getCliente() != null && c.getCliente().getIdCliente() != null) {
+                primeiraConsultaCliente.merge(
+                        c.getCliente().getIdCliente(),
+                        c.getData(),
+                        (atual, nova) -> nova.isBefore(atual) ? nova : atual
+                );
+            }
+
+            boolean noPeriodoAtual = !c.getData().isBefore(dataInicio) && !c.getData().isAfter(dataFim);
+            boolean noPeriodoAnterior = !c.getData().isBefore(dataInicioAnterior) && !c.getData().isAfter(dataFimAnterior);
+
+            if (noPeriodoAtual) {
+                consultasNoPeriodo.add(c);
+                switch (status) {
+                    case CONCLUIDA -> {
+                        consultasRealizadas++;
+                        qtdConcluidas++;
+                    }
+                    case CONFIRMADA -> qtdConfirmadas++;
+                    case AGENDADA -> qtdAgendadas++;
+                    case CANCELADA -> qtdCanceladas++;
+                }
+                if (status != StatusConsulta.CANCELADA) {
+                    long duracaoMinutos = (c.getHorarioInicio() != null && c.getHorarioFim() != null
+                            && c.getHorarioFim().isAfter(c.getHorarioInicio()))
+                            ? Duration.between(c.getHorarioInicio(), c.getHorarioFim()).toMinutes()
+                            : 45L;
+                    minutosOcupados += duracaoMinutos;
+                    Long dentistaId = c.getUsuario() != null ? c.getUsuario().getIdUsuario() : 0L;
+                    diasDentistaAtivos.add(dentistaId + "|" + c.getData());
+                    if (c.getCliente() != null && c.getCliente().getIdCliente() != null) {
+                        idsClientesNoPeriodo.add(c.getCliente().getIdCliente());
+                    }
+                }
+            } else if (noPeriodoAnterior && status == StatusConsulta.CONCLUIDA) {
+                consultasRealizadasAnterior++;
+            }
+        }
+
+        long novosPacientes = primeiraConsultaCliente.values().stream()
+                .filter(d -> !d.isBefore(dataInicio) && !d.isAfter(dataFim))
+                .count();
+        long novosPacientesAnterior = primeiraConsultaCliente.values().stream()
+                .filter(d -> !d.isBefore(dataInicioAnterior) && !d.isAfter(dataFimAnterior))
+                .count();
+
+        double variacaoConsultas = consultasRealizadasAnterior > 0
+                ? arredondarUmaCasa(((consultasRealizadas - consultasRealizadasAnterior) * 100.0) / consultasRealizadasAnterior)
+                : (consultasRealizadas > 0 ? 100.0 : 0.0);
+
+        double taxaOcupacao = diasDentistaAtivos.isEmpty()
+                ? 0.0
+                : Math.min(100.0, arredondarUmaCasa((minutosOcupados * 100.0) / (diasDentistaAtivos.size() * 360.0)));
+
+        List<FaixaGrafico> faixas = construirFaixasGrafico(periodoNormalizado, dataInicio, hoje);
+        List<PontoGrafico> graficoVolume = new ArrayList<>(faixas.size());
+        List<PontoGrafico> graficoConfirmacao = new ArrayList<>(faixas.size());
+
+        for (FaixaGrafico faixa : faixas) {
+            long totalFaixa = 0L;
+            long atendimentosFaixa = 0L;
+            long confirmadasOuConcluidasFaixa = 0L;
+
+            for (Consulta c : todasConsultas) {
+                if (c.getData() == null || c.getData().isBefore(faixa.inicio()) || c.getData().isAfter(faixa.fim())) {
+                    continue;
+                }
+                totalFaixa++;
+                StatusConsulta st = StatusConsulta.de(c.getStatus());
+                if (st != StatusConsulta.CANCELADA) {
+                    atendimentosFaixa++;
+                }
+                if (st == StatusConsulta.CONFIRMADA || st == StatusConsulta.CONCLUIDA) {
+                    confirmadasOuConcluidasFaixa++;
+                }
+            }
+
+            double taxaConfirmacaoFaixa = totalFaixa == 0
+                    ? 0.0
+                    : arredondarUmaCasa((confirmadasOuConcluidasFaixa * 100.0) / totalFaixa);
+
+            graficoVolume.add(new PontoGrafico(faixa.rotulo(), atendimentosFaixa));
+            graficoConfirmacao.add(new PontoGrafico(faixa.rotulo(), taxaConfirmacaoFaixa));
+        }
+
+        // Distribuição por status da consulta no período
+        long totalConsultasStatus = qtdConcluidas + qtdConfirmadas + qtdAgendadas + qtdCanceladas;
+        List<ItemDistribuicao> graficoStatus = List.of(
+                new ItemDistribuicao("Concluída", qtdConcluidas,
+                        totalConsultasStatus > 0 ? arredondarUmaCasa((qtdConcluidas * 100.0) / totalConsultasStatus) : 0.0),
+                new ItemDistribuicao("Confirmada", qtdConfirmadas,
+                        totalConsultasStatus > 0 ? arredondarUmaCasa((qtdConfirmadas * 100.0) / totalConsultasStatus) : 0.0),
+                new ItemDistribuicao("Agendada", qtdAgendadas,
+                        totalConsultasStatus > 0 ? arredondarUmaCasa((qtdAgendadas * 100.0) / totalConsultasStatus) : 0.0),
+                new ItemDistribuicao("Cancelada", qtdCanceladas,
+                        totalConsultasStatus > 0 ? arredondarUmaCasa((qtdCanceladas * 100.0) / totalConsultasStatus) : 0.0)
+        );
+
+        // Distribuição de atendimentos (não cancelados) por convênio
+        Map<Long, String> convenioPorCliente = new HashMap<>();
+        if (clienteConvenioRepository != null && !idsClientesNoPeriodo.isEmpty()) {
+            List<ClienteConvenio> vinculos = clienteConvenioRepository
+                    .findByClienteIdsWithConvenio(new ArrayList<>(idsClientesNoPeriodo));
+            for (ClienteConvenio cc : vinculos) {
+                if (cc.getCliente() != null && cc.getCliente().getIdCliente() != null
+                        && cc.getConvenio() != null && cc.getConvenio().getNome() != null) {
+                    convenioPorCliente.putIfAbsent(cc.getCliente().getIdCliente(), cc.getConvenio().getNome());
+                }
+            }
+        }
+
+        Map<String, Long> contagemPorConvenio = new LinkedHashMap<>();
+        long totalAtendimentosConvenio = 0L;
+        for (Consulta c : consultasNoPeriodo) {
+            if (StatusConsulta.de(c.getStatus()) == StatusConsulta.CANCELADA) {
+                continue;
+            }
+            Long idCli = c.getCliente() != null ? c.getCliente().getIdCliente() : null;
+            String nomeConvenio = (idCli != null && convenioPorCliente.containsKey(idCli))
+                    ? convenioPorCliente.get(idCli)
+                    : "Particular";
+            contagemPorConvenio.merge(nomeConvenio, 1L, Long::sum);
+            totalAtendimentosConvenio++;
+        }
+
+        final long totalAtendConvFinal = totalAtendimentosConvenio;
+        List<ItemDistribuicao> graficoConvenio = contagemPorConvenio.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue(Comparator.reverseOrder()))
+                .map(entry -> new ItemDistribuicao(
+                        entry.getKey(),
+                        entry.getValue(),
+                        totalAtendConvFinal > 0 ? arredondarUmaCasa((entry.getValue() * 100.0) / totalAtendConvFinal) : 0.0
+                ))
+                .toList();
+
+        return new DashboardAgendamentoResponse(
+                periodoNormalizado,
+                dataInicio,
+                dataFim,
+                consultasRealizadas,
+                consultasRealizadasAnterior,
+                variacaoConsultas,
+                novosPacientes,
+                novosPacientesAnterior,
+                taxaOcupacao,
+                graficoVolume,
+                graficoConfirmacao,
+                graficoConvenio,
+                graficoStatus
+        );
+    }
+
+    private record FaixaGrafico(String rotulo, LocalDate inicio, LocalDate fim) {
+    }
+
+    private static final String[] MESES_ABREV = {
+            "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+            "Jul", "Ago", "Set", "Out", "Nov", "Dez"
+    };
+
+    private static List<FaixaGrafico> construirFaixasGrafico(String periodo, LocalDate dataInicio, LocalDate hoje) {
+        DateTimeFormatter fmtDiaMes = DateTimeFormatter.ofPattern("dd/MM");
+        List<FaixaGrafico> faixas = new ArrayList<>();
+
+        switch (periodo) {
+            case "7d" -> {
+                for (int i = 6; i >= 0; i--) {
+                    LocalDate dia = hoje.minusDays(i);
+                    faixas.add(new FaixaGrafico(dia.format(fmtDiaMes), dia, dia));
+                }
+            }
+            case "30d" -> {
+                for (int i = 0; i < 6; i++) {
+                    LocalDate inicio = dataInicio.plusDays(i * 5L);
+                    LocalDate fim = (i == 5) ? hoje : inicio.plusDays(4);
+                    faixas.add(new FaixaGrafico(fim.format(fmtDiaMes), inicio, fim));
+                }
+            }
+            case "90d" -> {
+                for (int i = 0; i < 6; i++) {
+                    LocalDate inicio = dataInicio.plusDays(i * 15L);
+                    LocalDate fim = (i == 5) ? hoje : inicio.plusDays(14);
+                    faixas.add(new FaixaGrafico(fim.format(fmtDiaMes), inicio, fim));
+                }
+            }
+            case "ano" -> {
+                int anoAtual = hoje.getYear();
+                int mesAtual = hoje.getMonthValue();
+                for (int mes = 1; mes <= mesAtual; mes++) {
+                    YearMonth ym = YearMonth.of(anoAtual, mes);
+                    LocalDate inicio = ym.atDay(1);
+                    LocalDate fim = (mes == mesAtual) ? hoje : ym.atEndOfMonth();
+                    faixas.add(new FaixaGrafico(MESES_ABREV[mes - 1], inicio, fim));
+                }
+            }
+            default -> {
+            }
+        }
+        return faixas;
+    }
+
+    private static String normalizarPeriodoDashboard(String periodo) {
+        if (periodo == null || periodo.isBlank()) {
+            return "30d";
+        }
+        return switch (periodo.trim().toLowerCase(Locale.ROOT)) {
+            case "7d", "ultimos_7_dias", "últimos 7 dias", "ultimos 7 dias" -> "7d";
+            case "30d", "ultimos_30_dias", "últimos 30 dias", "ultimos 30 dias" -> "30d";
+            case "90d", "ultimos_90_dias", "últimos 90 dias", "ultimos 90 dias" -> "90d";
+            case "ano", "este_ano", "este ano" -> "ano";
+            default -> throw new AgendamentoInvalidoException(
+                    "Período inválido: " + periodo + ". Use 7d, 30d, 90d ou ano.");
+        };
+    }
+
+    private static double arredondarUmaCasa(double valor) {
+        return Math.round(valor * 10.0) / 10.0;
     }
 
     @Transactional
