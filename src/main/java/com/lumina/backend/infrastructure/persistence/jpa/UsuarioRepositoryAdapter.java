@@ -4,6 +4,8 @@ import com.lumina.backend.domain.usuario.Usuario;
 import com.lumina.backend.domain.usuario.UsuarioId;
 import com.lumina.backend.domain.usuario.UsuarioRepositoryPort;
 import com.lumina.backend.infrastructure.persistence.mapper.UsuarioMapperJpa;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -46,6 +48,33 @@ public class UsuarioRepositoryAdapter implements UsuarioRepositoryPort {
                 .stream()
                 .map(UsuarioMapperJpa::toDomain)
                 .toList();
+    }
+
+    @Override
+    public Page<Usuario> buscarTodos(Pageable pageable) {
+        return jpaRepository.findAll(pageable)
+                .map(UsuarioMapperJpa::toDomain);
+    }
+
+    @Override
+    public Page<Usuario> buscarPaginado(Integer fkPerfil, String nome, Pageable pageable) {
+        boolean temPerfil = fkPerfil != null;
+        boolean temNome = nome != null && !nome.isBlank();
+
+        if (temPerfil && temNome) {
+            return jpaRepository.findByPerfil_IdPerfilAndNomeContainingIgnoreCase(fkPerfil, nome, pageable)
+                    .map(UsuarioMapperJpa::toDomain);
+        }
+        if (temPerfil) {
+            return jpaRepository.findByPerfil_IdPerfil(fkPerfil, pageable)
+                    .map(UsuarioMapperJpa::toDomain);
+        }
+        if (temNome) {
+            return jpaRepository.findByNomeContainingIgnoreCase(nome, pageable)
+                    .map(UsuarioMapperJpa::toDomain);
+        }
+        return jpaRepository.findAll(pageable)
+                .map(UsuarioMapperJpa::toDomain);
     }
 
     @Override

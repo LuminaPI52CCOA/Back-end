@@ -1,0 +1,95 @@
+service:
+  flush: 1
+  log_level: info
+  http_server: on
+  http_listen: 0.0.0.0
+  http_port: 2020
+  storage.path: /tmp/fluent-bit/storage
+  storage.sync: normal
+
+pipeline:
+  inputs:
+    - name: tail
+      tag: containers.docker
+      path: /var/lib/docker/containers/*/*.log,/var/log/containers/*.log
+      parser: docker
+      mem_buf_limit: 10MB
+      db: /tmp/fluent-bit/tail-containers.db
+
+    - name: tail
+      tag: nginx.access
+      path: /var/log/nginx/access.log,/var/log/nginx/*.log
+      parser: nginx_combined
+      mem_buf_limit: 5MB
+      db: /tmp/fluent-bit/tail-nginx.db
+
+    - name: tail
+      tag: app.backend
+      path: /var/log/backend/*.log
+      parser: spring_boot
+      mem_buf_limit: 10MB
+      db: /tmp/fluent-bit/tail-backend.db
+
+    - name: tail
+      tag: system.auth
+      path: /var/log/auth.log,/var/log/system.log
+      parser: syslog
+      mem_buf_limit: 5MB
+      db: /tmp/fluent-bit/tail-system.db
+
+  filters:
+    - name: record_modifier
+      match: '*'
+      records:
+        - project: lumina
+        - tier: bronze
+        - environment: ${ENVIRONMENT:-dev}
+
+  outputs:
+    - name: s3
+      match: 'containers.*'
+      region: ${AWS_REGION:-us-east-1}
+      bucket: ${BUCKET_BRONZE}
+      total_file_size: 10M
+      upload_timeout: 1m
+      use_put_object: on
+      compression: gzip
+      s3_key_format: /logs/containers/%Y/%m/%d/$TAG-$UUID.json.gz
+      store_dir: /tmp/fluent-bit/s3
+
+    - name: s3
+      match: 'nginx.access'
+      region: ${AWS_REGION:-us-east-1}
+      bucket: ${BUCKET_BRONZE}
+      total_file_size: 10M
+      upload_timeout: 1m
+      use_put_object: on
+      compression: gzip
+      s3_key_format: /logs/nginx/%Y/%m/%d/$TAG-$UUID.json.gz
+      store_dir: /tmp/fluent-bit/s3
+
+    - name: s3
+      match: 'app.backend'
+      region: ${AWS_REGION:-us-east-1}
+      bucket: ${BUCKET_BRONZE}
+      total_file_size: 10M
+      upload_timeout: 1m
+      use_put_object: on
+      compression: gzip
+      s3_key_format: /logs/backend/%Y/%m/%d/$TAG-$UUID.json.gz
+      store_dir: /tmp/fluent-bit/s3
+
+    - name: s3
+      match: 'system.auth'
+      region: ${AWS_REGION:-us-east-1}
+      bucket: ${BUCKET_BRONZE}
+      total_file_size: 10M
+      upload_timeout: 1m
+      use_put_object: on
+      compression: gzip
+      s3_key_format: /logs/system_auth/%Y/%m/%d/$TAG-$UUID.json.gz
+      store_dir: /tmp/fluent-bit/s3
+
+    - name: stdout
+      match: '*'
+      format: json_lines

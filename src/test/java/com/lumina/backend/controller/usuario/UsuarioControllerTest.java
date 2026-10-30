@@ -21,6 +21,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -130,40 +135,43 @@ class UsuarioControllerTest {
     }
 
     @Nested
-    @DisplayName("4. Teste de listagem de usuários")
+    @DisplayName("4. Teste de listagem paginada de usuários")
     class ListarUsuariosTest {
 
         @Test
-        @DisplayName("4.1 Deve retornar lista de usuários com status 200")
+        @DisplayName("4.1 Deve retornar página de usuários com status 200")
         void deveRetornarListaDeUsuariosComSucesso() {
             Usuario usuario1 = criarUsuarioDomain(1L, "Ana Maria Souza", "ana.souza@lumina.com");
             Usuario usuario2 = criarUsuarioDomain(2L, "Carlos Silva", "carlos.silva@lumina.com");
 
-            List<Usuario> usuarios = List.of(usuario1, usuario2);
+            Pageable pageable = PageRequest.of(0, 6, Sort.by(Sort.Direction.ASC, "nome"));
+            Page<Usuario> paginaUsuarios = new PageImpl<>(List.of(usuario1, usuario2), pageable, 2);
 
-            Mockito.when(usuarioService.listar()).thenReturn(usuarios);
+            Mockito.when(usuarioService.listarPaginado(2, null, pageable)).thenReturn(paginaUsuarios);
 
-            ResponseEntity<List<UsuarioResponse>> response = usuarioController.listarUsuarios();
+            ResponseEntity<Page<UsuarioResponse>> response = usuarioController.listarUsuarios(2, null, pageable);
 
             Assertions.assertEquals(200, response.getStatusCodeValue());
             Assertions.assertNotNull(response.getBody());
             Assertions.assertFalse(response.getBody().isEmpty());
-            Assertions.assertEquals(2, response.getBody().size());
+            Assertions.assertEquals(2, response.getBody().getTotalElements());
+            Assertions.assertEquals(2, response.getBody().getContent().size());
 
-            Mockito.verify(usuarioService, Mockito.times(1)).listar();
+            Mockito.verify(usuarioService, Mockito.times(1)).listarPaginado(2, null, pageable);
         }
 
         @Test
         @DisplayName("4.2 Deve retornar status 204 quando não houver usuários cadastrados")
         void deveRetornarStatus204QuandoListaVazia() {
-            Mockito.when(usuarioService.listar()).thenReturn(Collections.emptyList());
+            Pageable pageable = PageRequest.of(0, 6, Sort.by(Sort.Direction.ASC, "nome"));
+            Mockito.when(usuarioService.listarPaginado(null, null, pageable)).thenReturn(Page.empty(pageable));
 
-            ResponseEntity<List<UsuarioResponse>> response = usuarioController.listarUsuarios();
+            ResponseEntity<Page<UsuarioResponse>> response = usuarioController.listarUsuarios(null, null, pageable);
 
             Assertions.assertEquals(204, response.getStatusCodeValue());
             Assertions.assertNull(response.getBody());
 
-            Mockito.verify(usuarioService, Mockito.times(1)).listar();
+            Mockito.verify(usuarioService, Mockito.times(1)).listarPaginado(null, null, pageable);
         }
     }
 

@@ -78,6 +78,16 @@ public class GerenciadorTokenJwt {
         if (this.secret == null || this.secret.isBlank()) {
             throw new IllegalStateException("A chave secreta JWT (jwt.secret / JWT_SECRET) não foi configurada!");
         }
-        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(this.secret));
+        try {
+            return Keys.hmacShaKeyFor(Decoders.BASE64.decode(this.secret));
+        } catch (Exception e) {
+            byte[] keyBytes = this.secret.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            if (keyBytes.length < 32) {
+                try {
+                    keyBytes = java.security.MessageDigest.getInstance("SHA-256").digest(keyBytes);
+                } catch (java.security.NoSuchAlgorithmException ignored) {}
+            }
+            return Keys.hmacShaKeyFor(keyBytes);
+        }
     }
 }

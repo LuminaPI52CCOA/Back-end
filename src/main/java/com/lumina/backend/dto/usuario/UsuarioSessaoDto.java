@@ -11,6 +11,8 @@ public class UsuarioSessaoDto {
     private String nome;
     @Schema(description = "Email do usuario autenticado", example = "ana.souza@lumina.com", type = "string", format = "email")
     private String email;
+    @Schema(description = "Perfil de acesso do usuario autenticado", example = "DENTISTA", allowableValues = {"ADMIN", "DENTISTA", "RECEPCIONISTA"})
+    private String perfil;
 
     public Long getUserId() {
         return userId;
@@ -34,5 +36,13 @@ public class UsuarioSessaoDto {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getPerfil() {
+        return perfil;
+    }
+
+    public void setPerfil(String perfil) {
+        this.perfil = perfil;
     }
 }

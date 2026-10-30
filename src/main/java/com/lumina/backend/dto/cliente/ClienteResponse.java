@@ -3,6 +3,7 @@ package com.lumina.backend.dto.cliente;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Schema(description = "Dados de resposta de cliente")
 public class ClienteResponse {
@@ -39,6 +40,13 @@ public class ClienteResponse {
     private Integer fkResponsavel;
     @Schema(description = "Grau de parentesco do responsavel", example = "Mae", type = "string")
     private String grauParentescoResponsavel;
+
+    @Schema(description = "Plano ou convenio principal do cliente", example = "Particular", type = "string")
+    private String plano;
+    @Schema(description = "Lista com os nomes dos convenios do cliente")
+    private List<String> convenios;
+    @Schema(description = "Data da proxima consulta agendada", example = "2026-10-25", type = "string", format = "date")
+    private LocalDate proximaConsulta;
 
     public ClienteResponse(Long idCliente, String nome, String cpf, String rg, LocalDate dataNascimento, String numeroCelular, String email, Character sexo, String naturalidade, String nacionalidade, Integer fkEstadoCivil, String enderecoResidencial, String cep, Integer fkClienteIndicacao, Integer fkResponsavel, String grauParentescoResponsavel) {
         this.idCliente = idCliente;
@@ -189,5 +197,29 @@ public class ClienteResponse {
 
     public void setGrauParentescoResponsavel(String grauParentescoResponsavel) {
         this.grauParentescoResponsavel = grauParentescoResponsavel;
+    }
+
+    public String getPlano() {
+        return plano;
+    }
+
+    public void setPlano(String plano) {
+        this.plano = plano;
+    }
+
+    public List<String> getConvenios() {
+        return convenios;
+    }
+
+    public void setConvenios(List<String> convenios) {
+        this.convenios = convenios;
+    }
+
+    public LocalDate getProximaConsulta() {
+        return proximaConsulta;
+    }
+
+    public void setProximaConsulta(LocalDate proximaConsulta) {
+        this.proximaConsulta = proximaConsulta;
     }
 }

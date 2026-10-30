@@ -68,6 +68,7 @@ public class SecurityConfiguracao {
             "/actuator/info",
             "/usuarios/login/**",
             "/usuarios/logout/**",
+            "/usuarios",
             "/alexa/vincular",
             "/error/**"
     };
@@ -177,7 +178,8 @@ public class SecurityConfiguracao {
         // Em produção: List.of("https://meuapp.com.br")
         configuracao.setAllowedOrigins(List.of(
                 "http://localhost:5173",  // Vite dev server
-                "http://localhost:3000"   // Create React App (alternativa)
+                "http://localhost:3000",  // Create React App (alternativa)
+                "http://localhost:8888"   // Nginx frontend
         ));
 
         // Necessário para que o browser envie/receba cookies nas requisições cross-origin

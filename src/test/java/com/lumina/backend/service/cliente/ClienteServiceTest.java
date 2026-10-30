@@ -22,6 +22,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.time.LocalDate;
 import java.util.Collections;
@@ -79,6 +84,22 @@ class ClienteServiceTest {
 
             List<Cliente> resultado = clienteService.listar();
             Assertions.assertTrue(resultado.isEmpty());
+        }
+
+        @Test
+        @DisplayName("1.3 Deve retornar uma página de clientes usando PageRequest e Sort")
+        void deveRetornarPaginaDeClientes() {
+            Cliente c1 = criarClienteDomain(1L, "Ana", "111.111.111-11", "ana@email.com");
+            Cliente c2 = criarClienteDomain(2L, "Bruno", "222.222.222-22", "bruno@email.com");
+            Pageable pageable = PageRequest.of(0, 6, Sort.by(Sort.Direction.ASC, "nome"));
+            Page<Cliente> pageEsperada = new PageImpl<>(List.of(c1, c2), pageable, 2);
+
+            Mockito.when(repositoryPort.buscarTodos(pageable)).thenReturn(pageEsperada);
+
+            Page<Cliente> resultado = clienteService.listarComFiltrosPaginado(null, null, pageable);
+            Assertions.assertFalse(resultado.isEmpty());
+            Assertions.assertEquals(2, resultado.getTotalElements());
+            Assertions.assertEquals(0, resultado.getNumber());
         }
     }
 

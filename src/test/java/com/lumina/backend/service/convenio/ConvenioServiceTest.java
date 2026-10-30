@@ -3,7 +3,9 @@ package com.lumina.backend.service.convenio;
 import com.lumina.backend.dto.convenio.ConvenioMapper;
 import com.lumina.backend.dto.convenio.ConvenioRequest;
 import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.model.ClienteConvenio;
 import com.lumina.backend.model.Convenio;
+import com.lumina.backend.repository.ClienteConvenioRepository;
 import com.lumina.backend.repository.ConvenioRepository;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
@@ -208,6 +210,46 @@ class ConvenioServiceTest {
             );
 
             Mockito.verify(convenioRepository, Mockito.never()).delete(any(Convenio.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("5. Testes de listagem de convênios por múltiplos clientes")
+    class ListarConveniosPorClientesTest {
+
+        @Mock
+        private ClienteConvenioRepository clienteConvenioRepository;
+
+        @InjectMocks
+        private ConvenioService convenioService;
+
+        @Test
+        @DisplayName("5.1 Deve retornar mapa vazio se lista de IDs for nula ou vazia")
+        void deveRetornarMapaVazioParaListaVaziaOuNula() {
+            assertTrue(convenioService.listarConveniosPorClientes(null).isEmpty());
+            assertTrue(convenioService.listarConveniosPorClientes(List.of()).isEmpty());
+        }
+
+        @Test
+        @DisplayName("5.2 Deve retornar convênios agrupados por ID do cliente")
+        void deveRetornarConveniosAgrupadosPorCliente() {
+            com.lumina.backend.model.Cliente cliente1 = new com.lumina.backend.model.Cliente();
+            cliente1.setIdCliente(1L);
+
+            Convenio conv1 = new Convenio();
+            conv1.setIdConvenio(10L);
+            conv1.setNome("Amil");
+
+            ClienteConvenio cc1 = new ClienteConvenio(100L, cliente1, conv1, "12345");
+
+            Mockito.when(clienteConvenioRepository.findByClienteIdsWithConvenio(List.of(1L)))
+                    .thenReturn(List.of(cc1));
+
+            var resultado = convenioService.listarConveniosPorClientes(List.of(1L));
+
+            assertFalse(resultado.isEmpty());
+            assertEquals(1, resultado.get(1L).size());
+            assertEquals("Amil", resultado.get(1L).get(0).getNome());
         }
     }
 }
