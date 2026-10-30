@@ -61,7 +61,12 @@ public class ConsultaController {
                 .anyMatch(a -> a.getAuthority().equals("ROLE_RECEPCIONISTA") || a.getAuthority().equals("ROLE_ADMIN"));
 
         if(!isRecepcionista){
-            return ResponseEntity.status(403).build();
+            // Dentista enxerga apenas as proprias consultas
+            Long usuarioLogadoId = obterUsuarioIdAutenticado();
+            if (usuarioLogadoId == null) {
+                return ResponseEntity.status(403).build();
+            }
+            return ResponseEntity.status(200).body(ConsultaMapper.toResponse(consultaService.listarPorDentista(usuarioLogadoId)));
         }
 
         return ResponseEntity.status(200).body(ConsultaMapper.toResponse(consultaService.listar()));
