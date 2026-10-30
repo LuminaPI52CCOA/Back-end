@@ -380,4 +380,47 @@ class ConsultaControllerTest {
             Mockito.verifyNoInteractions(consultaService);
         }
     }
+
+    @Nested
+    @DisplayName("7. Teste de dashboard de agendamento")
+    class DashboardAgendamentoTest {
+
+        @Test
+        @DisplayName("7.1 Deve retornar os indicadores do dashboard para o período solicitado")
+        void deveRetornarDashboard() {
+            com.lumina.backend.dto.consulta.DashboardAgendamentoResponse esperado =
+                    new com.lumina.backend.dto.consulta.DashboardAgendamentoResponse(
+                            "30d",
+                            LocalDate.of(2026, 10, 1),
+                            LocalDate.of(2026, 10, 30),
+                            148L,
+                            132L,
+                            12.1,
+                            18L,
+                            14L,
+                            89.2,
+                            List.of(new com.lumina.backend.dto.consulta.DashboardAgendamentoResponse.PontoGrafico("30/10", 28)),
+                            List.of(new com.lumina.backend.dto.consulta.DashboardAgendamentoResponse.PontoGrafico("30/10", 95.0)),
+                            List.of(new com.lumina.backend.dto.consulta.DashboardAgendamentoResponse.ItemDistribuicao("Particular", 60L, 40.5)),
+                            List.of(new com.lumina.backend.dto.consulta.DashboardAgendamentoResponse.ItemDistribuicao("Concluída", 148L, 85.0))
+                    );
+            Mockito.when(consultaService.obterDashboardAgendamento("30d", null)).thenReturn(esperado);
+
+            ResponseEntity<com.lumina.backend.dto.consulta.DashboardAgendamentoResponse> response =
+                    consultaController.obterDashboard("30d", null);
+
+            Assertions.assertEquals(200, response.getStatusCode().value());
+            Assertions.assertEquals(148L, response.getBody().consultasRealizadas());
+            Assertions.assertEquals(89.2, response.getBody().taxaOcupacao());
+        }
+
+        @Test
+        @DisplayName("7.2 Dentista não pode filtrar indicadores de outro dentista")
+        void dentistaNaoConsultaOutroDentistaNoDashboard() {
+            autenticarDentista(1L);
+
+            Assertions.assertEquals(403, consultaController.obterDashboard("30d", 2L).getStatusCode().value());
+            Mockito.verifyNoInteractions(consultaService);
+        }
+    }
 }

@@ -2,6 +2,7 @@ package com.lumina.backend.configure;
 
 import com.lumina.backend.model.Cliente;
 import com.lumina.backend.model.ClienteConvenio;
+import com.lumina.backend.model.Consulta;
 import com.lumina.backend.model.Convenio;
 import com.lumina.backend.model.Dente;
 import com.lumina.backend.model.Especialidade;
@@ -10,6 +11,7 @@ import com.lumina.backend.model.Perfil;
 import com.lumina.backend.model.Usuario;
 import com.lumina.backend.repository.ClienteConvenioRepository;
 import com.lumina.backend.repository.ClienteRepository;
+import com.lumina.backend.repository.ConsultaRepository;
 import com.lumina.backend.repository.ConvenioRepository;
 import com.lumina.backend.repository.DenteRepository;
 import com.lumina.backend.repository.EspecialidadeRepository;
@@ -20,7 +22,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,6 +42,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final ClienteConvenioRepository clienteConvenioRepository;
     private final EspecialidadeRepository especialidadeRepository;
     private final DenteRepository denteRepository;
+    private final ConsultaRepository consultaRepository;
 
     public DatabaseSeeder(PerfilRespository perfilRepository,
                           EstadoCivilRepository estadoCivilRepository,
@@ -46,7 +51,8 @@ public class DatabaseSeeder implements CommandLineRunner {
                           ClienteRepository clienteRepository,
                           ClienteConvenioRepository clienteConvenioRepository,
                           EspecialidadeRepository especialidadeRepository,
-                          DenteRepository denteRepository) {
+                          DenteRepository denteRepository,
+                          ConsultaRepository consultaRepository) {
         this.perfilRepository = perfilRepository;
         this.estadoCivilRepository = estadoCivilRepository;
         this.convenioRepository = convenioRepository;
@@ -55,6 +61,7 @@ public class DatabaseSeeder implements CommandLineRunner {
         this.clienteConvenioRepository = clienteConvenioRepository;
         this.especialidadeRepository = especialidadeRepository;
         this.denteRepository = denteRepository;
+        this.consultaRepository = consultaRepository;
     }
 
     @Override
@@ -67,6 +74,7 @@ public class DatabaseSeeder implements CommandLineRunner {
             List<Convenio> convenios = seedConvenios();
             seedUsuarios();
             seedClientes(convenios);
+            seedConsultas();
         } catch (Exception e) {
             log.warn("Aviso ao executar DatabaseSeeder: {}", e.getMessage());
         }
@@ -398,5 +406,102 @@ public class DatabaseSeeder implements CommandLineRunner {
         if (inseridos > 0) {
             log.info("DatabaseSeeder: {} novos pacientes inseridos.", inseridos);
         }
+    }
+
+    private void seedConsultas() {
+        if (consultaRepository.count() > 20) {
+            return;
+        }
+        List<Usuario> dentistas = usuarioRepository.findAll().stream()
+                .filter(u -> u.getPerfil() != null
+                        && "Dentista".equalsIgnoreCase(u.getPerfil().getNome())
+                        && !Boolean.FALSE.equals(u.getAtivo()))
+                .toList();
+        List<Cliente> clientes = clienteRepository.findAll();
+        List<Especialidade> especialidades = especialidadeRepository.findAll();
+
+        if (dentistas.isEmpty() || clientes.isEmpty() || especialidades.isEmpty()) {
+            return;
+        }
+
+        LocalTime[] inicios = {
+                LocalTime.of(8, 0),
+                LocalTime.of(9, 0),
+                LocalTime.of(10, 0),
+                LocalTime.of(11, 0),
+                LocalTime.of(13, 30),
+                LocalTime.of(14, 30),
+                LocalTime.of(15, 30),
+                LocalTime.of(16, 30)
+        };
+
+        String[] observacoesPadrao = {
+                "Avaliação clínica e profilaxia periódica",
+                "Acompanhamento ortodôntico mensal",
+                "Restauração em resina composta",
+                "Retorno pós-procedimento endodôntico",
+                "Raspagem periodontal e orientação de higiene",
+                "Clareamento dental supervisionado"
+        };
+
+        LocalDate hoje = LocalDate.now();
+        List<Consulta> novasConsultas = new ArrayList<>();
+        int indiceCliente = 0;
+
+        for (int diasAtras = 240; diasAtras >= 1; diasAtras--) {
+            LocalDate data = hoje.minusDays(diasAtras);
+            if (data.getDayOfWeek() == DayOfWeek.SUNDAY) {
+                continue;
+            }
+
+            // Crescimento progressivo ao longo dos meses para refletir evolução real no dashboard
+            int dentistasNoDia = diasAtras > 120 ? 1 : (diasAtras > 45 ? 2 : 3);
+            int slotsPorDentista = data.getDayOfWeek() == DayOfWeek.SATURDAY
+                    ? 5
+                    : (diasAtras > 60 ? 6 : 7);
+
+            for (int d = 0; d < Math.min(dentistasNoDia, dentistas.size()); d++) {
+                Usuario dentista = dentistas.get((diasAtras + d) % dentistas.size());
+                for (int s = 0; s < Math.min(slotsPorDentista, inicios.length); s++) {
+                    Cliente cliente = clientes.get(indiceCliente % clientes.size());
+                    indiceCliente++;
+                    Especialidade esp = especialidades.get((diasAtras + s + d) % especialidades.size());
+
+                    LocalTime inicio = inicios[s];
+                    LocalTime fim = inicio.plusMinutes(45);
+
+                    // Distribuição realista entre Concluída, Confirmada, Agendada e Cancelada
+                    int mod = (diasAtras * 7 + d * 3 + s) % 16;
+                    String status;
+                    if (mod == 0) {
+                        status = "CANCELADA";
+                    } else if (diasAtras <= 3 && mod <= 4) {
+                        status = "AGENDADA";
+                    } else if (diasAtras <= 10 && mod <= 5) {
+                        status = "CONFIRMADA";
+                    } else if (mod == 1) {
+                        status = "CONFIRMADA";
+                    } else {
+                        status = "CONCLUIDA";
+                    }
+
+                    Consulta c = new Consulta();
+                    c.setCliente(cliente);
+                    c.setUsuario(dentista);
+                    c.setEspecialidade(esp);
+                    c.setData(data);
+                    c.setHorarioInicio(inicio);
+                    c.setHorarioFim(fim);
+                    c.setStatus(status);
+                    c.setObservacoes(observacoesPadrao[(diasAtras + s) % observacoesPadrao.length]);
+                    c.setPularOdontograma(true);
+                    c.setLembreteEnviado("CONCLUIDA".equals(status) || "CONFIRMADA".equals(status));
+                    novasConsultas.add(c);
+                }
+            }
+        }
+
+        consultaRepository.saveAll(novasConsultas);
+        log.info("DatabaseSeeder: {} consultas históricas inseridas para o dashboard.", novasConsultas.size());
     }
 }
