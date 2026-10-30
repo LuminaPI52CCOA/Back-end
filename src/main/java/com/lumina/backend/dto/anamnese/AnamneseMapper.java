@@ -57,30 +57,32 @@ public class AnamneseMapper {
 
         Cliente cliente = model.getFkCliente();
 
-        AnamneseResponse.AnamneseCliente anamneseCliente = new AnamneseResponse.AnamneseCliente();
-
-        anamneseCliente.setIdCliente(model.getFkCliente().getIdCliente());
-        anamneseCliente.setNome(cliente.getNome());
-        anamneseCliente.setCpf(cliente.getCpf());
-        anamneseCliente.setRg(cliente.getRg());
-        anamneseCliente.setDataNascimento(cliente.getDataNascimento());
-        anamneseCliente.setNumeroCelular(cliente.getNumeroCelular());
-        anamneseCliente.setEmail(cliente.getEmail());
-        anamneseCliente.setSexo(cliente.getSexo());
-        anamneseCliente.setNaturalidade(cliente.getNaturalidade());
-        anamneseCliente.setNacionalidade(cliente.getNacionalidade());
-        anamneseCliente.setFkEstadoCivil(cliente.getFkEstadoCivil());
-        anamneseCliente.setEnderecoResidencial(cliente.getEnderecoResidencial());
-        anamneseCliente.setCep(cliente.getCep());
-        Integer fkClienteIndicacao = cliente.getClienteIndicacao() != null && cliente.getClienteIndicacao().getIdCliente() != null
-                ? cliente.getClienteIndicacao().getIdCliente().intValue()
-                : null;
-        Integer fkResponsavel = cliente.getResponsavel() != null && cliente.getResponsavel().getIdCliente() != null
-                ? cliente.getResponsavel().getIdCliente().intValue()
-                : null;
-        anamneseCliente.setFkClienteIndicacao(fkClienteIndicacao);
-        anamneseCliente.setFkResponsavel(fkResponsavel);
-        anamneseCliente.setGrauParentescoResponsavel(cliente.getGrauParentescoResponsavel());
+        AnamneseResponse.AnamneseCliente anamneseCliente = null;
+        if (cliente != null) {
+            anamneseCliente = new AnamneseResponse.AnamneseCliente();
+            anamneseCliente.setIdCliente(cliente.getIdCliente());
+            anamneseCliente.setNome(cliente.getNome());
+            anamneseCliente.setCpf(cliente.getCpf());
+            anamneseCliente.setRg(cliente.getRg());
+            anamneseCliente.setDataNascimento(cliente.getDataNascimento());
+            anamneseCliente.setNumeroCelular(cliente.getNumeroCelular());
+            anamneseCliente.setEmail(cliente.getEmail());
+            anamneseCliente.setSexo(cliente.getSexo());
+            anamneseCliente.setNaturalidade(cliente.getNaturalidade());
+            anamneseCliente.setNacionalidade(cliente.getNacionalidade());
+            anamneseCliente.setFkEstadoCivil(cliente.getFkEstadoCivil());
+            anamneseCliente.setEnderecoResidencial(cliente.getEnderecoResidencial());
+            anamneseCliente.setCep(cliente.getCep());
+            Integer fkClienteIndicacao = cliente.getClienteIndicacao() != null && cliente.getClienteIndicacao().getIdCliente() != null
+                    ? cliente.getClienteIndicacao().getIdCliente().intValue()
+                    : null;
+            Integer fkResponsavel = cliente.getResponsavel() != null && cliente.getResponsavel().getIdCliente() != null
+                    ? cliente.getResponsavel().getIdCliente().intValue()
+                    : null;
+            anamneseCliente.setFkClienteIndicacao(fkClienteIndicacao);
+            anamneseCliente.setFkResponsavel(fkResponsavel);
+            anamneseCliente.setGrauParentescoResponsavel(cliente.getGrauParentescoResponsavel());
+        }
 
 
 

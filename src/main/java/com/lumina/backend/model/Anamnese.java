@@ -18,7 +18,9 @@ public class Anamnese {
     private Boolean fazendoTratamento;
     private String descricaoTratamento;
     private Boolean doresCabecaFaceAtm;
+    @Column(name = "alergia_medicamentosa")
     private Boolean alergiaMedicamentos;
+    @Column(name = "descricao_alergia_medicamentosa")
     private String descricaoAlergiaMedicamentos;
     private Boolean reacaoAnestesiaLocal;
     private Boolean sensibilidadeDentaria;
