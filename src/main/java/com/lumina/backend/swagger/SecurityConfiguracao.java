@@ -62,6 +62,7 @@ public class SecurityConfiguracao {
             "/configuration/security",
             "/api/public/**",
             "/api/public/authenticate",
+            "/public/**",
             "/webjars/**",
             "/v3/api-docs/**",
             "/actuator/health",
