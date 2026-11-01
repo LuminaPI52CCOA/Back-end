@@ -15,6 +15,7 @@ public interface ClienteRepositoryPort {
     Page<Cliente> buscarPorNome(String nome, Pageable pageable);
     List<Cliente> buscarTodos();
     Page<Cliente> buscarTodos(Pageable pageable);
+    Page<Cliente> buscarPorDentista(Long idUsuario, String nome, String cpf, Pageable pageable);
     boolean existePorCpf(String cpf);
     boolean existePorEmail(String email);
 }

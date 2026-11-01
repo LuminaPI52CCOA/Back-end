@@ -87,6 +87,17 @@ public class ClienteService {
         return repositoryPort.buscarTodos(pageRequest);
     }
 
+    public Page<Cliente> listarPorDentistaPaginado(Long idUsuario, String nome, String cpf, Pageable pageable) {
+        Sort sort = pageable.getSort().isSorted()
+                ? pageable.getSort()
+                : Sort.by(Sort.Direction.ASC, "nome");
+        PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+        return repositoryPort.buscarPorDentista(idUsuario,
+                (nome == null || nome.isBlank()) ? null : nome,
+                (cpf == null || cpf.isBlank()) ? null : cpf,
+                pageRequest);
+    }
+
     public Cliente cadastrar(ClienteRequest request){
         if(repositoryPort.existePorEmail(request.getEmail())){
             throw new EmailDuplicadoException("Email " + request.getEmail() + " já existe");

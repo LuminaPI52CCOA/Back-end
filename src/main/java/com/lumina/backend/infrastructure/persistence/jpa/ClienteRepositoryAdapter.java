@@ -77,6 +77,12 @@ public class ClienteRepositoryAdapter implements ClienteRepositoryPort {
     }
 
     @Override
+    public Page<Cliente> buscarPorDentista(Long idUsuario, String nome, String cpf, Pageable pageable) {
+        return jpaRepository.buscarDoDentista(idUsuario, nome, cpf, pageable)
+                .map(ClienteMapperJpa::toDomain);
+    }
+
+    @Override
     public boolean existePorCpf(String cpf) {
         return jpaRepository.existsByCpf(cpf);
     }
