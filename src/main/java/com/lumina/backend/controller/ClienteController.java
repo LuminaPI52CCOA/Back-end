@@ -102,11 +102,17 @@ public class ClienteController {
                 .stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_RECEPCIONISTA") || a.getAuthority().equals("ROLE_ADMIN"));
 
-        if(!isRecepcionista){
-            return ResponseEntity.status(403).build();
+        Page<Cliente> clientesPage;
+        if (isRecepcionista) {
+            clientesPage = service.listarComFiltrosPaginado(nome, cpf, pageable);
+        } else {
+            // Dentista: apenas pacientes com consulta associada a ele
+            Long usuarioLogadoId = obterUsuarioIdAutenticado();
+            if (usuarioLogadoId == null) {
+                return ResponseEntity.status(403).build();
+            }
+            clientesPage = service.listarPorDentistaPaginado(usuarioLogadoId, nome, cpf, pageable);
         }
-
-        Page<Cliente> clientesPage = service.listarComFiltrosPaginado(nome, cpf, pageable);
         if(clientesPage.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
@@ -230,6 +236,15 @@ public class ClienteController {
     @GetMapping("/{id:\\d+}/anamneses")
     public ResponseEntity<List<AnamneseResponse>> listarAnamnese(@PathVariable Integer id){
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isApenasDentista = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_DENTISTA"))
+                && auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_RECEPCIONISTA"));
+        if (isApenasDentista) {
+            Long usuarioLogadoId = obterUsuarioIdAutenticado();
+            if (usuarioLogadoId == null
+                    || !consultaRepository.existsByClienteIdClienteAndUsuarioIdUsuario(id.longValue(), usuarioLogadoId)) {
+                return ResponseEntity.status(403).build();
+            }
+        }
         String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
         log.info("AUDIT: Usuario [{}] listou anamneses do cliente ID [{}]", usuario, id);
         List<Anamnese> anamneseList = service.listarAnamnese(id);
