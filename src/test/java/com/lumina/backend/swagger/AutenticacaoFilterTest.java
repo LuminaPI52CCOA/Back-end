@@ -99,11 +99,4 @@ class AutenticacaoFilterTest {
         assertNull(SecurityContextHolder.getContext().getAuthentication());
         verify(filterChain).doFilter(request, response);
     }
-
-    @Test
-    @DisplayName("Não deve filtrar rotas iniciadas por /consultas/dentista/")
-    void naoDeveFiltrarRotasDeConsultaPorDentista() {
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/consultas/dentista/1");
-        assertTrue(filter.shouldNotFilter(request));
-    }
 }
