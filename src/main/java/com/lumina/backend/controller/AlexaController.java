@@ -47,9 +47,9 @@ public class AlexaController {
     }
 
     private void validarAcesso(Authentication auth, Usuario usuarioLogado, Long targetUserId) {
-        boolean isAdmin = auth != null && auth.getAuthorities() != null && auth.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
-        if (!isAdmin && !usuarioLogado.getIdUsuario().equals(targetUserId)) {
+        boolean podeGerenciarOutros = auth != null && auth.getAuthorities() != null && auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()) || "ROLE_RECEPCIONISTA".equals(a.getAuthority()));
+        if (!podeGerenciarOutros && !usuarioLogado.getIdUsuario().equals(targetUserId)) {
             throw new AccessDeniedException("Dentista só pode gerenciar a própria integração Alexa");
         }
     }

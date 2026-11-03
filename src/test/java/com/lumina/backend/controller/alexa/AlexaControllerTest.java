@@ -102,6 +102,25 @@ class AlexaControllerTest {
         }
 
         @Test
+        @DisplayName("Recepcionista pode gerar PIN para outro dentista")
+        void recepcionistaPodeGerarPinParaOutroDentista() {
+            mockSecurityContext("recepcao@lumina.com", "ROLE_RECEPCIONISTA");
+
+            Usuario recepcionista = new Usuario();
+            recepcionista.setIdUsuario(4L);
+            recepcionista.setEmail("recepcao@lumina.com");
+
+            when(usuarioRepository.findByEmail("recepcao@lumina.com")).thenReturn(Optional.of(recepcionista));
+            when(alexaService.gerarPin(10L)).thenReturn(new AlexaGerarPinResponse("112233", 10, "Instruções"));
+
+            ResponseEntity<AlexaGerarPinResponse> response = alexaController.gerarPin(10L);
+
+            assertNotNull(response);
+            assertEquals(200, response.getStatusCode().value());
+            verify(alexaService).gerarPin(10L);
+        }
+
+        @Test
         @DisplayName("Dentista não pode gerar PIN para outro dentista")
         void dentistaNaoPodeGerarPinParaOutro() {
             mockSecurityContext("dentista1@lumina.com", "ROLE_DENTISTA");
@@ -179,6 +198,34 @@ class AlexaControllerTest {
         }
 
         @Test
+        @DisplayName("Recepcionista pode consultar status de qualquer dentista")
+        void recepcionistaPodeConsultarStatusDeOutroDentista() {
+            mockSecurityContext("recepcao@lumina.com", "ROLE_RECEPCIONISTA");
+
+            Usuario recepcionista = new Usuario();
+            recepcionista.setIdUsuario(4L);
+            recepcionista.setEmail("recepcao@lumina.com");
+
+            AlexaStatusResponse statusResponse = new AlexaStatusResponse(
+                    false,
+                    null,
+                    null,
+                    null,
+                    "Dra. Beatriz"
+            );
+
+            when(usuarioRepository.findByEmail("recepcao@lumina.com")).thenReturn(Optional.of(recepcionista));
+            when(alexaService.obterStatus(12L)).thenReturn(statusResponse);
+
+            ResponseEntity<AlexaStatusResponse> response = alexaController.obterStatus(12L);
+
+            assertNotNull(response);
+            assertEquals(200, response.getStatusCode().value());
+            assertFalse(response.getBody().getConectado());
+            verify(alexaService).obterStatus(12L);
+        }
+
+        @Test
         @DisplayName("Dentista não pode consultar status de outro dentista")
         void dentistaNaoPodeConsultarStatusDeOutro() {
             mockSecurityContext("dentista@lumina.com", "ROLE_DENTISTA");
@@ -227,6 +274,25 @@ class AlexaControllerTest {
             admin.setEmail("admin@lumina.com");
 
             when(usuarioRepository.findByEmail("admin@lumina.com")).thenReturn(Optional.of(admin));
+            when(alexaService.desconectar(15L)).thenReturn("amzn1.ask.account.ANOTHER");
+
+            ResponseEntity<Void> response = alexaController.desconectar(15L);
+
+            assertNotNull(response);
+            assertEquals(204, response.getStatusCode().value());
+            verify(alexaService).desconectar(15L);
+        }
+
+        @Test
+        @DisplayName("Recepcionista pode desconectar dispositivo de outro dentista")
+        void recepcionistaPodeDesconectarDispositivoDeOutro() {
+            mockSecurityContext("recepcao@lumina.com", "ROLE_RECEPCIONISTA");
+
+            Usuario recepcionista = new Usuario();
+            recepcionista.setIdUsuario(4L);
+            recepcionista.setEmail("recepcao@lumina.com");
+
+            when(usuarioRepository.findByEmail("recepcao@lumina.com")).thenReturn(Optional.of(recepcionista));
             when(alexaService.desconectar(15L)).thenReturn("amzn1.ask.account.ANOTHER");
 
             ResponseEntity<Void> response = alexaController.desconectar(15L);
