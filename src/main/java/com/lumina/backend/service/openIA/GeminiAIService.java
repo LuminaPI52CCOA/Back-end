@@ -4,9 +4,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.converter.json.GsonBuilderUtils;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -15,6 +17,11 @@ import java.util.Map;
 @Service
 public class GeminiAIService {
 
+    private static final List<String> MODELOS_CANDIDATOS = List.of(
+            "gemini-2.5-flash",
+            "gemini-3.5-flash"
+    );
+
     @Value("${gemini.api.key}")
     private String apiKey;
 
@@ -22,6 +29,39 @@ public class GeminiAIService {
 
     public GeminiAIService(RestClient restClient){
         this.restClient = restClient;
+    }
+
+    private String executarChamadaGeminiComFallback(Map<String, Object> body) {
+        HttpStatusCodeException ultimaExcecaoHttp = null;
+        for (String modelo : MODELOS_CANDIDATOS) {
+            String uri = "https://generativelanguage.googleapis.com/v1beta/models/" + modelo + ":generateContent";
+            try {
+                log.info("Processando IA da anamnese com modelo [{}]", modelo);
+                return restClient.post()
+                        .uri(uri)
+                        .header("x-goog-api-key", apiKey)
+                        .body(body)
+                        .retrieve()
+                        .body(String.class);
+            } catch (HttpStatusCodeException ex) {
+                ultimaExcecaoHttp = ex;
+                log.warn("Modelo [{}] retornou status HTTP {}: {}. Tentando próximo modelo...",
+                        modelo, ex.getStatusCode(), ex.getMessage());
+            } catch (Exception ex) {
+                log.warn("Falha inesperada no modelo [{}]: {}. Tentando próximo modelo...", modelo, ex.getMessage());
+            }
+        }
+        if (ultimaExcecaoHttp != null) {
+            log.error("Todos os modelos Gemini falharam. Último erro: {}", ultimaExcecaoHttp.getResponseBodyAsString());
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "O serviço de IA está temporariamente sobrecarregado. Por favor, tente novamente em instantes."
+            );
+        }
+        throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Não foi possível obter resposta dos modelos de IA. Tente novamente mais tarde."
+        );
     }
 
     public String transformarEmJson(
@@ -98,19 +138,11 @@ public class GeminiAIService {
                         )
                 );
 
-        String resposta =
-                restClient.post()
-                        .uri("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent")
-                        .header("x-goog-api-key", apiKey)
-                        .body(body)
-                        .retrieve()
-                        .body(String.class);
-
-        return resposta;
+        return executarChamadaGeminiComFallback(body);
     }
 
     public String transformarImagemEmJson(byte[] bytes, String mimeType) {
-        log.trace("Usando Gemini Vision (gemini-2.5-flash) para extrair JSON diretamente da imagem/PDF da anamnese");
+        log.trace("Usando Gemini Vision para extrair JSON diretamente da imagem/PDF da anamnese");
 
         String base64Data = java.util.Base64.getEncoder().encodeToString(bytes);
         String prompt = """
@@ -169,12 +201,7 @@ public class GeminiAIService {
                 )
         );
 
-        return restClient.post()
-                .uri("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent")
-                .header("x-goog-api-key", apiKey)
-                .body(body)
-                .retrieve()
-                .body(String.class);
+        return executarChamadaGeminiComFallback(body);
     }
 
     public JsonNode limparJsonGemini(String responseJson) {
