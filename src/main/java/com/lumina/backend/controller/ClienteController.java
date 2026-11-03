@@ -29,6 +29,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -78,17 +82,19 @@ public class ClienteController {
     }
 
     @GetMapping
-    @Operation(summary = "Lista ou busca clientes", description = "Retorna os clientes cadastrados no sistema, permitindo filtrar por nome ou CPF.")
+    @Operation(summary = "Lista ou busca clientes com paginacao em offset", description = "Retorna os clientes cadastrados de forma paginada (offset), permitindo filtrar por nome ou CPF e ordenar.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Clientes retornados com sucesso",
+            @ApiResponse(responseCode = "200", description = "Pagina de clientes retornada com sucesso",
                     content = @Content(schema = @Schema(implementation = ClienteResponse.class))),
             @ApiResponse(responseCode = "204", description = "Nenhum cliente encontrado", content = @Content)
     })
-    public ResponseEntity<List<ClienteResponse>> listar(
+    public ResponseEntity<Page<ClienteResponse>> listar(
             @Parameter(description = "Nome para busca parcial de clientes", example = "Maria")
             @RequestParam(required = false) String nome,
             @Parameter(description = "CPF exato do cliente", example = "12345678901")
-            @RequestParam(required = false) String cpf){
+            @RequestParam(required = false) String cpf,
+            @PageableDefault(page = 0, size = 6, sort = "nome", direction = Sort.Direction.ASC)
+            Pageable pageable){
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
@@ -96,16 +102,22 @@ public class ClienteController {
                 .stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_RECEPCIONISTA") || a.getAuthority().equals("ROLE_ADMIN"));
 
-        if(!isRecepcionista){
-            return ResponseEntity.status(403).build();
+        Page<Cliente> clientesPage;
+        if (isRecepcionista) {
+            clientesPage = service.listarComFiltrosPaginado(nome, cpf, pageable);
+        } else {
+            // Dentista: apenas pacientes com consulta associada a ele
+            Long usuarioLogadoId = obterUsuarioIdAutenticado();
+            if (usuarioLogadoId == null) {
+                return ResponseEntity.status(403).build();
+            }
+            clientesPage = service.listarPorDentistaPaginado(usuarioLogadoId, nome, cpf, pageable);
         }
-
-        List<Cliente> clientes = service.listarComFiltros(nome, cpf);
-        if(clientes.isEmpty()) {
+        if(clientesPage.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
-        List<ClienteResponse> response = ClienteMapper.toDto(clientes);
-        enriquecerClientesComConveniosEConsultas(response);
+        Page<ClienteResponse> response = clientesPage.map(ClienteMapper::toDto);
+        enriquecerClientesComConveniosEConsultas(response.getContent());
         return ResponseEntity.ok(response);
     }
 
@@ -224,6 +236,15 @@ public class ClienteController {
     @GetMapping("/{id:\\d+}/anamneses")
     public ResponseEntity<List<AnamneseResponse>> listarAnamnese(@PathVariable Integer id){
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isApenasDentista = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_DENTISTA"))
+                && auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_RECEPCIONISTA"));
+        if (isApenasDentista) {
+            Long usuarioLogadoId = obterUsuarioIdAutenticado();
+            if (usuarioLogadoId == null
+                    || !consultaRepository.existsByClienteIdClienteAndUsuarioIdUsuario(id.longValue(), usuarioLogadoId)) {
+                return ResponseEntity.status(403).build();
+            }
+        }
         String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
         log.info("AUDIT: Usuario [{}] listou anamneses do cliente ID [{}]", usuario, id);
         List<Anamnese> anamneseList = service.listarAnamnese(id);
@@ -233,7 +254,7 @@ public class ClienteController {
 
     @PostMapping("/{id:\\d+}/anamneses")
     public ResponseEntity<AnamneseResponse> cadastroAnamnese(@PathVariable Long id,
-                                                             @RequestBody AnamneseRequest request){
+                                                             @org.springframework.web.bind.annotation.RequestBody AnamneseRequest request){
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
         Anamnese anamnese = service.cadastrarAnamnese(id, request);

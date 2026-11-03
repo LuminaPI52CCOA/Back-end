@@ -5,12 +5,16 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -55,6 +59,57 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
         return ResponseEntity.status(HttpStatus.CONFLICT).body(erro);
+    }
+
+    @ExceptionHandler(ConflitoHorarioException.class)
+    public ResponseEntity<ErroRespostaDto> handleConflitoHorario(ConflitoHorarioException ex, HttpServletRequest request) {
+        log.warn("Conflito de horario: {} no caminho {}", ex.getMessage(), request.getRequestURI());
+        ErroRespostaDto erro = new ErroRespostaDto(
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(erro);
+    }
+
+    @ExceptionHandler(AgendamentoInvalidoException.class)
+    public ResponseEntity<ErroRespostaDto> handleAgendamentoInvalido(AgendamentoInvalidoException ex, HttpServletRequest request) {
+        log.warn("Agendamento invalido: {} no caminho {}", ex.getMessage(), request.getRequestURI());
+        ErroRespostaDto erro = new ErroRespostaDto(
+                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(erro);
+    }
+
+    @ExceptionHandler({
+            HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class,
+            MissingServletRequestParameterException.class,
+            HandlerMethodValidationException.class
+    })
+    public ResponseEntity<ErroRespostaDto> handleRequisicaoMalFormada(Exception ex, HttpServletRequest request) {
+        log.warn("Requisicao mal formada no caminho {}: {}", request.getRequestURI(), ex.getMessage());
+        String mensagem;
+        if (ex instanceof MissingServletRequestParameterException faltante) {
+            mensagem = "Parâmetro obrigatório ausente: " + faltante.getParameterName() + ".";
+        } else if (ex instanceof MethodArgumentTypeMismatchException tipoInvalido) {
+            mensagem = "Valor inválido para o parâmetro " + tipoInvalido.getName() + ".";
+        } else if (ex instanceof HandlerMethodValidationException) {
+            mensagem = "Parâmetros inválidos na requisição.";
+        } else {
+            mensagem = "Corpo da requisição inválido. Verifique os formatos (data AAAA-MM-DD, horário HH:mm:ss).";
+        }
+        ErroRespostaDto erro = new ErroRespostaDto(
+                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                mensagem,
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(erro);
     }
 
     @ExceptionHandler(FormatoArquivoInvalidoException.class)

@@ -1,8 +1,12 @@
 spring.application.name=backend
-spring.datasource.url=${DB_URL:jdbc:mysql://localhost:3306/Lumina}
+spring.datasource.url=${DB_URL:jdbc:mysql://localhost:3306/Lumina?useUnicode=true&characterEncoding=UTF-8}
 spring.datasource.username=${DB_USERNAME:root}
 spring.datasource.password=${DB_PASSWORD:lumina_dev_pass_8492}
 spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+# Força UTF-8 para requisições e respostas HTTP
+server.servlet.encoding.charset=UTF-8
+server.servlet.encoding.force=true
 
 # Limites para Upload de Arquivos (Protecao contra DoS)
 spring.servlet.multipart.max-file-size=10MB
@@ -43,3 +47,24 @@ logging.level.com.lumina=${LOG_LEVEL:INFO}
 alexa.lwa.client-id=${ALEXA_LWA_CLIENT_ID:}
 alexa.lwa.client-secret=${ALEXA_LWA_CLIENT_SECRET:}
 alexa.reminders.enabled=${ALEXA_REMINDERS_ENABLED:true}
+
+# =============================================================================
+# Configuração RabbitMQ e Notificações WhatsApp (D-1)
+# =============================================================================
+app.public-url=${APP_PUBLIC_URL:http://localhost:5173}
+spring.rabbitmq.host=${SPRING_RABBITMQ_HOST:localhost}
+spring.rabbitmq.port=${SPRING_RABBITMQ_PORT:5672}
+spring.rabbitmq.username=${SPRING_RABBITMQ_USERNAME:guest}
+spring.rabbitmq.password=${SPRING_RABBITMQ_PASSWORD:guest}
+spring.rabbitmq.listener.simple.default-requeue-rejected=false
+spring.rabbitmq.listener.simple.retry.enabled=true
+spring.rabbitmq.listener.simple.retry.max-attempts=3
+spring.rabbitmq.listener.simple.retry.initial-interval=1000ms
+spring.rabbitmq.listener.simple.retry.multiplier=2.0
+
+# =============================================================================
+# Agenda de consultas
+# =============================================================================
+lumina.agenda.fuso-horario=${AGENDA_FUSO_HORARIO:America/Sao_Paulo}
+lumina.agenda.inicio-jornada=${AGENDA_INICIO_JORNADA:08:00}
+lumina.agenda.fim-jornada=${AGENDA_FIM_JORNADA:18:00}

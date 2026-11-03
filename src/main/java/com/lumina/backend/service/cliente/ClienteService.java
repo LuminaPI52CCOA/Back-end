@@ -16,6 +16,11 @@ import com.lumina.backend.model.Anamnese;
 import com.lumina.backend.model.EstadoCivil;
 import com.lumina.backend.repository.AnamneseRepository;
 import com.lumina.backend.repository.EstadoCivilRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -44,6 +49,14 @@ public class ClienteService {
         return repositoryPort.buscarTodos();
     }
 
+    public Page<Cliente> listarPaginado(Pageable pageable) {
+        Sort sort = pageable.getSort().isSorted()
+                ? pageable.getSort()
+                : Sort.by(Sort.Direction.ASC, "nome");
+        PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+        return repositoryPort.buscarTodos(pageRequest);
+    }
+
     public List<Cliente> listarComFiltros(String nome, String cpf) {
         if (cpf != null && !cpf.isBlank()) {
             return repositoryPort.buscarPorCpf(cpf)
@@ -54,6 +67,35 @@ public class ClienteService {
             return repositoryPort.buscarPorNome(nome);
         }
         return repositoryPort.buscarTodos();
+    }
+
+    public Page<Cliente> listarComFiltrosPaginado(String nome, String cpf, Pageable pageable) {
+        Sort sort = pageable.getSort().isSorted()
+                ? pageable.getSort()
+                : Sort.by(Sort.Direction.ASC, "nome");
+        PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+
+        if (cpf != null && !cpf.isBlank()) {
+            List<Cliente> encontrados = repositoryPort.buscarPorCpf(cpf)
+                    .map(List::of)
+                    .orElse(Collections.emptyList());
+            return new PageImpl<>(encontrados, pageRequest, encontrados.size());
+        }
+        if (nome != null && !nome.isBlank()) {
+            return repositoryPort.buscarPorNome(nome, pageRequest);
+        }
+        return repositoryPort.buscarTodos(pageRequest);
+    }
+
+    public Page<Cliente> listarPorDentistaPaginado(Long idUsuario, String nome, String cpf, Pageable pageable) {
+        Sort sort = pageable.getSort().isSorted()
+                ? pageable.getSort()
+                : Sort.by(Sort.Direction.ASC, "nome");
+        PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+        return repositoryPort.buscarPorDentista(idUsuario,
+                (nome == null || nome.isBlank()) ? null : nome,
+                (cpf == null || cpf.isBlank()) ? null : cpf,
+                pageRequest);
     }
 
     public Cliente cadastrar(ClienteRequest request){
@@ -242,11 +284,29 @@ public class ClienteService {
     }
 
     public Anamnese cadastrarAnamnese(Long id, AnamneseRequest request){
-        repositoryPort.buscarPorId(ClienteId.of(id))
+        Cliente clienteDomain = repositoryPort.buscarPorId(ClienteId.of(id))
                 .orElseThrow(() -> new EntidadeNaoEncontrada("Cliente não encontrado!"));
+
+        com.lumina.backend.model.Cliente clienteModel = new com.lumina.backend.model.Cliente();
+        clienteModel.setIdCliente(id);
+        clienteModel.setNome(clienteDomain.getNome());
+        clienteModel.setCpf(clienteDomain.getCpf());
+        clienteModel.setRg(clienteDomain.getRg());
+        clienteModel.setDataNascimento(clienteDomain.getDataNascimento());
+        clienteModel.setNumeroCelular(clienteDomain.getNumeroCelular());
+        clienteModel.setEmail(clienteDomain.getEmail());
+        clienteModel.setSexo(clienteDomain.getSexo());
+        clienteModel.setNaturalidade(clienteDomain.getNaturalidade());
+        clienteModel.setNacionalidade(clienteDomain.getNacionalidade());
+        clienteModel.setFkEstadoCivil(clienteDomain.getFkEstadoCivil());
+        clienteModel.setEnderecoResidencial(clienteDomain.getEnderecoResidencial());
+        clienteModel.setCep(clienteDomain.getCep());
+        clienteModel.setGrauParentescoResponsavel(clienteDomain.getGrauParentescoResponsavel());
+
         Anamnese anamnese = new Anamnese();
+        anamnese.setFkCliente(clienteModel);
         anamnese.setIdAnamnese(request.getIdAnamnese());
-        anamnese.setDataAnamnese(request.getDataAnamnese());
+        anamnese.setDataAnamnese(request.getDataAnamnese() != null ? request.getDataAnamnese() : java.time.LocalDate.now());
         anamnese.setFazendoTratamento(request.getFazendoTratamento());
         anamnese.setDescricaoTratamento(request.getDescricaoTratamento());
         anamnese.setDoresCabecaFaceAtm(request.getDoresCabecaFaceAtm());

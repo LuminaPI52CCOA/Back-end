@@ -100,13 +100,81 @@ public class GeminiAIService {
 
         String resposta =
                 restClient.post()
-                        .uri("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent")
+                        .uri("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent")
                         .header("x-goog-api-key", apiKey)
                         .body(body)
                         .retrieve()
                         .body(String.class);
 
         return resposta;
+    }
+
+    public String transformarImagemEmJson(byte[] bytes, String mimeType) {
+        log.trace("Usando Gemini Vision (gemini-2.5-flash) para extrair JSON diretamente da imagem/PDF da anamnese");
+
+        String base64Data = java.util.Base64.getEncoder().encodeToString(bytes);
+        String prompt = """
+                Você é um extrator de dados médicos de alta precisão e integridade. Sua única tarefa é analisar a imagem/documento da ficha de anamnese médica e converter suas respostas em um JSON estrito e estruturado conforme o schema abaixo.
+
+                REGRAS OBRIGATÓRIAS:
+                - Retorne APENAS o JSON puro. Não inclua blocos de código com markdown (como ```json), sem introduções e sem explicações.
+                - Detecte marcações de seleção (ex: "(X)", "[X]", "( x )", "[x]", "(*)", marcação à caneta) ao lado de "Sim" ou "Não" para definir o valor booleano.
+                - Regra de Booleano: "Sim" marcado = true | "Não" marcado = false | Nenhuma marcação identificada = null.
+                - Regra de Detalhes: Se o campo "detalhes" não tiver texto adicional preenchido, defina o valor dele como null (mantenha a chave no JSON).
+                - NÃO invente ou assuma dados. Se a informação não estiver marcada na ficha, use null.
+
+                ESTRUTURA ESPERADA:
+                {
+                  "ficha_anamnese": {
+                    "metadados": {
+                      "data_preenchimento": "<data no formato DD/MM/AAAA ou null>"
+                    },
+                    "perguntas": {
+                      "q1_tratamento_medico":                      { "resposta_sim": "<bool>", "detalhes": "<texto ou null>" },
+                      "q2_dores_cabeca_face_ouvido_articulacao":   { "resposta_sim": "<bool>" },
+                      "q3_alergia_medicamento":                    { "resposta_sim": "<bool>", "detalhes": "<texto ou null>" },
+                      "q4_reacao_anestesia_local":                 { "resposta_sim": "<bool>" },
+                      "q5_sensibilidade_dentes":                   { "resposta_sim": "<bool>" },
+                      "q6_range_dentes_apertamento":               { "resposta_sim": "<bool>" },
+                      "q7_gengiva_sangra_frequencia":              { "resposta_sim": "<bool>" },
+                      "q8_tem_algum_habito":                       { "resposta_sim": "<bool>", "detalhes": "<texto ou null>" },
+                      "q9_diabetico_ou_historico_familiar":        { "resposta_sim": "<bool>" },
+                      "q10_sangramento_excessivo_cortes":          { "resposta_sim": "<bool>" },
+                      "q11_problema_cardiaco":                     { "resposta_sim": "<bool>", "detalhes": "<texto ou null>" },
+                      "q12_pressao_arterial_normal":               { "resposta_sim": "<bool>" },
+                      "q13_desmaio_ataques_epilepsia_convulsao":   { "resposta_sim": "<bool>" },
+                      "q14_esta_gravida":                          { "resposta_sim": "<bool>" }
+                    },
+                    "declaracao_veracidade": "<bool>"
+                  }
+                }
+                """;
+
+        Map<String, Object> body = Map.of(
+                "contents",
+                List.of(
+                        Map.of(
+                                "parts",
+                                List.of(
+                                        Map.of("text", prompt),
+                                        Map.of(
+                                                "inline_data",
+                                                Map.of(
+                                                        "mime_type", mimeType != null ? mimeType : "image/png",
+                                                        "data", base64Data
+                                                )
+                                        )
+                                )
+                        )
+                )
+        );
+
+        return restClient.post()
+                .uri("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent")
+                .header("x-goog-api-key", apiKey)
+                .body(body)
+                .retrieve()
+                .body(String.class);
     }
 
     public JsonNode limparJsonGemini(String responseJson) {

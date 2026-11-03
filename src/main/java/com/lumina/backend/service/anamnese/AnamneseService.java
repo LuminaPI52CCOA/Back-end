@@ -84,29 +84,35 @@ public class AnamneseService {
                         )
                         .build();
 
-        DetectDocumentTextResponse response =
-                textractClient.detectDocumentText(
-                        request
-                );
+        String retornoApi;
+        try {
+            DetectDocumentTextResponse response =
+                    textractClient.detectDocumentText(
+                            request
+                    );
 
-        String ocr =
-                response.blocks()
-                        .stream()
-                        .filter(
-                                block ->
-                                        block.blockType() == BlockType.LINE
-                        )
-                        .map(
-                                block -> block.text()
-                        )
-                        .collect(
-                                Collectors.joining("\n")
-                        );
+            String ocr =
+                    response.blocks()
+                            .stream()
+                            .filter(
+                                    block ->
+                                            block.blockType() == BlockType.LINE
+                            )
+                            .map(
+                                    block -> block.text()
+                            )
+                            .collect(
+                                    Collectors.joining("\n")
+                            );
+
+            log.trace("Transformando as informações da OCR em Json");
+            retornoApi = geminiAIService.transformarEmJson(ocr);
+        } catch (software.amazon.awssdk.core.exception.SdkException ex) {
+            log.warn("AWS Textract indisponível ({}); utilizando leitura direta via Gemini 2.5 Flash.", ex.getMessage());
+            retornoApi = geminiAIService.transformarImagemEmJson(bytes, contentType);
+        }
 
         ObjectMapper mapper = new ObjectMapper();
-
-        log.trace("Transformando as informações da OCR em Json");
-        String retornoApi = geminiAIService.transformarEmJson(ocr);
         log.trace("Limpando os dados divergentes");
         JsonNode json = geminiAIService.limparJsonGemini(retornoApi);
         log.trace("Realizando insert no banco de dados");
