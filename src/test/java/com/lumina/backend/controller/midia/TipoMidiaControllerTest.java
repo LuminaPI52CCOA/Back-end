@@ -4,7 +4,7 @@ import com.lumina.backend.controller.TipoMidiaController;
 import com.lumina.backend.dto.midia.TipoMidiaRequest;
 import com.lumina.backend.dto.midia.TipoMidiaResponse;
 import com.lumina.backend.model.Usuario;
-import com.lumina.backend.repository.UsuarioRepository;
+import com.lumina.backend.service.usuario.UsuarioLogadoService;
 import com.lumina.backend.service.midia.TipoMidiaService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,7 +35,7 @@ class TipoMidiaControllerTest {
     private TipoMidiaService tipoMidiaService;
 
     @Mock
-    private UsuarioRepository usuarioRepository;
+    private UsuarioLogadoService usuarioLogadoService;
 
     @InjectMocks
     private TipoMidiaController tipoMidiaController;
@@ -57,7 +57,7 @@ class TipoMidiaControllerTest {
         usuario.setIdUsuario(1L);
         usuario.setEmail(email);
 
-        when(usuarioRepository.findByEmail(email)).thenReturn(Optional.of(usuario));
+        when(usuarioLogadoService.buscarPorEmail(email)).thenReturn(Optional.of(usuario));
         return usuario;
     }
 
@@ -78,7 +78,7 @@ class TipoMidiaControllerTest {
             assertEquals(HttpStatus.OK, response.getStatusCode());
             assertNotNull(response.getBody());
             assertEquals(1, response.getBody().size());
-            assertEquals("Raio-X", response.getBody().get(0).getNome());
+            assertEquals("Raio-X", response.getBody().get(0).nome());
             verify(tipoMidiaService).listarDisponiveis(usuario);
         }
 
@@ -112,8 +112,8 @@ class TipoMidiaControllerTest {
 
             assertEquals(HttpStatus.CREATED, response.getStatusCode());
             assertNotNull(response.getBody());
-            assertEquals(5L, response.getBody().getId());
-            assertTrue(response.getBody().getPersonalizado());
+            assertEquals(5L, response.getBody().id());
+            assertTrue(response.getBody().personalizado());
             verify(tipoMidiaService).criarPersonalizado(request, usuario);
         }
     }

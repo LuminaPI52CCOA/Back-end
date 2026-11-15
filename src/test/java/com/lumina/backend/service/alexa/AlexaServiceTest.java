@@ -1,7 +1,7 @@
 package com.lumina.backend.service.alexa;
 
 import com.lumina.backend.dto.alexa.*;
-import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.exception.EntidadeNaoEncontradaException;
 import com.lumina.backend.model.*;
 import com.lumina.backend.repository.AnamneseRepository;
 import com.lumina.backend.repository.ConsultaRepository;
@@ -64,10 +64,10 @@ class AlexaServiceTest {
             AlexaGerarPinResponse response = alexaService.gerarPin(1L);
 
             assertNotNull(response);
-            assertNotNull(response.getCodigo());
-            assertEquals(6, response.getCodigo().length());
-            assertEquals(10, response.getExpiraEmMinutos());
-            assertTrue(response.getMensagem().contains(response.getCodigo()));
+            assertNotNull(response.codigo());
+            assertEquals(6, response.codigo().length());
+            assertEquals(10, response.expiraEmMinutos());
+            assertTrue(response.mensagem().contains(response.codigo()));
             verify(usuarioAlexaRepository).save(any(UsuarioAlexa.class));
         }
 
@@ -76,7 +76,7 @@ class AlexaServiceTest {
         void deveLancarExcecaoSeUsuarioNaoExistir() {
             when(usuarioRepository.findById(99L)).thenReturn(Optional.empty());
 
-            assertThrows(EntidadeNaoEncontrada.class, () -> alexaService.gerarPin(99L));
+            assertThrows(EntidadeNaoEncontradaException.class, () -> alexaService.gerarPin(99L));
         }
     }
 
@@ -106,8 +106,8 @@ class AlexaServiceTest {
             AlexaVincularResponse response = alexaService.vincular(request);
 
             assertNotNull(response);
-            assertTrue(response.isSucesso());
-            assertEquals("Dr. Roberto", response.getDentistaNome());
+            assertTrue(response.sucesso());
+            assertEquals("Dr. Roberto", response.dentistaNome());
             assertEquals("amzn1.ask.account.TEST", vinculo.getAlexaUserId());
             assertTrue(vinculo.getAtivo());
             assertNull(vinculo.getCodigoPareamento());
@@ -138,7 +138,7 @@ class AlexaServiceTest {
 
             AlexaVincularRequest request = new AlexaVincularRequest("000000", "amzn1.ask.account.TEST", "https://api.amazonalexa.com");
 
-            assertThrows(EntidadeNaoEncontrada.class, () -> alexaService.vincular(request));
+            assertThrows(EntidadeNaoEncontradaException.class, () -> alexaService.vincular(request));
         }
     }
 
@@ -178,10 +178,10 @@ class AlexaServiceTest {
             AlexaConsultaDto dto = alexaService.obterProximaConsulta("amzn1.ask.account.LUCAS", null);
 
             assertNotNull(dto);
-            assertEquals(100L, dto.getIdConsulta());
-            assertEquals("Maria Silva", dto.getPacienteNome());
-            assertTrue(dto.getMensagemVoz().contains("15 horas e 30 minutos"));
-            assertTrue(dto.getMensagemVoz().contains("Maria Silva"));
+            assertEquals(100L, dto.idConsulta());
+            assertEquals("Maria Silva", dto.pacienteNome());
+            assertTrue(dto.mensagemVoz().contains("15 horas e 30 minutos"));
+            assertTrue(dto.mensagemVoz().contains("Maria Silva"));
         }
 
         @Test
@@ -202,8 +202,8 @@ class AlexaServiceTest {
             AlexaConsultaDto dto = alexaService.obterProximaConsulta("amzn1.ask.account.LUCAS", null);
 
             assertNotNull(dto);
-            assertNull(dto.getIdConsulta());
-            assertTrue(dto.getMensagemVoz().contains("não possui mais consultas agendadas para hoje"));
+            assertNull(dto.idConsulta());
+            assertTrue(dto.mensagemVoz().contains("não possui mais consultas agendadas para hoje"));
         }
     }
 
@@ -244,11 +244,11 @@ class AlexaServiceTest {
             AlexaAnamneseAlertaDto alerta = alexaService.obterAlertaAnamneseProxima("amzn1.alexa", null);
 
             assertNotNull(alerta);
-            assertTrue(alerta.isPossuiRestricoes());
-            assertEquals("Joao Pedro", alerta.getPacienteNome());
-            assertTrue(alerta.getAlertas().contains("alergia a Dipirona"));
-            assertTrue(alerta.getAlertas().contains("Sopro no coração"));
-            assertTrue(alerta.getMensagemVoz().contains("Dipirona"));
+            assertTrue(alerta.possuiRestricoes());
+            assertEquals("Joao Pedro", alerta.pacienteNome());
+            assertTrue(alerta.alertas().contains("alergia a Dipirona"));
+            assertTrue(alerta.alertas().contains("Sopro no coração"));
+            assertTrue(alerta.mensagemVoz().contains("Dipirona"));
         }
     }
 
@@ -277,11 +277,11 @@ class AlexaServiceTest {
             AlexaStatusResponse status = alexaService.obterStatus(1L);
 
             assertNotNull(status);
-            assertTrue(status.getConectado());
-            assertEquals("amzn1.ask.account.RICARDO", status.getAlexaUserId());
-            assertEquals("https://api.amazonalexa.com", status.getApiEndpoint());
-            assertEquals("Dr. Ricardo", status.getDentistaNome());
-            assertNotNull(status.getVinculadoEm());
+            assertTrue(status.conectado());
+            assertEquals("amzn1.ask.account.RICARDO", status.alexaUserId());
+            assertEquals("https://api.amazonalexa.com", status.apiEndpoint());
+            assertEquals("Dr. Ricardo", status.dentistaNome());
+            assertNotNull(status.vinculadoEm());
         }
 
         @Test
@@ -297,18 +297,18 @@ class AlexaServiceTest {
             AlexaStatusResponse status = alexaService.obterStatus(2L);
 
             assertNotNull(status);
-            assertFalse(status.getConectado());
-            assertNull(status.getAlexaUserId());
-            assertNull(status.getVinculadoEm());
-            assertEquals("Dra. Beatriz", status.getDentistaNome());
+            assertFalse(status.conectado());
+            assertNull(status.alexaUserId());
+            assertNull(status.vinculadoEm());
+            assertEquals("Dra. Beatriz", status.dentistaNome());
         }
 
         @Test
-        @DisplayName("Deve lançar EntidadeNaoEncontrada quando usuário não existir ao consultar status")
+        @DisplayName("Deve lançar EntidadeNaoEncontradaException quando usuário não existir ao consultar status")
         void deveLancarExcecaoQuandoUsuarioNaoExistirAoConsultarStatus() {
             when(usuarioRepository.findById(99L)).thenReturn(Optional.empty());
 
-            assertThrows(EntidadeNaoEncontrada.class, () -> alexaService.obterStatus(99L));
+            assertThrows(EntidadeNaoEncontradaException.class, () -> alexaService.obterStatus(99L));
         }
     }
 
@@ -342,7 +342,7 @@ class AlexaServiceTest {
         }
 
         @Test
-        @DisplayName("Deve lançar EntidadeNaoEncontrada quando não houver vínculo ativo para desconectar")
+        @DisplayName("Deve lançar EntidadeNaoEncontradaException quando não houver vínculo ativo para desconectar")
         void deveLancarExcecaoQuandoSemVinculoParaDesconectar() {
             Usuario usuario = new Usuario();
             usuario.setIdUsuario(2L);
@@ -350,15 +350,15 @@ class AlexaServiceTest {
             when(usuarioRepository.findById(2L)).thenReturn(Optional.of(usuario));
             when(usuarioAlexaRepository.findByUsuario_IdUsuarioAndAtivoTrue(2L)).thenReturn(Optional.empty());
 
-            assertThrows(EntidadeNaoEncontrada.class, () -> alexaService.desconectar(2L));
+            assertThrows(EntidadeNaoEncontradaException.class, () -> alexaService.desconectar(2L));
         }
 
         @Test
-        @DisplayName("Deve lançar EntidadeNaoEncontrada quando usuário não existir ao desconectar")
+        @DisplayName("Deve lançar EntidadeNaoEncontradaException quando usuário não existir ao desconectar")
         void deveLancarExcecaoQuandoUsuarioNaoExistirAoDesconectar() {
             when(usuarioRepository.findById(99L)).thenReturn(Optional.empty());
 
-            assertThrows(EntidadeNaoEncontrada.class, () -> alexaService.desconectar(99L));
+            assertThrows(EntidadeNaoEncontradaException.class, () -> alexaService.desconectar(99L));
         }
     }
 }

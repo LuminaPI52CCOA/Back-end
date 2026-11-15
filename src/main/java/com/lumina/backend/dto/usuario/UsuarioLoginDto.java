@@ -3,26 +3,10 @@ package com.lumina.backend.dto.usuario;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "Credenciais de autenticacao do usuario")
-public class UsuarioLoginDto {
-
-    @Schema(description = "E-mail do usuário", example = "john@doe.com")
-    private String email;
-    @Schema(description = "Senha do usuário", example = "123456")
-    private String senha;
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getSenha() {
-        return senha;
-    }
-
-    public void setSenha(String senha) {
-        this.senha = senha;
-    }
+public record UsuarioLoginDto(
+        @Schema(description = "E-mail do usuário", example = "john@doe.com")
+        String email,
+        @Schema(description = "Senha do usuário", example = "123456")
+        String senha
+) {
 }

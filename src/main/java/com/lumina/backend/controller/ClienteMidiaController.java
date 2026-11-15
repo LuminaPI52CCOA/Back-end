@@ -4,7 +4,7 @@ import com.lumina.backend.dto.midia.ClienteMidiaResponse;
 import com.lumina.backend.dto.midia.IniciarUploadRequest;
 import com.lumina.backend.dto.midia.UploadPresignedItemResponse;
 import com.lumina.backend.model.Usuario;
-import com.lumina.backend.repository.UsuarioRepository;
+import com.lumina.backend.service.usuario.UsuarioLogadoService;
 import com.lumina.backend.service.midia.ClienteMidiaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -28,11 +28,11 @@ import java.util.List;
 public class ClienteMidiaController {
 
     private final ClienteMidiaService clienteMidiaService;
-    private final UsuarioRepository usuarioRepository;
+    private final UsuarioLogadoService usuarioLogadoService;
 
-    public ClienteMidiaController(ClienteMidiaService clienteMidiaService, UsuarioRepository usuarioRepository) {
+    public ClienteMidiaController(ClienteMidiaService clienteMidiaService, UsuarioLogadoService usuarioLogadoService) {
         this.clienteMidiaService = clienteMidiaService;
-        this.usuarioRepository = usuarioRepository;
+        this.usuarioLogadoService = usuarioLogadoService;
     }
 
     @PostMapping("/iniciar-upload")
@@ -107,7 +107,7 @@ public class ClienteMidiaController {
     private Usuario getUsuarioAutenticado() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getName() != null) {
-            return usuarioRepository.findByEmail(auth.getName()).orElse(null);
+            return usuarioLogadoService.buscarPorEmail(auth.getName()).orElse(null);
         }
         return null;
     }

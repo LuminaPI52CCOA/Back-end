@@ -10,6 +10,7 @@ import com.lumina.backend.dto.consulta.ReagendamentoRequest;
 import com.lumina.backend.exception.dto.ErroRespostaDto;
 import com.lumina.backend.model.Consulta;
 import com.lumina.backend.service.consulta.ConsultaService;
+import com.lumina.backend.service.consulta.DashboardAgendamentoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -29,7 +30,7 @@ import com.lumina.backend.dto.alexa.AlexaAnamneseAlertaDto;
 import com.lumina.backend.dto.alexa.AlexaConsultaDto;
 import com.lumina.backend.dto.alexa.AlexaResumoDiaDto;
 import com.lumina.backend.model.Usuario;
-import com.lumina.backend.repository.UsuarioRepository;
+import com.lumina.backend.service.usuario.UsuarioLogadoService;
 import com.lumina.backend.service.alexa.AlexaService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -44,15 +45,18 @@ import java.util.List;
 public class ConsultaController {
 
     private final ConsultaService consultaService;
+    private final DashboardAgendamentoService dashboardService;
     private final AlexaService alexaService;
-    private final UsuarioRepository usuarioRepository;
+    private final UsuarioLogadoService usuarioLogadoService;
 
     public ConsultaController(ConsultaService consultaService,
+                              DashboardAgendamentoService dashboardService,
                               AlexaService alexaService,
-                              UsuarioRepository usuarioRepository) {
+                              UsuarioLogadoService usuarioLogadoService) {
         this.consultaService = consultaService;
+        this.dashboardService = dashboardService;
         this.alexaService = alexaService;
-        this.usuarioRepository = usuarioRepository;
+        this.usuarioLogadoService = usuarioLogadoService;
     }
 
     @GetMapping
@@ -99,7 +103,7 @@ public class ConsultaController {
         if (isApenasDentista() && idUsuario != null && !idUsuario.equals(obterUsuarioIdAutenticado())) {
             return ResponseEntity.status(403).build();
         }
-        return ResponseEntity.ok(consultaService.obterDashboardAgendamento(periodo, idUsuario));
+        return ResponseEntity.ok(dashboardService.obterDashboardAgendamento(periodo, idUsuario));
     }
 
     @GetMapping("/dentista/{id}")
@@ -267,7 +271,7 @@ public class ConsultaController {
             return ResponseEntity.status(403).build();
         }
 
-        return ResponseEntity.ok(ConsultaMapper.toResponse(consultaService.alterarStatus(id, request.getStatus())));
+        return ResponseEntity.ok(ConsultaMapper.toResponse(consultaService.alterarStatus(id, request.status())));
     }
 
     @DeleteMapping("/{id}")
@@ -358,7 +362,7 @@ public class ConsultaController {
     private Long obterUsuarioIdAutenticado() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getName() != null && !auth.getName().isBlank() && !"anonymousUser".equalsIgnoreCase(auth.getName())) {
-            return usuarioRepository.findByEmail(auth.getName())
+            return usuarioLogadoService.buscarPorEmail(auth.getName())
                     .map(Usuario::getIdUsuario)
                     .orElse(null);
         }

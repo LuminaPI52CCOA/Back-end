@@ -1,6 +1,10 @@
 package com.lumina.backend.model;
 
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 
@@ -12,6 +16,9 @@ import java.util.Set;
 
 @Entity
 @Table(name = "consulta")
+@Getter
+@Setter
+@NoArgsConstructor
 public class Consulta {
 
     @Id
@@ -60,10 +67,8 @@ public class Consulta {
     @Column(name = "fk_dente", nullable = false)
     @OrderBy
     @Fetch(FetchMode.SUBSELECT)
+    @Setter(AccessLevel.NONE)
     private Set<Integer> dentes = new LinkedHashSet<>();
-
-    public Consulta() {
-    }
 
     public Consulta(Long idConsulta, Cliente cliente, Usuario usuario, LocalDate data, LocalTime horarioInicio, LocalTime horarioFim) {
         this.idConsulta = idConsulta;
@@ -86,114 +91,6 @@ public class Consulta {
         this.status = status;
         this.lembreteEnviado = lembreteEnviado;
         this.alexaReminderId = alexaReminderId;
-    }
-
-    public Long getIdConsulta() {
-        return idConsulta;
-    }
-
-    public void setIdConsulta(Long idConsulta) {
-        this.idConsulta = idConsulta;
-    }
-
-    public Cliente getCliente() {
-        return cliente;
-    }
-
-    public void setCliente(Cliente cliente) {
-        this.cliente = cliente;
-    }
-
-    public Usuario getUsuario() {
-        return usuario;
-    }
-
-    public void setUsuario(Usuario usuario) {
-        this.usuario = usuario;
-    }
-
-    public LocalDate getData() {
-        return data;
-    }
-
-    public void setData(LocalDate data) {
-        this.data = data;
-    }
-
-    public LocalTime getHorarioInicio() {
-        return horarioInicio;
-    }
-
-    public void setHorarioInicio(LocalTime horarioInicio) {
-        this.horarioInicio = horarioInicio;
-    }
-
-    public LocalTime getHorarioFim() {
-        return horarioFim;
-    }
-
-    public void setHorarioFim(LocalTime horarioFim) {
-        this.horarioFim = horarioFim;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public Boolean getLembreteEnviado() {
-        return lembreteEnviado;
-    }
-
-    public void setLembreteEnviado(Boolean lembreteEnviado) {
-        this.lembreteEnviado = lembreteEnviado;
-    }
-
-    public String getAlexaReminderId() {
-        return alexaReminderId;
-    }
-
-    public void setAlexaReminderId(String alexaReminderId) {
-        this.alexaReminderId = alexaReminderId;
-    }
-
-    public Especialidade getEspecialidade() {
-        return especialidade;
-    }
-
-    public void setEspecialidade(Especialidade especialidade) {
-        this.especialidade = especialidade;
-    }
-
-    public String getObservacoes() {
-        return observacoes;
-    }
-
-    public void setObservacoes(String observacoes) {
-        this.observacoes = observacoes;
-    }
-
-    public String getTipoDente() {
-        return tipoDente;
-    }
-
-    public void setTipoDente(String tipoDente) {
-        this.tipoDente = tipoDente;
-    }
-
-    public Boolean getPularOdontograma() {
-        return pularOdontograma;
-    }
-
-    public void setPularOdontograma(Boolean pularOdontograma) {
-        this.pularOdontograma = pularOdontograma;
-    }
-
-    public Set<Integer> getDentes() {
-        return dentes;
     }
 
     public void setDentes(Collection<Integer> dentes) {

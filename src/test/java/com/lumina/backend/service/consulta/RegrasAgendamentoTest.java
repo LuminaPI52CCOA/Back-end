@@ -23,7 +23,7 @@ class RegrasAgendamentoTest {
     private static final LocalDate HOJE = LocalDate.of(2026, 11, 2);
     private static final LocalDate AMANHA = HOJE.plusDays(1);
 
-    private final RegrasAgendamento regras = new RegrasAgendamento(RELOGIO, LocalTime.of(8, 0), LocalTime.of(18, 0));
+    private final RegrasAgendamento regras = RegrasAgendamento.comJornada(RELOGIO, LocalTime.of(8, 0), LocalTime.of(18, 0));
 
     @Test
     @DisplayName("Deve calcular a duração de um intervalo válido")

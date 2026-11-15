@@ -1,56 +1,14 @@
 package com.lumina.backend.dto.usuario;
 
-import com.lumina.backend.domain.usuario.UsuarioCommand;
-import com.lumina.backend.domain.usuario.UsuarioId;
-import com.lumina.backend.domain.usuario.Usuario;
+import com.lumina.backend.model.Perfil;
+import com.lumina.backend.model.Usuario;
 
 import java.util.List;
 import java.util.Locale;
 
 public class UsuarioMapper {
 
-    public static UsuarioCommand toCommand(UsuarioRequest dto) {
-        if (dto == null) {
-            return null;
-        }
-
-        return new UsuarioCommand(
-            dto.getNome(),
-            dto.getCpf(),
-            dto.getEmail(),
-            dto.getSenha(),
-            dto.getFkPerfil(),
-            dto.getCro(),
-            dto.getAtivo()
-        );
-    }
-
     public static UsuarioResponse toDto(Usuario model) {
-        if (model == null) {
-            return null;
-        }
-
-        Integer perfil = model.getFkPerfil();
-        Long idUsuario = model.getId() != null ? model.getId().getValue() : null;
-
-        UsuarioResponse.UsuarioPerfil usuarioPerfilDto = new
-                UsuarioResponse.UsuarioPerfil();
-
-        UsuarioResponse dto = new UsuarioResponse(
-                idUsuario,
-                model.getNome(),
-                model.getCpf(),
-                model.getEmail(),
-                model.getSenha(),
-                perfil,
-                model.getCro(),
-                model.getAtivo()
-        );
-
-        return dto;
-    }
-
-    public static UsuarioResponse toDto(com.lumina.backend.model.Usuario model) {
         if (model == null) {
             return null;
         }
@@ -73,38 +31,42 @@ public class UsuarioMapper {
                 .toList();
     }
 
-    public static com.lumina.backend.model.Usuario of(UsuarioRequest usuarioCriacaoDto) {
-        com.lumina.backend.model.Usuario usuario = new com.lumina.backend.model.Usuario();
-
-        usuario.setEmail(usuarioCriacaoDto.getEmail());
-        usuario.setNome(usuarioCriacaoDto.getNome());
-        usuario.setSenha(usuarioCriacaoDto.getSenha());
-
-        return usuario;
-    }
-
-    public static com.lumina.backend.model.Usuario of(UsuarioLoginDto usuarioLoginDto) {
-        com.lumina.backend.model.Usuario usuario = new com.lumina.backend.model.Usuario();
-
-        usuario.setEmail(usuarioLoginDto.getEmail());
-        usuario.setSenha(usuarioLoginDto.getSenha());
-
-        return usuario;
-    }
-
-    public static UsuarioTokenDto of(com.lumina.backend.model.Usuario usuario, String token) {
-        UsuarioTokenDto usuarioTokenDto = new UsuarioTokenDto();
-        Long idUsuario = Long.valueOf(usuario.getIdUsuario());
-
-        usuarioTokenDto.setUserId(idUsuario);
-        usuarioTokenDto.setEmail(usuario.getEmail());
-        usuarioTokenDto.setNome(usuario.getNome());
-        if (usuario.getPerfil() != null && usuario.getPerfil().getNome() != null) {
-            usuarioTokenDto.setPerfil(usuario.getPerfil().getNome().trim().toUpperCase(Locale.ROOT));
+    public static Usuario of(UsuarioRequest usuarioCriacaoDto) {
+        if (usuarioCriacaoDto == null) {
+            return null;
         }
-        usuarioTokenDto.setToken(token);
 
-        return usuarioTokenDto;
+        Usuario usuario = new Usuario();
+        usuario.setNome(usuarioCriacaoDto.nome());
+        usuario.setCpf(usuarioCriacaoDto.cpf());
+        usuario.setEmail(usuarioCriacaoDto.email());
+        usuario.setSenha(usuarioCriacaoDto.senha());
+        if (usuarioCriacaoDto.fkPerfil() != null) {
+            usuario.setPerfil(new Perfil(usuarioCriacaoDto.fkPerfil(), null));
+        }
+        usuario.setCro(usuarioCriacaoDto.cro());
+        usuario.setAtivo(usuarioCriacaoDto.ativo());
+        return usuario;
+    }
+
+    public static Usuario of(UsuarioLoginDto usuarioLoginDto) {
+        Usuario usuario = new Usuario();
+        usuario.setEmail(usuarioLoginDto.email());
+        usuario.setSenha(usuarioLoginDto.senha());
+        return usuario;
+    }
+
+    public static UsuarioTokenDto of(Usuario usuario, String token) {
+        String perfil = (usuario.getPerfil() != null && usuario.getPerfil().getNome() != null)
+                ? usuario.getPerfil().getNome().trim().toUpperCase(Locale.ROOT)
+                : null;
+        return new UsuarioTokenDto(
+                usuario.getIdUsuario(),
+                usuario.getNome(),
+                usuario.getEmail(),
+                perfil,
+                token
+        );
     }
 
     /**
@@ -115,25 +77,19 @@ public class UsuarioMapper {
      * para o frontend identificar o usuário na sessão.</p>
      */
     public static UsuarioSessaoDto ofSessao(UsuarioTokenDto tokenDto) {
-        UsuarioSessaoDto dto = new UsuarioSessaoDto();
-
-        dto.setUserId(tokenDto.getUserId());
-        dto.setEmail(tokenDto.getEmail());
-        dto.setNome(tokenDto.getNome());
-        dto.setPerfil(tokenDto.getPerfil());
-
-        return dto;
+        return new UsuarioSessaoDto(
+                tokenDto.userId(),
+                tokenDto.nome(),
+                tokenDto.email(),
+                tokenDto.perfil()
+        );
     }
 
-    public static UsuarioListarDto of(com.lumina.backend.model.Usuario usuario) {
-        UsuarioListarDto usuarioListarDto = new UsuarioListarDto();
-        Long idUsuario = Long.valueOf(usuario.getIdUsuario());
-
-        usuarioListarDto.setId(idUsuario);
-        usuarioListarDto.setEmail(usuario.getEmail());
-        usuarioListarDto.setNome(usuario.getNome());
-
-        return usuarioListarDto;
+    public static UsuarioListarDto of(Usuario usuario) {
+        return new UsuarioListarDto(
+                usuario.getIdUsuario(),
+                usuario.getNome(),
+                usuario.getEmail()
+        );
     }
-
 }

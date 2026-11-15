@@ -4,7 +4,7 @@ import com.lumina.backend.dto.midia.ClienteMidiaResponse;
 import com.lumina.backend.dto.midia.IniciarUploadRequest;
 import com.lumina.backend.dto.midia.UploadArquivoItemRequest;
 import com.lumina.backend.dto.midia.UploadPresignedItemResponse;
-import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.exception.EntidadeNaoEncontradaException;
 import com.lumina.backend.exception.FormatoArquivoInvalidoException;
 import com.lumina.backend.model.*;
 import com.lumina.backend.repository.ClienteMidiaRepository;
@@ -72,15 +72,15 @@ public class ClienteMidiaService {
     @Transactional
     public List<UploadPresignedItemResponse> iniciarUpload(Long clienteId, IniciarUploadRequest request, Usuario usuario) {
         Cliente cliente = clienteRepository.findById(clienteId)
-                .orElseThrow(() -> new EntidadeNaoEncontrada("Paciente não encontrado com ID: " + clienteId));
+                .orElseThrow(() -> new EntidadeNaoEncontradaException("Paciente não encontrado com ID: " + clienteId));
 
-        TipoMidia tipoMidia = tipoMidiaRepository.findByIdTipoMidiaAndAtivoTrue(request.getTipoId())
-                .orElseThrow(() -> new EntidadeNaoEncontrada("Tipo de mídia não encontrado com ID: " + request.getTipoId()));
+        TipoMidia tipoMidia = tipoMidiaRepository.findByIdTipoMidiaAndAtivoTrue(request.tipoId())
+                .orElseThrow(() -> new EntidadeNaoEncontradaException("Tipo de mídia não encontrado com ID: " + request.tipoId()));
 
         Consulta consulta = null;
-        if (request.getConsultaId() != null) {
-            consulta = consultaRepository.findById(request.getConsultaId())
-                    .orElseThrow(() -> new EntidadeNaoEncontrada("Consulta não encontrada com ID: " + request.getConsultaId()));
+        if (request.consultaId() != null) {
+            consulta = consultaRepository.findById(request.consultaId())
+                    .orElseThrow(() -> new EntidadeNaoEncontradaException("Consulta não encontrada com ID: " + request.consultaId()));
         }
 
         ZonedDateTime nowSp = ZonedDateTime.now(ZONE_SP);
@@ -89,11 +89,11 @@ public class ClienteMidiaService {
 
         List<UploadPresignedItemResponse> resultado = new ArrayList<>();
 
-        for (UploadArquivoItemRequest arquivo : request.getArquivos()) {
+        for (UploadArquivoItemRequest arquivo : request.arquivos()) {
             validarArquivo(arquivo);
 
-            String extensao = extrairExtensao(arquivo.getNomeOriginal());
-            String nomeSanitizado = sanitizarNome(arquivo.getNomeOriginal());
+            String extensao = extrairExtensao(arquivo.nomeOriginal());
+            String nomeSanitizado = sanitizarNome(arquivo.nomeOriginal());
             String uuid = UUID.randomUUID().toString();
             String chaveS3 = String.format("clientes/%d/midias/%d/%02d/%s-%s", clienteId, ano, mes, uuid, nomeSanitizado);
 
@@ -103,29 +103,29 @@ public class ClienteMidiaService {
             midia.setTipoMidia(tipoMidia);
             midia.setConsulta(consulta);
             midia.setChaveS3(chaveS3);
-            midia.setNomeOriginal(arquivo.getNomeOriginal());
+            midia.setNomeOriginal(arquivo.nomeOriginal());
             midia.setExtensao(extensao);
-            midia.setMimeType(arquivo.getMimeType());
-            midia.setTamanhoBytes(arquivo.getTamanhoBytes());
+            midia.setMimeType(arquivo.mimeType());
+            midia.setTamanhoBytes(arquivo.tamanhoBytes());
             midia.setStatus("PENDING");
-            midia.setLegenda(request.getLegenda());
+            midia.setLegenda(request.legenda());
             midia.setAtivo(true);
             midia.setCriadoEm(nowSp.toLocalDateTime());
 
             ClienteMidia salvo = clienteMidiaRepository.save(midia);
 
-            String uploadUrl = gerarPresignedPutUrl(chaveS3, arquivo.getMimeType());
+            String uploadUrl = gerarPresignedPutUrl(chaveS3, arquivo.mimeType());
 
             resultado.add(new UploadPresignedItemResponse(
                     salvo.getIdClienteMidia(),
-                    arquivo.getNomeOriginal(),
+                    arquivo.nomeOriginal(),
                     uploadUrl,
                     chaveS3
             ));
         }
 
         String email = (usuario != null) ? usuario.getEmail() : "ANONYMOUS";
-        log.info("AUDIT: Usuario [{}] iniciou upload de [{}] arquivos para o paciente [{}]", email, request.getArquivos().size(), clienteId);
+        log.info("AUDIT: Usuario [{}] iniciou upload de [{}] arquivos para o paciente [{}]", email, request.arquivos().size(), clienteId);
 
         return resultado;
     }
@@ -133,7 +133,7 @@ public class ClienteMidiaService {
     @Transactional
     public ClienteMidiaResponse confirmarUpload(Long clienteId, Long midiaId, Usuario usuario) {
         ClienteMidia midia = clienteMidiaRepository.findByIdClienteMidiaAndCliente_IdClienteAndAtivoTrue(midiaId, clienteId)
-                .orElseThrow(() -> new EntidadeNaoEncontrada(String.format("Mídia [%d] não encontrada para o paciente [%d]", midiaId, clienteId)));
+                .orElseThrow(() -> new EntidadeNaoEncontradaException(String.format("Mídia [%d] não encontrada para o paciente [%d]", midiaId, clienteId)));
 
         try {
             HeadObjectRequest headRequest = HeadObjectRequest.builder()
@@ -147,7 +147,7 @@ public class ClienteMidiaService {
             midia.setStatus("ERROR");
             clienteMidiaRepository.save(midia);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Arquivo não localizado no repositório de armazenamento.");
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.warn("Verificação headObject no S3 ignorada ou mockada (erro: {})", e.getMessage());
             midia.setStatus("ACTIVE");
         }
@@ -170,7 +170,7 @@ public class ClienteMidiaService {
             Usuario usuario) {
 
         if (!clienteRepository.existsById(clienteId)) {
-            throw new EntidadeNaoEncontrada("Paciente não encontrado com ID: " + clienteId);
+            throw new EntidadeNaoEncontradaException("Paciente não encontrado com ID: " + clienteId);
         }
 
         LocalDateTime dataInicio = null;
@@ -180,7 +180,7 @@ public class ClienteMidiaService {
                 LocalDate data = LocalDate.parse(dataStr.trim());
                 dataInicio = data.atStartOfDay();
                 dataFim = data.atTime(23, 59, 59, 999999999);
-            } catch (Exception e) {
+            } catch (RuntimeException e) {
                 log.warn("Data de filtro inválida [{}], ignorando filtro de data", dataStr);
             }
         }
@@ -207,7 +207,7 @@ public class ClienteMidiaService {
     @Transactional
     public void excluirMidia(Long clienteId, Long midiaId, Usuario usuario) {
         ClienteMidia midia = clienteMidiaRepository.findByIdClienteMidiaAndCliente_IdClienteAndAtivoTrue(midiaId, clienteId)
-                .orElseThrow(() -> new EntidadeNaoEncontrada(String.format("Mídia [%d] não encontrada para o paciente [%d]", midiaId, clienteId)));
+                .orElseThrow(() -> new EntidadeNaoEncontradaException(String.format("Mídia [%d] não encontrada para o paciente [%d]", midiaId, clienteId)));
 
         midia.setAtivo(false);
         midia.setDataExclusao(LocalDateTime.now(ZONE_SP));
@@ -219,23 +219,23 @@ public class ClienteMidiaService {
     }
 
     private void validarArquivo(UploadArquivoItemRequest arquivo) {
-        if (arquivo.getNomeOriginal() == null || !arquivo.getNomeOriginal().contains(".")) {
+        if (arquivo.nomeOriginal() == null || !arquivo.nomeOriginal().contains(".")) {
             throw new FormatoArquivoInvalidoException("Nome de arquivo inválido: extensão ausente.");
         }
 
-        String extensao = extrairExtensao(arquivo.getNomeOriginal()).toLowerCase();
+        String extensao = extrairExtensao(arquivo.nomeOriginal()).toLowerCase();
 
         if (EXTENSOES_IMAGEM.contains(extensao)) {
-            if (arquivo.getTamanhoBytes() > LIMITE_IMAGEM_BYTES) {
+            if (arquivo.tamanhoBytes() > LIMITE_IMAGEM_BYTES) {
                 throw new FormatoArquivoInvalidoException(String.format(
                         "Arquivo [%s] excede o tamanho máximo permitido para imagens de 15 MB.",
-                        arquivo.getNomeOriginal()));
+                        arquivo.nomeOriginal()));
             }
         } else if (EXTENSOES_DOCUMENTO.contains(extensao)) {
-            if (arquivo.getTamanhoBytes() > LIMITE_DOCUMENTO_BYTES) {
+            if (arquivo.tamanhoBytes() > LIMITE_DOCUMENTO_BYTES) {
                 throw new FormatoArquivoInvalidoException(String.format(
                         "Arquivo [%s] excede o tamanho máximo permitido para laudos e exames de 50 MB.",
-                        arquivo.getNomeOriginal()));
+                        arquivo.nomeOriginal()));
             }
         } else {
             throw new FormatoArquivoInvalidoException(String.format(
@@ -274,7 +274,7 @@ public class ClienteMidiaService {
                     .build();
 
             return s3Presigner.presignPutObject(presignRequest).url().toString();
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.warn("Falha ao gerar Pre-signed PUT URL para a chave [{}]: {}. Usando fallback.", chaveS3, e.getMessage());
             return String.format("https://%s.s3.amazonaws.com/%s?mock-presigned-put=true", bucketName, chaveS3);
         }
@@ -293,7 +293,7 @@ public class ClienteMidiaService {
                     .build();
 
             return s3Presigner.presignGetObject(presignRequest).url().toString();
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.warn("Falha ao gerar Pre-signed GET URL para a chave [{}]: {}. Usando fallback.", chaveS3, e.getMessage());
             return String.format("https://%s.s3.amazonaws.com/%s?mock-presigned-get=true", bucketName, chaveS3);
         }

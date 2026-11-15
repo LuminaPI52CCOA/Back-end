@@ -1,5 +1,6 @@
 package com.lumina.backend.service.alexa;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumina.backend.model.Consulta;
@@ -98,7 +99,7 @@ public class AlexaReminderService {
         for (Consulta consulta : consultas) {
             try {
                 processarLembreteConsulta(consulta, lwaToken);
-            } catch (Exception e) {
+            } catch (RuntimeException e) {
                 log.error("ALEXA REMINDERS: Falha ao enviar lembrete para consulta ID [{}]: {}",
                         consulta.getIdConsulta(), e.getMessage(), e);
             }
@@ -169,7 +170,7 @@ public class AlexaReminderService {
                     return accessToken;
                 }
             }
-        } catch (Exception e) {
+        } catch (JsonProcessingException | RuntimeException e) {
             log.error("ALEXA LWA: Falha na autenticação OAuth junto à Amazon: {}", e.getMessage());
         }
 
@@ -224,7 +225,7 @@ public class AlexaReminderService {
                 JsonNode json = objectMapper.readTree(response.getBody());
                 return json.path("alertToken").asText(json.path("id").asText("reminder-ok"));
             }
-        } catch (Exception e) {
+        } catch (JsonProcessingException | RuntimeException e) {
             log.error("ALEXA REMINDERS API: Falha ao enviar notificação para [{}]: {}", url, e.getMessage());
         }
 

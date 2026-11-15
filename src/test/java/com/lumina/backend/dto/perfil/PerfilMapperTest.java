@@ -21,9 +21,7 @@ class PerfilMapperTest {
     @Test
     @DisplayName("Deve converter PerfilRequest para Perfil e Perfil para PerfilResponse")
     void deveConverterPerfil() {
-        PerfilRequest request = new PerfilRequest();
-        request.setIdPerfil(1);
-        request.setNome("ADMIN");
+        PerfilRequest request = new PerfilRequest(1, "ADMIN");
 
         Perfil entity = PerfilMapper.toEntity(request);
         assertNotNull(entity);
@@ -32,7 +30,7 @@ class PerfilMapperTest {
 
         List<PerfilResponse> responses = PerfilMapper.toDto(List.of(entity));
         assertEquals(1, responses.size());
-        assertEquals(1, responses.get(0).getIdPerfil());
-        assertEquals("ADMIN", responses.get(0).getNome());
+        assertEquals(1, responses.get(0).idPerfil());
+        assertEquals("ADMIN", responses.get(0).nome());
     }
 }

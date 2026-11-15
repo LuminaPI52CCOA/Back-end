@@ -65,6 +65,10 @@ public class RegrasAgendamento {
         this.fimJornada = fimJornada;
     }
 
+    public static RegrasAgendamento comJornada(Clock clock, LocalTime inicioJornada, LocalTime fimJornada) {
+        return new RegrasAgendamento(clock, inicioJornada, fimJornada);
+    }
+
     public LocalDateTime agora() {
         return LocalDateTime.now(clock);
     }

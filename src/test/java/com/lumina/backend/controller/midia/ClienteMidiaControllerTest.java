@@ -6,7 +6,7 @@ import com.lumina.backend.dto.midia.IniciarUploadRequest;
 import com.lumina.backend.dto.midia.UploadArquivoItemRequest;
 import com.lumina.backend.dto.midia.UploadPresignedItemResponse;
 import com.lumina.backend.model.Usuario;
-import com.lumina.backend.repository.UsuarioRepository;
+import com.lumina.backend.service.usuario.UsuarioLogadoService;
 import com.lumina.backend.service.midia.ClienteMidiaService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -39,7 +39,7 @@ class ClienteMidiaControllerTest {
     private ClienteMidiaService clienteMidiaService;
 
     @Mock
-    private UsuarioRepository usuarioRepository;
+    private UsuarioLogadoService usuarioLogadoService;
 
     @InjectMocks
     private ClienteMidiaController clienteMidiaController;
@@ -62,7 +62,7 @@ class ClienteMidiaControllerTest {
         usuario.setEmail(email);
         usuario.setNome("Dr. Teste");
 
-        when(usuarioRepository.findByEmail(email)).thenReturn(Optional.of(usuario));
+        when(usuarioLogadoService.buscarPorEmail(email)).thenReturn(Optional.of(usuario));
         return usuario;
     }
 
@@ -92,7 +92,7 @@ class ClienteMidiaControllerTest {
             assertEquals(HttpStatus.CREATED, response.getStatusCode());
             assertNotNull(response.getBody());
             assertEquals(1, response.getBody().size());
-            assertEquals(10L, response.getBody().get(0).getMidiaId());
+            assertEquals(10L, response.getBody().get(0).midiaId());
             verify(clienteMidiaService).iniciarUpload(1L, request, usuario);
         }
     }
@@ -105,9 +105,8 @@ class ClienteMidiaControllerTest {
         @DisplayName("2.1 Deve confirmar upload com sucesso e retornar status 200")
         void deveConfirmarUploadComSucesso() {
             Usuario usuario = mockUsuarioAutenticado("dentista@lumina.com");
-            ClienteMidiaResponse midiaResponse = new ClienteMidiaResponse();
-            midiaResponse.setId(101L);
-            midiaResponse.setNomeOriginal("foto.jpg");
+            ClienteMidiaResponse midiaResponse = new ClienteMidiaResponse(
+                    101L, "foto.jpg", null, null, null, null, null, null, null, null, null);
 
             when(clienteMidiaService.confirmarUpload(1L, 101L, usuario)).thenReturn(midiaResponse);
 
@@ -116,7 +115,7 @@ class ClienteMidiaControllerTest {
 
             assertEquals(HttpStatus.OK, response.getStatusCode());
             assertNotNull(response.getBody());
-            assertEquals(101L, response.getBody().getId());
+            assertEquals(101L, response.getBody().id());
             verify(clienteMidiaService).confirmarUpload(1L, 101L, usuario);
         }
     }
@@ -129,8 +128,8 @@ class ClienteMidiaControllerTest {
         @DisplayName("3.1 Deve listar mídias ativas e retornar status 200")
         void deveListarMidiasComSucesso() {
             Usuario usuario = mockUsuarioAutenticado("dentista@lumina.com");
-            ClienteMidiaResponse midiaResponse = new ClienteMidiaResponse();
-            midiaResponse.setId(101L);
+            ClienteMidiaResponse midiaResponse = new ClienteMidiaResponse(
+                    101L, null, null, null, null, null, null, null, null, null, null);
 
             when(clienteMidiaService.listarMidias(1L, 2L, 3L, 4L, "2026-10-22", usuario))
                     .thenReturn(List.of(midiaResponse));

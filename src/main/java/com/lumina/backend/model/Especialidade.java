@@ -1,9 +1,17 @@
 package com.lumina.backend.model;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "especialidade")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class Especialidade {
 
     @Id
@@ -12,28 +20,4 @@ public class Especialidade {
 
     @Column(nullable = false, length = 45)
     private String nome;
-
-    public Especialidade() {
-    }
-
-    public Especialidade(Integer idEspecialidade, String nome) {
-        this.idEspecialidade = idEspecialidade;
-        this.nome = nome;
-    }
-
-    public Integer getIdEspecialidade() {
-        return idEspecialidade;
-    }
-
-    public void setIdEspecialidade(Integer idEspecialidade) {
-        this.idEspecialidade = idEspecialidade;
-    }
-
-    public String getNome() {
-        return nome;
-    }
-
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
 }

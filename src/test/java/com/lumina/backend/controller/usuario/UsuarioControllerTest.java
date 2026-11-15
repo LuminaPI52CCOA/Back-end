@@ -1,16 +1,15 @@
 package com.lumina.backend.controller.usuario;
 
 import com.lumina.backend.controller.UsuarioController;
-import com.lumina.backend.domain.usuario.Usuario;
-import com.lumina.backend.domain.usuario.UsuarioCommand;
-import com.lumina.backend.domain.usuario.UsuarioId;
 import com.lumina.backend.dto.usuario.UsuarioLoginDto;
 import com.lumina.backend.dto.usuario.UsuarioRequest;
 import com.lumina.backend.dto.usuario.UsuarioResponse;
 import com.lumina.backend.dto.usuario.UsuarioSessaoDto;
 import com.lumina.backend.dto.usuario.UsuarioTokenDto;
-import com.lumina.backend.exception.EntidadeNaoEncontrada;
-import com.lumina.backend.service.Usuario.UsuarioService;
+import com.lumina.backend.exception.EntidadeNaoEncontradaException;
+import com.lumina.backend.model.Perfil;
+import com.lumina.backend.model.Usuario;
+import com.lumina.backend.service.usuario.UsuarioService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
@@ -54,8 +53,8 @@ class UsuarioControllerTest {
     private UsuarioController usuarioController;
 
     private Usuario criarUsuarioDomain(Long id, String nome, String email) {
-        UsuarioCommand command = new UsuarioCommand(nome, "12345678901", email, "encodedPassword", 2, "SP-CD-12345", true);
-        return Usuario.reconstruir(UsuarioId.of(id), command);
+        return new Usuario(id, nome, "12345678901", email, "encodedPassword",
+                new Perfil(2, "Dentista"), "SP-CD-12345", true);
     }
 
     @Nested
@@ -65,15 +64,16 @@ class UsuarioControllerTest {
         @Test
         @DisplayName("1.1 Deve cadastrar usuário com sucesso e retornar status 201")
         void deveCadastrarUsuarioComSucesso() {
-            UsuarioRequest request = new UsuarioRequest();
-            request.setIdUsuario(1L);
-            request.setNome("Ana Maria Souza");
-            request.setCpf("12345678901");
-            request.setEmail("ana.souza@lumina.com");
-            request.setSenha("Senha@123");
-            request.setFkPerfil(2);
-            request.setCro("SP-CD-12345");
-            request.setAtivo(true);
+            UsuarioRequest request = UsuarioRequest.builder()
+                    .idUsuario(1L)
+                    .nome("Ana Maria Souza")
+                    .cpf("12345678901")
+                    .email("ana.souza@lumina.com")
+                    .senha("Senha@123")
+                    .fkPerfil(2)
+                    .cro("SP-CD-12345")
+                    .ativo(true)
+                    .build();
 
             Usuario usuarioSalvo = criarUsuarioDomain(1L, "Ana Maria Souza", "ana.souza@lumina.com");
 
@@ -84,7 +84,7 @@ class UsuarioControllerTest {
 
             Assertions.assertEquals(201, response.getStatusCodeValue());
             Assertions.assertNotNull(response.getBody());
-            Assertions.assertEquals("Ana Maria Souza", response.getBody().getNome());
+            Assertions.assertEquals("Ana Maria Souza", response.getBody().nome());
 
             Mockito.verify(passwordEncoder, Mockito.times(1)).encode(anyString());
             Mockito.verify(usuarioService, Mockito.times(1)).salvar(any(Usuario.class));
@@ -98,15 +98,10 @@ class UsuarioControllerTest {
         @Test
         @DisplayName("2.1 Deve realizar login com sucesso e retornar status 200")
         void deveRealizarLoginComSucesso() {
-            UsuarioLoginDto loginDto = new UsuarioLoginDto();
-            loginDto.setEmail("ana.souza@lumina.com");
-            loginDto.setSenha("Senha@123");
+            UsuarioLoginDto loginDto = new UsuarioLoginDto("ana.souza@lumina.com", "Senha@123");
 
-            UsuarioTokenDto tokenDto = new UsuarioTokenDto();
-            tokenDto.setUserId(1L);
-            tokenDto.setNome("Ana Maria Souza");
-            tokenDto.setEmail("ana.souza@lumina.com");
-            tokenDto.setToken("jwt-token-123");
+            UsuarioTokenDto tokenDto = new UsuarioTokenDto(
+                    1L, "Ana Maria Souza", "ana.souza@lumina.com", null, "jwt-token-123");
 
             Mockito.when(usuarioService.autenticar(any(com.lumina.backend.model.Usuario.class))).thenReturn(tokenDto);
 
@@ -114,8 +109,8 @@ class UsuarioControllerTest {
 
             Assertions.assertEquals(200, response.getStatusCodeValue());
             Assertions.assertNotNull(response.getBody());
-            Assertions.assertEquals("Ana Maria Souza", response.getBody().getNome());
-            Assertions.assertEquals("ana.souza@lumina.com", response.getBody().getEmail());
+            Assertions.assertEquals("Ana Maria Souza", response.getBody().nome());
+            Assertions.assertEquals("ana.souza@lumina.com", response.getBody().email());
 
             Mockito.verify(usuarioService, Mockito.times(1)).autenticar(any(com.lumina.backend.model.Usuario.class));
         }
@@ -190,7 +185,7 @@ class UsuarioControllerTest {
 
             Assertions.assertEquals(200, response.getStatusCodeValue());
             Assertions.assertNotNull(response.getBody());
-            Assertions.assertEquals("Ana Maria Souza", response.getBody().getNome());
+            Assertions.assertEquals("Ana Maria Souza", response.getBody().nome());
 
             Mockito.verify(usuarioService, Mockito.times(1)).buscarPorId(1L);
         }
@@ -224,13 +219,13 @@ class UsuarioControllerTest {
         }
 
         @Test
-        @DisplayName("6.2 Deve lançar EntidadeNaoEncontrada ao tentar deletar usuário inexistente")
+        @DisplayName("6.2 Deve lançar EntidadeNaoEncontradaException ao tentar deletar usuário inexistente")
         void deveLancarExcecaoAoDeletarUsuarioInexistente() {
-            Mockito.doThrow(new EntidadeNaoEncontrada("Usuario de id: 99 não encontrado"))
+            Mockito.doThrow(new EntidadeNaoEncontradaException("Usuario de id: 99 não encontrado"))
                     .when(usuarioService).deletar(false, 99L);
 
-            EntidadeNaoEncontrada exception = assertThrows(
-                    EntidadeNaoEncontrada.class,
+            EntidadeNaoEncontradaException exception = assertThrows(
+                    EntidadeNaoEncontradaException.class,
                     () -> usuarioController.deletarUsuario(99L)
             );
 
@@ -246,9 +241,10 @@ class UsuarioControllerTest {
         @Test
         @DisplayName("7.1 Deve atualizar usuário com sucesso e retornar status 200")
         void deveAtualizarUsuarioComSucesso() {
-            UsuarioRequest request = new UsuarioRequest();
-            request.setNome("Ana Maria Souza Atualizado");
-            request.setEmail("ana.souza.atualizado@lumina.com");
+            UsuarioRequest request = UsuarioRequest.builder()
+                    .nome("Ana Maria Souza Atualizado")
+                    .email("ana.souza.atualizado@lumina.com")
+                    .build();
 
             Usuario usuarioAtualizado = criarUsuarioDomain(1L, "Ana Maria Souza Atualizado", "ana.souza.atualizado@lumina.com");
 
@@ -258,22 +254,23 @@ class UsuarioControllerTest {
 
             Assertions.assertEquals(200, response.getStatusCodeValue());
             Assertions.assertNotNull(response.getBody());
-            Assertions.assertEquals("Ana Maria Souza Atualizado", response.getBody().getNome());
+            Assertions.assertEquals("Ana Maria Souza Atualizado", response.getBody().nome());
 
             Mockito.verify(usuarioService, Mockito.times(1)).atualizar(any(UsuarioRequest.class), anyLong());
         }
 
         @Test
-        @DisplayName("7.2 Deve lançar EntidadeNaoEncontrada ao tentar atualizar usuário inexistente")
+        @DisplayName("7.2 Deve lançar EntidadeNaoEncontradaException ao tentar atualizar usuário inexistente")
         void deveLancarExcecaoAoAtualizarUsuarioInexistente() {
-            UsuarioRequest request = new UsuarioRequest();
-            request.setNome("Teste");
+            UsuarioRequest request = UsuarioRequest.builder()
+                    .nome("Teste")
+                    .build();
 
             Mockito.when(usuarioService.atualizar(any(UsuarioRequest.class), anyLong()))
-                    .thenThrow(new EntidadeNaoEncontrada("Usuario de id: 99 não encontrado"));
+                    .thenThrow(new EntidadeNaoEncontradaException("Usuario de id: 99 não encontrado"));
 
-            EntidadeNaoEncontrada exception = assertThrows(
-                    EntidadeNaoEncontrada.class,
+            EntidadeNaoEncontradaException exception = assertThrows(
+                    EntidadeNaoEncontradaException.class,
                     () -> usuarioController.atualizar(request, 99L)
             );
 

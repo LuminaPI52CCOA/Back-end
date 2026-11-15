@@ -26,10 +26,11 @@ class ConsultaMapperTest {
     @Test
     @DisplayName("Deve converter ConsultaRequest para Consulta e Consulta para ConsultaResponse")
     void deveConverterRequestEEntity() {
-        ConsultaRequest request = new ConsultaRequest();
-        request.setData(LocalDate.of(2026, 10, 23));
-        request.setHorarioInicio(LocalTime.of(10, 0));
-        request.setHorarioFim(LocalTime.of(11, 0));
+        ConsultaRequest request = ConsultaRequest.builder()
+                .data(LocalDate.of(2026, 10, 23))
+                .horarioInicio(LocalTime.of(10, 0))
+                .horarioFim(LocalTime.of(11, 0))
+                .build();
 
         Consulta entity = ConsultaMapper.toEntity(request);
         assertNotNull(entity);
@@ -51,9 +52,9 @@ class ConsultaMapperTest {
 
         List<ConsultaResponse> responses = ConsultaMapper.toResponse(List.of(entity));
         assertEquals(1, responses.size());
-        assertEquals(50L, responses.get(0).getId());
-        assertEquals("Ana", responses.get(0).getCliente().getNome());
-        assertEquals("Dr. Carlos", responses.get(0).getUsuario().getNome());
+        assertEquals(50L, responses.get(0).id());
+        assertEquals("Ana", responses.get(0).cliente().nome());
+        assertEquals("Dr. Carlos", responses.get(0).usuario().nome());
     }
 
     @Test
@@ -72,13 +73,13 @@ class ConsultaMapperTest {
 
         ConsultaResponse response = ConsultaMapper.toResponse(entity);
 
-        assertEquals("AGENDADA", response.getStatus());
-        assertEquals(45, response.getDuracaoMinutos());
-        assertEquals("Clínica Geral", response.getEspecialidade().getNome());
-        assertEquals(List.of(16, 26), response.getDentes());
-        assertEquals("Primeiro Molar", response.getTipoDente());
-        assertEquals("Obs", response.getObservacoes());
-        assertFalse(response.getPularOdontograma());
-        assertNull(response.getUsuario().getSenha());
+        assertEquals("AGENDADA", response.status());
+        assertEquals(45, response.duracaoMinutos());
+        assertEquals("Clínica Geral", response.especialidade().nome());
+        assertEquals(List.of(16, 26), response.dentes());
+        assertEquals("Primeiro Molar", response.tipoDente());
+        assertEquals("Obs", response.observacoes());
+        assertFalse(response.pularOdontograma());
+        assertNull(response.usuario().senha());
     }
 }

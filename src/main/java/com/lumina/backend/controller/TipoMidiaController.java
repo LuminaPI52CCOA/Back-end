@@ -3,7 +3,7 @@ package com.lumina.backend.controller;
 import com.lumina.backend.dto.midia.TipoMidiaRequest;
 import com.lumina.backend.dto.midia.TipoMidiaResponse;
 import com.lumina.backend.model.Usuario;
-import com.lumina.backend.repository.UsuarioRepository;
+import com.lumina.backend.service.usuario.UsuarioLogadoService;
 import com.lumina.backend.service.midia.TipoMidiaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -26,11 +26,11 @@ import java.util.List;
 public class TipoMidiaController {
 
     private final TipoMidiaService tipoMidiaService;
-    private final UsuarioRepository usuarioRepository;
+    private final UsuarioLogadoService usuarioLogadoService;
 
-    public TipoMidiaController(TipoMidiaService tipoMidiaService, UsuarioRepository usuarioRepository) {
+    public TipoMidiaController(TipoMidiaService tipoMidiaService, UsuarioLogadoService usuarioLogadoService) {
         this.tipoMidiaService = tipoMidiaService;
-        this.usuarioRepository = usuarioRepository;
+        this.usuarioLogadoService = usuarioLogadoService;
     }
 
     @GetMapping
@@ -63,7 +63,7 @@ public class TipoMidiaController {
     private Usuario getUsuarioAutenticado() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getName() != null) {
-            return usuarioRepository.findByEmail(auth.getName()).orElse(null);
+            return usuarioLogadoService.buscarPorEmail(auth.getName()).orElse(null);
         }
         return null;
     }

@@ -2,7 +2,7 @@ package com.lumina.backend.service.convenio;
 
 import com.lumina.backend.dto.convenio.ConvenioMapper;
 import com.lumina.backend.dto.convenio.ConvenioRequest;
-import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.exception.EntidadeNaoEncontradaException;
 import com.lumina.backend.model.ClienteConvenio;
 import com.lumina.backend.model.Convenio;
 import com.lumina.backend.repository.ClienteConvenioRepository;
@@ -43,9 +43,9 @@ public class ConvenioService {
 
     public Convenio atualizar(Long id, ConvenioRequest convenioRequest) {
         Convenio convenioEncontrado = convenioRepository.findById(id)
-                .orElseThrow(() -> new EntidadeNaoEncontrada("Convênio não encontrado!"));
+                .orElseThrow(() -> new EntidadeNaoEncontradaException("Convênio não encontrado!"));
 
-        convenioEncontrado.setNome(convenioRequest.getNome());
+        convenioEncontrado.setNome(convenioRequest.nome());
 
         return convenioRepository.save(convenioEncontrado);
     }
@@ -53,14 +53,14 @@ public class ConvenioService {
 
     public void deletar(Long id) {
         Convenio convenioEncontrado = convenioRepository.findById(id)
-                .orElseThrow(() -> new EntidadeNaoEncontrada("Convênio não encontrado!"));
+                .orElseThrow(() -> new EntidadeNaoEncontradaException("Convênio não encontrado!"));
 
         convenioRepository.delete(convenioEncontrado);
     }
 
     public List<Convenio> listarConveniosCliente(Long id) {
         if(!clienteRepository.existsById(id)) {
-            throw new EntidadeNaoEncontrada("Cliente não encontrado!");
+            throw new EntidadeNaoEncontradaException("Cliente não encontrado!");
         }
 
         return clienteConvenioRepository.findConveniosByClienteId(id);

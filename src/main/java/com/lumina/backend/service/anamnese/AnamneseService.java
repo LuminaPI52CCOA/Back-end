@@ -4,13 +4,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumina.backend.dto.anamnese.AnamneseMapper;
 import com.lumina.backend.dto.anamnese.OcrRespostaDTO;
-import com.lumina.backend.exception.AnamneseVazio;
-import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.exception.AnamneseVazioException;
+import com.lumina.backend.exception.EntidadeNaoEncontradaException;
 import com.lumina.backend.exception.FormatoArquivoInvalidoException;
 import com.lumina.backend.model.Anamnese;
 import com.lumina.backend.model.Cliente;
 import com.lumina.backend.repository.AnamneseRepository;
-import com.lumina.backend.service.openIA.GeminiAIService;
+import com.lumina.backend.service.gemini.GeminiAIService;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.SdkBytes;
@@ -59,7 +59,7 @@ public class AnamneseService {
         log.trace("Processando imagem da anamnese no OCR");
 
         if(file == null || file.isEmpty()){
-            throw new AnamneseVazio("Arquivo não encontrado.");
+            throw new AnamneseVazioException("Arquivo não encontrado.");
         }
 
         if (file.getSize() > TAMANHO_MAXIMO_BYTES) {
@@ -124,7 +124,7 @@ public class AnamneseService {
         OcrRespostaDTO.FichaAnamneseWrapperDTO ficha;
         try {
             ficha = mapper.treeToValue(json, OcrRespostaDTO.FichaAnamneseWrapperDTO.class);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             throw new FormatoArquivoInvalidoException("Estrutura do JSON retornado pela IA é inválida.");
         }
 
@@ -181,6 +181,6 @@ public class AnamneseService {
 
     public Anamnese buscarPorId(Integer id){
         return repository.findById(id)
-                .orElseThrow(() -> new EntidadeNaoEncontrada("Anamnese não encontrada!"));
+                .orElseThrow(() -> new EntidadeNaoEncontradaException("Anamnese não encontrada!"));
     }
 }

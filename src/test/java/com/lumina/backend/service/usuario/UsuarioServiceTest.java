@@ -2,19 +2,19 @@ package com.lumina.backend.service.usuario;
 
 import com.lumina.backend.dto.usuario.UsuarioRequest;
 import com.lumina.backend.dto.usuario.UsuarioTokenDto;
-import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.exception.EntidadeNaoEncontradaException;
+import com.lumina.backend.model.Perfil;
 import com.lumina.backend.model.Usuario;
 import com.lumina.backend.repository.UsuarioRepository;
-import com.lumina.backend.service.Usuario.UsuarioService;
-import com.lumina.backend.swagger.GerenciadorTokenJwt;
-import org.junit.jupiter.api.*;
+import com.lumina.backend.security.GerenciadorTokenJwt;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
-
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import static org.mockito.Mockito.*;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -24,14 +24,20 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.server.ResponseStatusException;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
 import java.util.List;
 import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class UsuarioServiceTest {
@@ -47,83 +53,74 @@ public class UsuarioServiceTest {
     @InjectMocks
     UsuarioService usuarioService;
 
-    private Usuario criarUsuario(Long id, String email) {
-        return new Usuario(id, "Ana", "123.456.789-00", email, "senha123", new com.lumina.backend.model.Perfil(1, "ADMIN"), "CRO-123", true);
+    @AfterEach
+    void limparContextoDeSeguranca() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private Usuario criarUsuarioModel(Long id, String email) {
+        return new Usuario(id, "Ana", "123.456.789-00", email, "senha123",
+                new Perfil(1, "ADMIN"), "CRO-123", true);
     }
 
     @Nested
-    class TesteListar{
+    class TesteUsuarioService {
 
         @Test
         @DisplayName("1.1 Deve retornar todos os usuários")
-        void deveRetornarTodosOsUsuarios(){
-            List<Usuario>  usuariosEsperados =List.of(new Usuario());
-            when(usuarioRepository.findAll()).thenReturn(usuariosEsperados);
+        void deveRetornarTodosOsUsuarios() {
+            when(usuarioRepository.findAll()).thenReturn(List.of(criarUsuarioModel(1L, "ana@email.com")));
 
-            List<com.lumina.backend.domain.usuario.Usuario> usuarios = usuarioService.listar();
+            List<Usuario> usuarios = usuarioService.listar();
 
-            Assertions.assertEquals(usuariosEsperados.size(),usuarios.size());
-            Mockito.verify(usuarioRepository,Mockito.times(1)).findAll();
-
+            assertThat(usuarios).hasSize(1);
+            verify(usuarioRepository).findAll();
         }
 
         @Test
-        @DisplayName("1.1.1 Deve retornar página de usuários filtrada por perfil")
+        @DisplayName("1.1.1 Deve retornar página de usuários filtrada por perfil, ordenada por nome")
         void deveRetornarPaginaDeUsuariosPorPerfil() {
-            Usuario u1 = criarUsuario(1L, "ana@email.com");
             Pageable pageable = PageRequest.of(0, 6, Sort.by(Sort.Direction.ASC, "nome"));
-            Page<Usuario> pageModels = new PageImpl<>(List.of(u1), pageable, 1);
+            Page<Usuario> pagina = new PageImpl<>(List.of(criarUsuarioModel(1L, "ana@email.com")), pageable, 1);
+            when(usuarioRepository.buscarComFiltros(2, null, pageable)).thenReturn(pagina);
 
-            when(usuarioRepository.findByPerfil_IdPerfil(2, pageable)).thenReturn(pageModels);
+            Page<Usuario> resultado = usuarioService.listarPaginado(2, null, PageRequest.of(0, 6));
 
-            Page<com.lumina.backend.domain.usuario.Usuario> resultado = usuarioService.listarPaginado(2, null, pageable);
-
-            Assertions.assertEquals(1, resultado.getTotalElements());
-            Mockito.verify(usuarioRepository, Mockito.times(1)).findByPerfil_IdPerfil(2, pageable);
+            assertThat(resultado.getTotalElements()).isEqualTo(1);
+            verify(usuarioRepository).buscarComFiltros(2, null, pageable);
         }
 
         @Test
         @DisplayName("1.2 Deve retornar o usuário sempre que a credencial seja válida")
         void deveRetornarTokenQuandoCredenciaisValidas() {
-
-            Usuario usuario = criarUsuario(1L, "ana@email.com");
-
+            Usuario usuario = criarUsuarioModel(1L, "ana@email.com");
             Authentication authMock = mock(Authentication.class);
 
             when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                     .thenReturn(authMock);
-
-            when(usuarioRepository.findByEmail("ana@email.com"))
-                    .thenReturn(Optional.of(usuario));
-
-            when(gerenciadorTokenJwt.generateToken(authMock))
-                    .thenReturn("token.jwt.mockado");
+            when(usuarioRepository.findByEmail("ana@email.com")).thenReturn(Optional.of(usuario));
+            when(gerenciadorTokenJwt.generateToken(authMock)).thenReturn("token.jwt.mockado");
 
             UsuarioTokenDto resultado = usuarioService.autenticar(usuario);
 
             assertThat(resultado).isNotNull();
-            assertThat(resultado.getToken()).isEqualTo("token.jwt.mockado");
-            assertThat(resultado.getEmail()).isEqualTo("ana@email.com");
+            assertThat(resultado.token()).isEqualTo("token.jwt.mockado");
+            assertThat(resultado.email()).isEqualTo("ana@email.com");
 
             verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
             verify(usuarioRepository).findByEmail("ana@email.com");
             verify(gerenciadorTokenJwt).generateToken(authMock);
         }
 
-
         @Test
-        @DisplayName("1.3 Deve lançar uma excecão caso o email não estja cadastrado")
+        @DisplayName("1.3 Deve lançar uma exceção caso o email não esteja cadastrado")
         void deveLancarExcecaoQuandoEmailNaoCadastrado() {
-
-            Usuario usuario = criarUsuario(1L, "naocadastrado@email.com");
-
+            Usuario usuario = criarUsuarioModel(1L, "naocadastrado@email.com");
             Authentication authMock = mock(Authentication.class);
 
             when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                     .thenReturn(authMock);
-
-            when(usuarioRepository.findByEmail("naocadastrado@email.com"))
-                    .thenReturn(Optional.empty());
+            when(usuarioRepository.findByEmail("naocadastrado@email.com")).thenReturn(Optional.empty());
 
             ResponseStatusException excecao = assertThrows(
                     ResponseStatusException.class,
@@ -131,24 +128,18 @@ public class UsuarioServiceTest {
             );
 
             assertThat(excecao.getStatusCode().value()).isEqualTo(404);
-
             verify(gerenciadorTokenJwt, never()).generateToken(any());
         }
-
 
         @Test
         @DisplayName("1.4 Deve lançar uma exceção sempre que a senha for inválida")
         void deveLancarExcecaoQuandoSenhaInvalida() {
-
-            Usuario usuario = new Usuario();
-
-
             when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                     .thenThrow(new BadCredentialsException("Credenciais inválidas"));
 
             assertThrows(
                     BadCredentialsException.class,
-                    () -> usuarioService.autenticar(usuario)
+                    () -> usuarioService.autenticar(new Usuario())
             );
 
             verify(usuarioRepository, never()).findByEmail(any());
@@ -156,110 +147,107 @@ public class UsuarioServiceTest {
         }
 
         @Test
-        @DisplayName("1.5 Deve deletar o usuário quando ele existir")
+        @DisplayName("1.5 Deve deletar logicamente o usuário quando ele existir")
         void deveDeletarUsuarioQuandoIdExistir() {
-
-            Usuario usuario = new Usuario();
-
-            when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
-            when(usuarioRepository.logicalDelete(false, 1L)).thenReturn(1); // 1 = linha afetada no banco
+            when(usuarioRepository.findById(1L))
+                    .thenReturn(Optional.of(criarUsuarioModel(1L, "ana@email.com")));
 
             usuarioService.deletar(false, 1L);
 
-            verify(usuarioRepository).findById(1L);
             verify(usuarioRepository).logicalDelete(false, 1L);
         }
 
         @Test
-        @DisplayName("1.6 Deve lançar exceção quanod tentar deletar um usuário que não existe")
+        @DisplayName("1.6 Deve lançar exceção quando tentar deletar um usuário que não existe")
         void deveLancarExcecaoAoDeletarQuandoIdNaoExistir() {
-
             when(usuarioRepository.findById(99L)).thenReturn(Optional.empty());
 
-            EntidadeNaoEncontrada excecao = assertThrows(
-                    EntidadeNaoEncontrada.class,
+            EntidadeNaoEncontradaException excecao = assertThrows(
+                    EntidadeNaoEncontradaException.class,
                     () -> usuarioService.deletar(false, 99L)
             );
 
             assertThat(excecao.getMessage()).contains("99");
-
             verify(usuarioRepository, never()).logicalDelete(any(), any());
         }
 
         @Test
-        @DisplayName("1.7 Deve atualizar o usuário quando o id existir")
+        @DisplayName("1.7 Deve atualizar o usuário mantendo os campos não informados")
         void deveAtualizarUsuarioQuandoIdExistir() {
+            when(usuarioRepository.findById(1L))
+                    .thenReturn(Optional.of(criarUsuarioModel(1L, "ana@email.com")));
+            when(usuarioRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+            UsuarioRequest request = UsuarioRequest.builder()
+                    .nome("Ana Maria")
+                    .build();
 
-            Usuario usuario = criarUsuario(1L, "ana@email.com");
-            UsuarioRequest request = new UsuarioRequest();
-            request.setNome("Ana Maria");
+            Usuario resultado = usuarioService.atualizar(request, 1L);
 
-            when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
-            when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
-
-            com.lumina.backend.domain.usuario.Usuario resultado = usuarioService.atualizar(request, 1L);
-
-            assertThat(resultado).isNotNull();
-            verify(usuarioRepository).findById(1L);
-            verify(usuarioRepository).save(any(Usuario.class));
+            assertThat(resultado.getNome()).isEqualTo("Ana Maria");
+            assertThat(resultado.getEmail()).isEqualTo("ana@email.com");
+            assertThat(resultado.getSenha()).isEqualTo("senha123");
+            verify(passwordEncoder, never()).encode(any());
         }
 
         @Test
-        @DisplayName("1.8 Deve lançar uma exceção quinado atualizar um id que não existe")
-        void deveLancarExcecaoAoAtualizarQuandoIdNaoExistir() {
-            UsuarioRequest request = new UsuarioRequest();
+        @DisplayName("1.7.1 Deve aplicar hash quando uma nova senha for informada")
+        void deveCodificarNovaSenhaAoAtualizar() {
+            when(usuarioRepository.findById(1L))
+                    .thenReturn(Optional.of(criarUsuarioModel(1L, "ana@email.com")));
+            when(usuarioRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+            when(passwordEncoder.encode("nova")).thenReturn("hash-da-nova");
+            UsuarioRequest request = UsuarioRequest.builder()
+                    .senha("nova")
+                    .build();
 
+            Usuario resultado = usuarioService.atualizar(request, 1L);
+
+            assertThat(resultado.getSenha()).isEqualTo("hash-da-nova");
+        }
+
+        @Test
+        @DisplayName("1.8 Deve lançar uma exceção quando atualizar um id que não existe")
+        void deveLancarExcecaoAoAtualizarQuandoIdNaoExistir() {
             when(usuarioRepository.findById(99L)).thenReturn(Optional.empty());
 
-            EntidadeNaoEncontrada excecao = assertThrows(
-                    EntidadeNaoEncontrada.class,
-                    () -> usuarioService.atualizar(request, 99L)
+            EntidadeNaoEncontradaException excecao = assertThrows(
+                    EntidadeNaoEncontradaException.class,
+                    () -> usuarioService.atualizar(UsuarioRequest.builder().build(), 99L)
             );
 
             assertThat(excecao.getMessage()).contains("99");
-
             verify(usuarioRepository, never()).save(any());
         }
 
         @Test
         @DisplayName("1.9 Deve salvar e retornar o usuário")
         void deveSalvarUsuario() {
-            Usuario usuario = criarUsuario(1L, "ana@email.com");
-            when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
+            Usuario usuario = criarUsuarioModel(1L, "ana@email.com");
+            when(usuarioRepository.save(usuario)).thenReturn(usuario);
 
-            com.lumina.backend.domain.usuario.Usuario resultado = usuarioService.salvar(com.lumina.backend.domain.usuario.Usuario.criar(
-                new com.lumina.backend.domain.usuario.UsuarioCommand(
-                    usuario.getNome(), usuario.getCpf(), usuario.getEmail(), usuario.getSenha(), usuario.getPerfil() != null ? usuario.getPerfil().getIdPerfil() : null, usuario.getCro(), usuario.getAtivo()
-                )
-            ));
+            Usuario resultado = usuarioService.salvar(usuario);
 
-            assertThat(resultado).isNotNull();
-            verify(usuarioRepository).save(any(Usuario.class));
+            assertThat(resultado).isSameAs(usuario);
         }
 
         @Test
         @DisplayName("1.10 Deve retornar o usuário quando o id existir")
         void deveBuscarUsuarioPorId() {
-            Usuario usuario = criarUsuario(1L, "ana@email.com");
-            when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+            when(usuarioRepository.findById(1L))
+                    .thenReturn(Optional.of(criarUsuarioModel(1L, "ana@email.com")));
 
-            Optional<com.lumina.backend.domain.usuario.Usuario> resultado = usuarioService.buscarPorId(1L);
+            Optional<Usuario> resultado = usuarioService.buscarPorId(1L);
 
             assertThat(resultado).isPresent();
             assertThat(resultado.get().getEmail()).isEqualTo("ana@email.com");
-            verify(usuarioRepository).findById(1L);
         }
 
         @Test
         @DisplayName("1.11 Deve retornar optional vazio quando o id não existir")
-        void deveLancarExcecaoQuandoBuscarIdInexistente() {
+        void deveRetornarVazioQuandoBuscarIdInexistente() {
             when(usuarioRepository.findById(99L)).thenReturn(Optional.empty());
 
-            Optional<com.lumina.backend.domain.usuario.Usuario> resultado = usuarioService.buscarPorId(99L);
-
-            assertThat(resultado).isEmpty();
-            verify(usuarioRepository).findById(99L);
+            assertThat(usuarioService.buscarPorId(99L)).isEmpty();
         }
-
     }
 }

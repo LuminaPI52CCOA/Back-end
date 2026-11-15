@@ -1,11 +1,18 @@
 package com.lumina.backend.model;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
 @Entity
 @Table(name = "tipo_midia")
+@Getter
+@Setter
+@NoArgsConstructor
 public class TipoMidia {
 
     @Id
@@ -29,9 +36,6 @@ public class TipoMidia {
     @Column(name = "criado_em", updatable = false)
     private LocalDateTime criadoEm;
 
-    public TipoMidia() {
-    }
-
     public TipoMidia(Long idTipoMidia, String nome, String descricao, Usuario usuario, Boolean ativo) {
         this.idTipoMidia = idTipoMidia;
         this.nome = nome;
@@ -48,53 +52,5 @@ public class TipoMidia {
         if (ativo == null) {
             ativo = true;
         }
-    }
-
-    public Long getIdTipoMidia() {
-        return idTipoMidia;
-    }
-
-    public void setIdTipoMidia(Long idTipoMidia) {
-        this.idTipoMidia = idTipoMidia;
-    }
-
-    public String getNome() {
-        return nome;
-    }
-
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
-
-    public String getDescricao() {
-        return descricao;
-    }
-
-    public void setDescricao(String descricao) {
-        this.descricao = descricao;
-    }
-
-    public Usuario getUsuario() {
-        return usuario;
-    }
-
-    public void setUsuario(Usuario usuario) {
-        this.usuario = usuario;
-    }
-
-    public Boolean getAtivo() {
-        return ativo;
-    }
-
-    public void setAtivo(Boolean ativo) {
-        this.ativo = ativo;
-    }
-
-    public LocalDateTime getCriadoEm() {
-        return criadoEm;
-    }
-
-    public void setCriadoEm(LocalDateTime criadoEm) {
-        this.criadoEm = criadoEm;
     }
 }

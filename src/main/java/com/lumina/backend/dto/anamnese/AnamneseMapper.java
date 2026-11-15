@@ -1,8 +1,5 @@
 package com.lumina.backend.dto.anamnese;
 
-import com.lumina.backend.dto.cliente.ClienteMapper;
-import com.lumina.backend.dto.cliente.ClienteRequest;
-import com.lumina.backend.dto.cliente.ClienteResponse;
 import com.lumina.backend.model.Anamnese;
 import com.lumina.backend.model.Cliente;
 import com.lumina.backend.repository.ClienteRepository;
@@ -13,41 +10,51 @@ import java.util.List;
 @Component
 public class AnamneseMapper {
 
-    private  ClienteRepository repositorioCliente;
+    private final ClienteRepository repositorioCliente;
 
-    public  Anamnese toEntity(AnamneseRequest dto) {
+    public AnamneseMapper(ClienteRepository repositorioCliente) {
+        this.repositorioCliente = repositorioCliente;
+    }
+
+    public Anamnese toEntity(AnamneseRequest dto) {
         if (dto == null) {
             return null;
         }
 
         Anamnese entidade = new Anamnese();
 
-        Cliente cliente = repositorioCliente.getReferenceById(dto.getFkCliente());
+        Cliente cliente = repositorioCliente.getReferenceById(dto.fkCliente());
         entidade.setFkCliente(cliente);
-
-        entidade.setIdAnamnese(dto.getIdAnamnese());
-        entidade.setDataAnamnese(dto.getDataAnamnese());
-        entidade.setFazendoTratamento(dto.getFazendoTratamento());
-        entidade.setDescricaoTratamento(dto.getDescricaoTratamento());
-        entidade.setDoresCabecaFaceAtm(dto.getDoresCabecaFaceAtm());
-        entidade.setAlergiaMedicamentos(dto.getAlergiaMedicamentos());
-        entidade.setDescricaoAlergiaMedicamentos(dto.getDescricaoAlergiaMedicamentos());
-        entidade.setReacaoAnestesiaLocal(dto.getReacaoAnestesiaLocal());
-        entidade.setSensibilidadeDentaria(dto.getSensibilidadeDentaria());
-        entidade.setBruxismoApertamento(dto.getBruxismoApertamento());
-        entidade.setSangramentoGengival(dto.getSangramentoGengival());
-        entidade.setPossuiHabito(dto.getPossuiHabito());
-        entidade.setDescricaoHabito(dto.getDescricaoHabito());
-        entidade.setHistoricoDiabetes(dto.getHistoricoDiabetes());
-        entidade.setSangramentoExcessivo(dto.getSangramentoExcessivo());
-        entidade.setProblemaCardiaco(dto.getProblemaCardiaco());
-        entidade.setDescricaoProblemaCardiaco(dto.getDescricaoProblemaCardiaco());
-        entidade.setPressaoArterialNormal(dto.getPressaoArterialNormal());
-        entidade.setDescricaoPressaoArterial(dto.getDescricaoPressaoArterial());
-        entidade.setHistoricoDesmaioConvulsao(dto.getHistoricoDesmaioConvulsao());
-        entidade.setGestante(dto.getGestante());
+        aplicarDados(entidade, dto);
 
         return entidade;
+    }
+
+    public static void aplicarDados(Anamnese entidade, AnamneseRequest dto) {
+        if (entidade == null || dto == null) {
+            return;
+        }
+        entidade.setIdAnamnese(dto.idAnamnese());
+        entidade.setDataAnamnese(dto.dataAnamnese());
+        entidade.setFazendoTratamento(dto.fazendoTratamento());
+        entidade.setDescricaoTratamento(dto.descricaoTratamento());
+        entidade.setDoresCabecaFaceAtm(dto.doresCabecaFaceAtm());
+        entidade.setAlergiaMedicamentos(dto.alergiaMedicamentos());
+        entidade.setDescricaoAlergiaMedicamentos(dto.descricaoAlergiaMedicamentos());
+        entidade.setReacaoAnestesiaLocal(dto.reacaoAnestesiaLocal());
+        entidade.setSensibilidadeDentaria(dto.sensibilidadeDentaria());
+        entidade.setBruxismoApertamento(dto.bruxismoApertamento());
+        entidade.setSangramentoGengival(dto.sangramentoGengival());
+        entidade.setPossuiHabito(dto.possuiHabito());
+        entidade.setDescricaoHabito(dto.descricaoHabito());
+        entidade.setHistoricoDiabetes(dto.historicoDiabetes());
+        entidade.setSangramentoExcessivo(dto.sangramentoExcessivo());
+        entidade.setProblemaCardiaco(dto.problemaCardiaco());
+        entidade.setDescricaoProblemaCardiaco(dto.descricaoProblemaCardiaco());
+        entidade.setPressaoArterialNormal(dto.pressaoArterialNormal());
+        entidade.setDescricaoPressaoArterial(dto.descricaoPressaoArterial());
+        entidade.setHistoricoDesmaioConvulsao(dto.historicoDesmaioConvulsao());
+        entidade.setGestante(dto.gestante());
     }
 
     public static AnamneseResponse toDto(Anamnese model) {
@@ -56,40 +63,35 @@ public class AnamneseMapper {
         }
 
         Cliente cliente = model.getFkCliente();
-
         AnamneseResponse.AnamneseCliente anamneseCliente = null;
         if (cliente != null) {
-            anamneseCliente = new AnamneseResponse.AnamneseCliente();
-            anamneseCliente.setIdCliente(cliente.getIdCliente());
-            anamneseCliente.setNome(cliente.getNome());
-            anamneseCliente.setCpf(cliente.getCpf());
-            anamneseCliente.setRg(cliente.getRg());
-            anamneseCliente.setDataNascimento(cliente.getDataNascimento());
-            anamneseCliente.setNumeroCelular(cliente.getNumeroCelular());
-            anamneseCliente.setEmail(cliente.getEmail());
-            anamneseCliente.setSexo(cliente.getSexo());
-            anamneseCliente.setNaturalidade(cliente.getNaturalidade());
-            anamneseCliente.setNacionalidade(cliente.getNacionalidade());
-            anamneseCliente.setFkEstadoCivil(cliente.getFkEstadoCivil());
-            anamneseCliente.setEnderecoResidencial(cliente.getEnderecoResidencial());
-            anamneseCliente.setCep(cliente.getCep());
             Integer fkClienteIndicacao = cliente.getClienteIndicacao() != null && cliente.getClienteIndicacao().getIdCliente() != null
                     ? cliente.getClienteIndicacao().getIdCliente().intValue()
                     : null;
             Integer fkResponsavel = cliente.getResponsavel() != null && cliente.getResponsavel().getIdCliente() != null
                     ? cliente.getResponsavel().getIdCliente().intValue()
                     : null;
-            anamneseCliente.setFkClienteIndicacao(fkClienteIndicacao);
-            anamneseCliente.setFkResponsavel(fkResponsavel);
-            anamneseCliente.setGrauParentescoResponsavel(cliente.getGrauParentescoResponsavel());
+            anamneseCliente = new AnamneseResponse.AnamneseCliente(
+                    cliente.getIdCliente(),
+                    cliente.getNome(),
+                    cliente.getCpf(),
+                    cliente.getRg(),
+                    cliente.getDataNascimento(),
+                    cliente.getNumeroCelular(),
+                    cliente.getEmail(),
+                    cliente.getSexo(),
+                    cliente.getNaturalidade(),
+                    cliente.getNacionalidade(),
+                    cliente.getFkEstadoCivil(),
+                    cliente.getEnderecoResidencial(),
+                    cliente.getCep(),
+                    fkClienteIndicacao,
+                    fkResponsavel,
+                    cliente.getGrauParentescoResponsavel()
+            );
         }
 
-
-
-        AnamneseResponse anamnese = new
-                AnamneseResponse();
-
-        AnamneseResponse dto = new AnamneseResponse(
+        return new AnamneseResponse(
                 model.getIdAnamnese(),
                 anamneseCliente,
                 model.getDataAnamnese(),
@@ -113,8 +115,6 @@ public class AnamneseMapper {
                 model.getHistoricoDesmaioConvulsao(),
                 model.getGestante()
         );
-
-        return dto;
     }
 
     public static List<AnamneseResponse> toDto(List<Anamnese> entities) {

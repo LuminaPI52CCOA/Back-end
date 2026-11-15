@@ -35,8 +35,8 @@ public class TipoMidiaService {
     @Transactional
     public TipoMidiaResponse criarPersonalizado(TipoMidiaRequest request, Usuario usuario) {
         TipoMidia novoTipo = new TipoMidia();
-        novoTipo.setNome(request.getNome().trim());
-        novoTipo.setDescricao(request.getDescricao() != null ? request.getDescricao().trim() : null);
+        novoTipo.setNome(request.nome().trim());
+        novoTipo.setDescricao(request.descricao() != null ? request.descricao().trim() : null);
         novoTipo.setUsuario(usuario);
         novoTipo.setAtivo(true);
 

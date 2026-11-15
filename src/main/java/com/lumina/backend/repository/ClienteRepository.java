@@ -5,13 +5,17 @@ import com.lumina.backend.model.Cliente;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
 
 public interface ClienteRepository extends JpaRepository<Cliente, Long> {
 
-    Object existsByCpf(String cpf);
+    boolean existsByCpf(String cpf);
+
+    boolean existsByEmail(String email);
 
     Optional<Cliente> findByEmail(String email);
 
@@ -20,4 +24,17 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     List<Cliente> findByNomeContainingIgnoreCase(String nome);
 
     Page<Cliente> findByNomeContainingIgnoreCase(String nome, Pageable pageable);
+
+    @Query("""
+            SELECT c FROM Cliente c
+            WHERE c.idCliente IN (
+                SELECT co.cliente.idCliente FROM Consulta co WHERE co.usuario.idUsuario = :idUsuario
+            )
+            AND (:nome IS NULL OR LOWER(c.nome) LIKE LOWER(CONCAT('%', :nome, '%')))
+            AND (:cpf IS NULL OR c.cpf = :cpf)
+            """)
+    Page<Cliente> buscarDoDentista(@Param("idUsuario") Long idUsuario,
+                                   @Param("nome") String nome,
+                                   @Param("cpf") String cpf,
+                                   Pageable pageable);
 }

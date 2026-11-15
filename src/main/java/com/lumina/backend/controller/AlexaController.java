@@ -4,9 +4,9 @@ import com.lumina.backend.dto.alexa.AlexaGerarPinResponse;
 import com.lumina.backend.dto.alexa.AlexaStatusResponse;
 import com.lumina.backend.dto.alexa.AlexaVincularRequest;
 import com.lumina.backend.dto.alexa.AlexaVincularResponse;
-import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.exception.EntidadeNaoEncontradaException;
 import com.lumina.backend.model.Usuario;
-import com.lumina.backend.repository.UsuarioRepository;
+import com.lumina.backend.service.usuario.UsuarioLogadoService;
 import com.lumina.backend.service.alexa.AlexaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -30,18 +30,18 @@ import org.springframework.web.bind.annotation.*;
 public class AlexaController {
 
     private final AlexaService alexaService;
-    private final UsuarioRepository usuarioRepository;
+    private final UsuarioLogadoService usuarioLogadoService;
 
-    public AlexaController(AlexaService alexaService, UsuarioRepository usuarioRepository) {
+    public AlexaController(AlexaService alexaService, UsuarioLogadoService usuarioLogadoService) {
         this.alexaService = alexaService;
-        this.usuarioRepository = usuarioRepository;
+        this.usuarioLogadoService = usuarioLogadoService;
     }
 
     private Usuario resolverUsuarioLogado(Authentication auth) {
         String email = (auth != null) ? auth.getName() : null;
         if (email != null && !email.isBlank()) {
-            return usuarioRepository.findByEmail(email)
-                    .orElseThrow(() -> new EntidadeNaoEncontrada("Usuário autenticado não encontrado"));
+            return usuarioLogadoService.buscarPorEmail(email)
+                    .orElseThrow(() -> new EntidadeNaoEncontradaException("Usuário autenticado não encontrado"));
         }
         throw new IllegalStateException("Sessão não identificada");
     }
@@ -148,7 +148,7 @@ public class AlexaController {
     public ResponseEntity<AlexaVincularResponse> vincular(
             @Valid @RequestBody AlexaVincularRequest request) {
 
-        log.info("ALEXA CONTROLLER: Recebida solicitação de vínculo para alexaUserId [{}]", request.getAlexaUserId());
+        log.info("ALEXA CONTROLLER: Recebida solicitação de vínculo para alexaUserId [{}]", request.alexaUserId());
         AlexaVincularResponse response = alexaService.vincular(request);
         return ResponseEntity.ok(response);
     }

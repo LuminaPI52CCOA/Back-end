@@ -36,6 +36,15 @@ WHERE u.idUsuario = :id
 
     @Query("""
         SELECT u FROM Usuario u
+        WHERE (:fkPerfil IS NULL OR u.perfil.idPerfil = :fkPerfil)
+          AND (:nome IS NULL OR LOWER(u.nome) LIKE LOWER(CONCAT('%', :nome, '%')))
+    """)
+    Page<Usuario> buscarComFiltros(@Param("fkPerfil") Integer fkPerfil,
+                                   @Param("nome") String nome,
+                                   Pageable pageable);
+
+    @Query("""
+        SELECT u FROM Usuario u
         WHERE UPPER(u.perfil.nome) = 'DENTISTA'
           AND (u.ativo IS NULL OR u.ativo = true)
           AND (:nome IS NULL OR LOWER(u.nome) LIKE LOWER(CONCAT('%', :nome, '%')))

@@ -4,7 +4,7 @@ import com.lumina.backend.dto.midia.ClienteMidiaResponse;
 import com.lumina.backend.dto.midia.IniciarUploadRequest;
 import com.lumina.backend.dto.midia.UploadArquivoItemRequest;
 import com.lumina.backend.dto.midia.UploadPresignedItemResponse;
-import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.exception.EntidadeNaoEncontradaException;
 import com.lumina.backend.exception.FormatoArquivoInvalidoException;
 import com.lumina.backend.model.*;
 import com.lumina.backend.repository.ClienteMidiaRepository;
@@ -121,10 +121,10 @@ class ClienteMidiaServiceTest {
 
         assertNotNull(resultado);
         assertEquals(1, resultado.size());
-        assertEquals(101L, resultado.get(0).getMidiaId());
-        assertEquals("foto.jpg", resultado.get(0).getNomeOriginal());
-        assertTrue(resultado.get(0).getUploadUrl().contains("upload-url"));
-        assertTrue(resultado.get(0).getChaveS3().startsWith("clientes/1/midias/"));
+        assertEquals(101L, resultado.get(0).midiaId());
+        assertEquals("foto.jpg", resultado.get(0).nomeOriginal());
+        assertTrue(resultado.get(0).uploadUrl().contains("upload-url"));
+        assertTrue(resultado.get(0).chaveS3().startsWith("clientes/1/midias/"));
         verify(clienteMidiaRepository, times(1)).save(any(ClienteMidia.class));
     }
 
@@ -173,7 +173,7 @@ class ClienteMidiaServiceTest {
         ClienteMidiaResponse response = clienteMidiaService.confirmarUpload(1L, 101L, usuario);
 
         assertNotNull(response);
-        assertEquals(101L, response.getId());
+        assertEquals(101L, response.id());
         assertEquals("ACTIVE", midiaExistente.getStatus());
         verify(s3Client, times(1)).headObject(any(HeadObjectRequest.class));
         verify(clienteMidiaRepository, times(1)).save(midiaExistente);
@@ -224,16 +224,16 @@ class ClienteMidiaServiceTest {
 
         assertNotNull(resultado);
         assertEquals(1, resultado.size());
-        assertEquals(101L, resultado.get(0).getId());
-        assertEquals("https://s3.amazonaws.com/test-bucket/view-url", resultado.get(0).getUrlVisualizacao());
+        assertEquals(101L, resultado.get(0).id());
+        assertEquals("https://s3.amazonaws.com/test-bucket/view-url", resultado.get(0).urlVisualizacao());
     }
 
     @Test
-    @DisplayName("Deve lançar EntidadeNaoEncontrada quando paciente não existir ao listar")
+    @DisplayName("Deve lançar EntidadeNaoEncontradaException quando paciente não existir ao listar")
     void listarMidias_PacienteNaoEncontrado() {
         when(clienteRepository.existsById(999L)).thenReturn(false);
 
-        assertThrows(EntidadeNaoEncontrada.class, () ->
+        assertThrows(EntidadeNaoEncontradaException.class, () ->
                 clienteMidiaService.listarMidias(999L, null, null, null, null, usuario)
         );
     }

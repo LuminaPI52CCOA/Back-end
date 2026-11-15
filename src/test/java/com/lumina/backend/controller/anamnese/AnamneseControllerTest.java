@@ -2,8 +2,8 @@ package com.lumina.backend.controller.anamnese;
 
 import com.lumina.backend.controller.AnamneseController;
 import com.lumina.backend.dto.anamnese.AnamneseResponse;
-import com.lumina.backend.exception.AnamneseVazio;
-import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.exception.AnamneseVazioException;
+import com.lumina.backend.exception.EntidadeNaoEncontradaException;
 import com.lumina.backend.model.Anamnese;
 import com.lumina.backend.model.Cliente;
 import com.lumina.backend.service.anamnese.AnamneseService;
@@ -67,15 +67,15 @@ class AnamneseControllerTest {
         }
 
         @Test
-        @DisplayName("1.2 Deve lançar AnamneseVazio ao tentar upload com arquivo vazio")
+        @DisplayName("1.2 Deve lançar AnamneseVazioException ao tentar upload com arquivo vazio")
         void deveLancarExcecaoAoEnviarArquivoVazio() throws Exception {
             MultipartFile file = Mockito.mock(MultipartFile.class);
 
             Mockito.when(anamneseService.processImage(any(MultipartFile.class)))
-                    .thenThrow(new AnamneseVazio("Arquivo não encontrado."));
+                    .thenThrow(new AnamneseVazioException("Arquivo não encontrado."));
 
-            AnamneseVazio exception = assertThrows(
-                    AnamneseVazio.class,
+            AnamneseVazioException exception = assertThrows(
+                    AnamneseVazioException.class,
                     () -> anamneseController.upload(file)
             );
 
@@ -107,20 +107,20 @@ class AnamneseControllerTest {
 
             Assertions.assertEquals(200, response.getStatusCodeValue());
             Assertions.assertNotNull(response.getBody());
-            Assertions.assertEquals("Tratamento ortodôntico", response.getBody().getDescricaoTratamento());
-            Assertions.assertTrue(response.getBody().getFazendoTratamento());
+            Assertions.assertEquals("Tratamento ortodôntico", response.getBody().descricaoTratamento());
+            Assertions.assertTrue(response.getBody().fazendoTratamento());
 
             Mockito.verify(anamneseService, Mockito.times(1)).buscarPorId(1);
         }
 
         @Test
-        @DisplayName("2.2 Deve lançar EntidadeNaoEncontrada quando anamnese não existir")
+        @DisplayName("2.2 Deve lançar EntidadeNaoEncontradaException quando anamnese não existir")
         void deveLancarExcecaoQuandoAnamneseNaoEncontrada() {
             Mockito.when(anamneseService.buscarPorId(anyInt()))
-                    .thenThrow(new EntidadeNaoEncontrada("Anamnese não encontrada!"));
+                    .thenThrow(new EntidadeNaoEncontradaException("Anamnese não encontrada!"));
 
-            EntidadeNaoEncontrada exception = assertThrows(
-                    EntidadeNaoEncontrada.class,
+            EntidadeNaoEncontradaException exception = assertThrows(
+                    EntidadeNaoEncontradaException.class,
                     () -> anamneseController.buscarPorId(99)
             );
 

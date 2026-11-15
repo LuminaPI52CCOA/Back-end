@@ -5,7 +5,7 @@ import com.lumina.backend.controller.PublicConsultaController;
 import com.lumina.backend.dto.notificacao.ConfirmacaoConsultaResponse;
 import com.lumina.backend.dto.notificacao.NotificacaoWhatsappResponse;
 import com.lumina.backend.dto.notificacao.ProcessamentoD1Response;
-import com.lumina.backend.repository.UsuarioRepository;
+import com.lumina.backend.service.usuario.UsuarioLogadoService;
 import com.lumina.backend.service.notificacao.LembretePublicadorService;
 import com.lumina.backend.service.notificacao.NotificacaoWhatsappService;
 import org.junit.jupiter.api.DisplayName;
@@ -35,7 +35,7 @@ class NotificacaoWhatsappControllerTest {
     private NotificacaoWhatsappService notificacaoWhatsappService;
 
     @Mock
-    private UsuarioRepository usuarioRepository;
+    private UsuarioLogadoService usuarioLogadoService;
 
     @InjectMocks
     private NotificacaoWhatsappController notificacaoController;

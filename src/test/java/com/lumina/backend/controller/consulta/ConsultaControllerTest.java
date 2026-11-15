@@ -6,7 +6,7 @@ import com.lumina.backend.dto.consulta.ConsultaRequest;
 import com.lumina.backend.dto.consulta.ConsultaResponse;
 import com.lumina.backend.dto.consulta.HorarioDisponivelResponse;
 import com.lumina.backend.dto.consulta.ReagendamentoRequest;
-import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.exception.EntidadeNaoEncontradaException;
 import com.lumina.backend.model.Cliente;
 import com.lumina.backend.model.Consulta;
 import com.lumina.backend.model.Especialidade;
@@ -44,10 +44,13 @@ class ConsultaControllerTest {
     private ConsultaService consultaService;
 
     @Mock
+    private com.lumina.backend.service.consulta.DashboardAgendamentoService dashboardService;
+
+    @Mock
     private com.lumina.backend.service.alexa.AlexaService alexaService;
 
     @Mock
-    private com.lumina.backend.repository.UsuarioRepository usuarioRepository;
+    private com.lumina.backend.service.usuario.UsuarioLogadoService usuarioLogadoService;
 
     @InjectMocks
     private ConsultaController consultaController;
@@ -71,7 +74,7 @@ class ConsultaControllerTest {
         autenticarComo("dentista@lumina.com", "ROLE_DENTISTA");
         Usuario logado = new Usuario();
         logado.setIdUsuario(idUsuario);
-        Mockito.when(usuarioRepository.findByEmail("dentista@lumina.com")).thenReturn(Optional.of(logado));
+        Mockito.when(usuarioLogadoService.buscarPorEmail("dentista@lumina.com")).thenReturn(Optional.of(logado));
     }
 
     private static Consulta consultaDoDentista(Long idConsulta, Long idDentista) {
@@ -109,7 +112,7 @@ class ConsultaControllerTest {
 
             Assertions.assertEquals(200, response.getStatusCode().value());
             Assertions.assertEquals(2, response.getBody().size());
-            Assertions.assertNull(response.getBody().get(0).getUsuario().getSenha());
+            Assertions.assertNull(response.getBody().get(0).usuario().senha());
         }
 
         @Test
@@ -177,22 +180,22 @@ class ConsultaControllerTest {
 
             Assertions.assertEquals(201, response.getStatusCode().value());
             ConsultaResponse body = response.getBody();
-            Assertions.assertEquals(1L, body.getId());
-            Assertions.assertEquals("AGENDADA", body.getStatus());
-            Assertions.assertEquals(30, body.getDuracaoMinutos());
-            Assertions.assertEquals("Clínica Geral", body.getEspecialidade().getNome());
-            Assertions.assertEquals(List.of(16), body.getDentes());
-            Assertions.assertEquals("Primeiro Molar", body.getTipoDente());
-            Assertions.assertEquals("Obs", body.getObservacoes());
+            Assertions.assertEquals(1L, body.id());
+            Assertions.assertEquals("AGENDADA", body.status());
+            Assertions.assertEquals(30, body.duracaoMinutos());
+            Assertions.assertEquals("Clínica Geral", body.especialidade().nome());
+            Assertions.assertEquals(List.of(16), body.dentes());
+            Assertions.assertEquals("Primeiro Molar", body.tipoDente());
+            Assertions.assertEquals("Obs", body.observacoes());
         }
 
         @Test
-        @DisplayName("2.2 Deve lançar EntidadeNaoEncontrada ao tentar cadastrar consulta com cliente inexistente")
+        @DisplayName("2.2 Deve lançar EntidadeNaoEncontradaException ao tentar cadastrar consulta com cliente inexistente")
         void deveLancarExcecaoQuandoClienteNaoEncontrado() {
             Mockito.when(consultaService.cadastrar(any(ConsultaRequest.class)))
-                    .thenThrow(new EntidadeNaoEncontrada("Cliente não encontrado"));
+                    .thenThrow(new EntidadeNaoEncontradaException("Cliente não encontrado"));
 
-            EntidadeNaoEncontrada exception = assertThrows(EntidadeNaoEncontrada.class,
+            EntidadeNaoEncontradaException exception = assertThrows(EntidadeNaoEncontradaException.class,
                     () -> consultaController.cadastrar(request()));
 
             Assertions.assertEquals("Cliente não encontrado", exception.getMessage());
@@ -229,16 +232,16 @@ class ConsultaControllerTest {
             ResponseEntity<ConsultaResponse> response = consultaController.buscarPorId(1L);
 
             Assertions.assertEquals(200, response.getStatusCode().value());
-            Assertions.assertEquals(1L, response.getBody().getId());
+            Assertions.assertEquals(1L, response.getBody().id());
         }
 
         @Test
-        @DisplayName("3.2 Deve lançar EntidadeNaoEncontrada quando consulta não existir")
+        @DisplayName("3.2 Deve lançar EntidadeNaoEncontradaException quando consulta não existir")
         void deveLancarExcecaoQuandoConsultaNaoEncontrada() {
             Mockito.when(consultaService.buscarPorId(99L))
-                    .thenThrow(new EntidadeNaoEncontrada("Consulta não encontrada"));
+                    .thenThrow(new EntidadeNaoEncontradaException("Consulta não encontrada"));
 
-            assertThrows(EntidadeNaoEncontrada.class, () -> consultaController.buscarPorId(99L));
+            assertThrows(EntidadeNaoEncontradaException.class, () -> consultaController.buscarPorId(99L));
         }
 
         @Test
@@ -270,16 +273,16 @@ class ConsultaControllerTest {
             ResponseEntity<ConsultaResponse> response = consultaController.reagendar(1L, request);
 
             Assertions.assertEquals(200, response.getStatusCode().value());
-            Assertions.assertEquals(LocalDate.of(2026, 6, 20), response.getBody().getData());
+            Assertions.assertEquals(LocalDate.of(2026, 6, 20), response.getBody().data());
         }
 
         @Test
-        @DisplayName("4.2 Deve lançar EntidadeNaoEncontrada ao tentar reagendar consulta inexistente")
+        @DisplayName("4.2 Deve lançar EntidadeNaoEncontradaException ao tentar reagendar consulta inexistente")
         void deveLancarExcecaoAoReagendarConsultaInexistente() {
             Mockito.when(consultaService.buscarPorId(99L))
-                    .thenThrow(new EntidadeNaoEncontrada("Consulta não encontrada"));
+                    .thenThrow(new EntidadeNaoEncontradaException("Consulta não encontrada"));
 
-            assertThrows(EntidadeNaoEncontrada.class, () -> consultaController.reagendar(99L, request));
+            assertThrows(EntidadeNaoEncontradaException.class, () -> consultaController.reagendar(99L, request));
             Mockito.verify(consultaService, Mockito.never()).reagendar(anyLong(), any(ReagendamentoRequest.class));
         }
 
@@ -314,12 +317,12 @@ class ConsultaControllerTest {
         }
 
         @Test
-        @DisplayName("5.2 Deve lançar EntidadeNaoEncontrada ao tentar cancelar consulta inexistente")
+        @DisplayName("5.2 Deve lançar EntidadeNaoEncontradaException ao tentar cancelar consulta inexistente")
         void deveLancarExcecaoAoCancelarConsultaInexistente() {
             Mockito.when(consultaService.buscarPorId(99L))
-                    .thenThrow(new EntidadeNaoEncontrada("Consulta não encontrada"));
+                    .thenThrow(new EntidadeNaoEncontradaException("Consulta não encontrada"));
 
-            assertThrows(EntidadeNaoEncontrada.class, () -> consultaController.cancelar(99L));
+            assertThrows(EntidadeNaoEncontradaException.class, () -> consultaController.cancelar(99L));
             Mockito.verify(consultaService, Mockito.never()).cancelar(anyLong());
         }
 
@@ -348,7 +351,7 @@ class ConsultaControllerTest {
                     consultaController.alterarStatus(1L, new AlterarStatusConsultaRequest("CONFIRMADA"));
 
             Assertions.assertEquals(200, response.getStatusCode().value());
-            Assertions.assertEquals("CONFIRMADA", response.getBody().getStatus());
+            Assertions.assertEquals("CONFIRMADA", response.getBody().status());
         }
     }
 
@@ -367,7 +370,7 @@ class ConsultaControllerTest {
                     consultaController.listarHorariosDisponiveis(2L, data, 30, null);
 
             Assertions.assertEquals(200, response.getStatusCode().value());
-            Assertions.assertEquals(LocalTime.of(8, 30), response.getBody().get(0).getHorarioFim());
+            Assertions.assertEquals(LocalTime.of(8, 30), response.getBody().get(0).horarioFim());
         }
 
         @Test
@@ -404,7 +407,7 @@ class ConsultaControllerTest {
                             List.of(new com.lumina.backend.dto.consulta.DashboardAgendamentoResponse.ItemDistribuicao("Particular", 60L, 40.5)),
                             List.of(new com.lumina.backend.dto.consulta.DashboardAgendamentoResponse.ItemDistribuicao("Concluída", 148L, 85.0))
                     );
-            Mockito.when(consultaService.obterDashboardAgendamento("30d", null)).thenReturn(esperado);
+            Mockito.when(dashboardService.obterDashboardAgendamento("30d", null)).thenReturn(esperado);
 
             ResponseEntity<com.lumina.backend.dto.consulta.DashboardAgendamentoResponse> response =
                     consultaController.obterDashboard("30d", null);

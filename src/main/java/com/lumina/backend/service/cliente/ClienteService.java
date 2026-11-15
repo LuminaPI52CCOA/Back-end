@@ -5,16 +5,14 @@ import com.lumina.backend.dto.anamnese.AnamneseRequest;
 import com.lumina.backend.dto.cliente.ClienteMapper;
 import com.lumina.backend.dto.cliente.ClienteRequest;
 import com.lumina.backend.dto.cliente.ResponsavelRequest;
-import com.lumina.backend.domain.cliente.Cliente;
-import com.lumina.backend.domain.cliente.ClienteCommand;
-import com.lumina.backend.domain.cliente.ClienteId;
-import com.lumina.backend.domain.cliente.ClienteRepositoryPort;
 import com.lumina.backend.exception.CpfDuplicadoException;
 import com.lumina.backend.exception.EmailDuplicadoException;
-import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.exception.EntidadeNaoEncontradaException;
 import com.lumina.backend.model.Anamnese;
+import com.lumina.backend.model.Cliente;
 import com.lumina.backend.model.EstadoCivil;
 import com.lumina.backend.repository.AnamneseRepository;
+import com.lumina.backend.repository.ClienteRepository;
 import com.lumina.backend.repository.EstadoCivilRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -23,20 +21,21 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 
 @Service
 public class ClienteService {
 
-    private final ClienteRepositoryPort repositoryPort;
+    private final ClienteRepository clienteRepository;
     private final AnamneseRepository anamneseRepository;
     private final EstadoCivilRepository estadoCivilRepository;
 
-    public ClienteService(ClienteRepositoryPort repositoryPort,
+    public ClienteService(ClienteRepository clienteRepository,
                           AnamneseRepository anamneseRepository,
                           EstadoCivilRepository estadoCivilRepository) {
-        this.repositoryPort = repositoryPort;
+        this.clienteRepository = clienteRepository;
         this.anamneseRepository = anamneseRepository;
         this.estadoCivilRepository = estadoCivilRepository;
     }
@@ -45,292 +44,147 @@ public class ClienteService {
         return estadoCivilRepository.findAll();
     }
 
-    public List<Cliente> listar(){
-        return repositoryPort.buscarTodos();
+    public List<Cliente> listar() {
+        return clienteRepository.findAll();
     }
 
     public Page<Cliente> listarPaginado(Pageable pageable) {
-        Sort sort = pageable.getSort().isSorted()
-                ? pageable.getSort()
-                : Sort.by(Sort.Direction.ASC, "nome");
-        PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
-        return repositoryPort.buscarTodos(pageRequest);
+        return clienteRepository.findAll(paginacaoOrdenadaPorNome(pageable));
     }
 
     public List<Cliente> listarComFiltros(String nome, String cpf) {
         if (cpf != null && !cpf.isBlank()) {
-            return repositoryPort.buscarPorCpf(cpf)
+            return clienteRepository.findByCpf(cpf)
                     .map(List::of)
                     .orElse(Collections.emptyList());
         }
         if (nome != null && !nome.isBlank()) {
-            return repositoryPort.buscarPorNome(nome);
+            return clienteRepository.findByNomeContainingIgnoreCase(nome);
         }
-        return repositoryPort.buscarTodos();
+        return clienteRepository.findAll();
     }
 
     public Page<Cliente> listarComFiltrosPaginado(String nome, String cpf, Pageable pageable) {
-        Sort sort = pageable.getSort().isSorted()
-                ? pageable.getSort()
-                : Sort.by(Sort.Direction.ASC, "nome");
-        PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+        PageRequest pageRequest = paginacaoOrdenadaPorNome(pageable);
 
         if (cpf != null && !cpf.isBlank()) {
-            List<Cliente> encontrados = repositoryPort.buscarPorCpf(cpf)
+            List<Cliente> encontrados = clienteRepository.findByCpf(cpf)
                     .map(List::of)
                     .orElse(Collections.emptyList());
             return new PageImpl<>(encontrados, pageRequest, encontrados.size());
         }
         if (nome != null && !nome.isBlank()) {
-            return repositoryPort.buscarPorNome(nome, pageRequest);
+            return clienteRepository.findByNomeContainingIgnoreCase(nome, pageRequest);
         }
-        return repositoryPort.buscarTodos(pageRequest);
+        return clienteRepository.findAll(pageRequest);
     }
 
     public Page<Cliente> listarPorDentistaPaginado(Long idUsuario, String nome, String cpf, Pageable pageable) {
+        return clienteRepository.buscarDoDentista(
+                idUsuario,
+                (nome == null || nome.isBlank()) ? null : nome,
+                (cpf == null || cpf.isBlank()) ? null : cpf,
+                paginacaoOrdenadaPorNome(pageable)
+        );
+    }
+
+    public Cliente cadastrar(ClienteRequest request) {
+        if (clienteRepository.existsByEmail(request.email())) {
+            throw new EmailDuplicadoException("Email " + request.email() + " já existe");
+        }
+        if (clienteRepository.existsByCpf(request.cpf())) {
+            throw new CpfDuplicadoException("Cpf " + request.cpf() + " já existe");
+        }
+
+        Cliente cliente = new Cliente();
+        ClienteMapper.aplicarDados(cliente, request);
+        preencherRelacoes(cliente, request);
+        return clienteRepository.save(cliente);
+    }
+
+    public Cliente buscarPorId(Long id) {
+        return clienteRepository.findById(id)
+                .orElseThrow(() -> new EntidadeNaoEncontradaException("Cliente não encontrado!"));
+    }
+
+    public Cliente atualizar(ClienteRequest request, Long id) {
+        Cliente clienteExistente = buscarPorId(id);
+        ClienteMapper.aplicarDados(clienteExistente, request);
+        preencherRelacoes(clienteExistente, request);
+        return clienteRepository.save(clienteExistente);
+    }
+
+    public List<Anamnese> listarAnamnese(Integer id) {
+        List<Anamnese> anamnese = anamneseRepository.findAnamneseByFkCliente_IdCliente(id);
+        if (anamnese.isEmpty()) {
+            throw new EntidadeNaoEncontradaException("Anamnese não encontrada!");
+        }
+        return anamnese;
+    }
+
+    public Anamnese cadastrarAnamnese(Long id, AnamneseRequest request) {
+        Cliente cliente = buscarPorId(id);
+
+        Anamnese anamnese = new Anamnese();
+        AnamneseMapper.aplicarDados(anamnese, request);
+        anamnese.setFkCliente(cliente);
+        if (anamnese.getDataAnamnese() == null) {
+            anamnese.setDataAnamnese(LocalDate.now());
+        }
+
+        anamneseRepository.save(anamnese);
+        return anamnese;
+    }
+
+    private void preencherRelacoes(Cliente cliente, ClienteRequest request) {
+        cliente.setClienteIndicacao(resolverIndicacao(request.fkClienteIndicacao()));
+        cliente.setResponsavel(resolverResponsavel(request.responsavel()));
+    }
+
+    private Cliente resolverIndicacao(Integer fkClienteIndicacao) {
+        if (fkClienteIndicacao == null) {
+            return null;
+        }
+        return clienteRepository.findById(fkClienteIndicacao.longValue())
+                .orElseThrow(() -> new EntidadeNaoEncontradaException("Cliente indicador não encontrado!"));
+    }
+
+    private Cliente resolverResponsavel(ResponsavelRequest respDto) {
+        if (respDto == null) {
+            return null;
+        }
+        if (respDto.idCliente() != null) {
+            return clienteRepository.findById(respDto.idCliente())
+                    .orElseThrow(() -> new EntidadeNaoEncontradaException("Responsável não encontrado!"));
+        }
+        if (respDto.cpf() != null && !respDto.cpf().isBlank()) {
+            return clienteRepository.findByCpf(respDto.cpf())
+                    .orElseGet(() -> clienteRepository.save(criarResponsavelEntidade(respDto)));
+        }
+        return null;
+    }
+
+    private Cliente criarResponsavelEntidade(ResponsavelRequest respDto) {
+        Cliente novoResp = new Cliente();
+        novoResp.setNome(respDto.nome());
+        novoResp.setCpf(respDto.cpf());
+        novoResp.setRg(respDto.rg());
+        novoResp.setDataNascimento(respDto.dataNascimento());
+        novoResp.setNaturalidade(respDto.naturalidade());
+        novoResp.setNacionalidade(respDto.nacionalidade());
+        novoResp.setSexo(respDto.sexo());
+        novoResp.setCep(respDto.cep());
+        novoResp.setEnderecoResidencial(respDto.enderecoResidencial());
+        novoResp.setEmail(respDto.email());
+        novoResp.setNumeroCelular(respDto.numeroCelular());
+        novoResp.setFkEstadoCivil(respDto.fkEstadoCivil());
+        return novoResp;
+    }
+
+    private static PageRequest paginacaoOrdenadaPorNome(Pageable pageable) {
         Sort sort = pageable.getSort().isSorted()
                 ? pageable.getSort()
                 : Sort.by(Sort.Direction.ASC, "nome");
-        PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
-        return repositoryPort.buscarPorDentista(idUsuario,
-                (nome == null || nome.isBlank()) ? null : nome,
-                (cpf == null || cpf.isBlank()) ? null : cpf,
-                pageRequest);
+        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
     }
-
-    public Cliente cadastrar(ClienteRequest request){
-        if(repositoryPort.existePorEmail(request.getEmail())){
-            throw new EmailDuplicadoException("Email " + request.getEmail() + " já existe");
-        }
-        if(repositoryPort.existePorCpf(request.getCpf())){
-            throw new CpfDuplicadoException("Cpf " + request.getCpf() + " já existe");
-        }
-
-        ClienteCommand command = ClienteMapper.toCommand(request);
-
-        // Tratar cliente indicacao
-        if (request.getFkClienteIndicacao() != null) {
-            Cliente indicacao = repositoryPort.buscarPorId(ClienteId.of(request.getFkClienteIndicacao().longValue()))
-                    .orElseThrow(() -> new EntidadeNaoEncontrada("Cliente indicador não encontrado!"));
-            command = new ClienteCommand(
-                command.nome(),
-                command.cpf(),
-                command.rg(),
-                command.dataNascimento(),
-                command.naturalidade(),
-                command.nacionalidade(),
-                command.sexo(),
-                command.cep(),
-                command.enderecoResidencial(),
-                command.email(),
-                command.numeroCelular(),
-                command.fkEstadoCivil(),
-                indicacao,
-                command.responsavel(),
-                command.grauParentescoResponsavel()
-            );
-        }
-
-        // Tratar responsavel
-        if (request.getResponsavel() != null) {
-            ResponsavelRequest respDto = request.getResponsavel();
-            Cliente responsavel = null;
-
-            if (respDto.getIdCliente() != null) {
-                responsavel = repositoryPort.buscarPorId(ClienteId.of(respDto.getIdCliente()))
-                        .orElseThrow(() -> new EntidadeNaoEncontrada("Responsável não encontrado!"));
-            } else if (respDto.getCpf() != null && !respDto.getCpf().isBlank()) {
-                responsavel = repositoryPort.buscarPorCpf(respDto.getCpf())
-                        .orElseGet(() -> {
-                            ClienteCommand respCommand = new ClienteCommand(
-                                respDto.getNome(),
-                                respDto.getCpf(),
-                                respDto.getRg(),
-                                respDto.getDataNascimento(),
-                                respDto.getNaturalidade(),
-                                respDto.getNacionalidade(),
-                                respDto.getSexo(),
-                                respDto.getCep(),
-                                respDto.getEnderecoResidencial(),
-                                respDto.getEmail(),
-                                respDto.getNumeroCelular(),
-                                respDto.getFkEstadoCivil(),
-                                null,
-                                null,
-                                null
-                            );
-                            Cliente novoResp = Cliente.criar(respCommand);
-                            return repositoryPort.salvar(novoResp);
-                        });
-            }
-            
-            command = new ClienteCommand(
-                command.nome(),
-                command.cpf(),
-                command.rg(),
-                command.dataNascimento(),
-                command.naturalidade(),
-                command.nacionalidade(),
-                command.sexo(),
-                command.cep(),
-                command.enderecoResidencial(),
-                command.email(),
-                command.numeroCelular(),
-                command.fkEstadoCivil(),
-                command.clienteIndicacao(),
-                responsavel,
-                command.grauParentescoResponsavel()
-            );
-        }
-
-        Cliente cliente = Cliente.criar(command);
-        return repositoryPort.salvar(cliente);
-    }
-
-    public Cliente buscarPorId(Long id){
-        return repositoryPort.buscarPorId(ClienteId.of(id))
-                .orElseThrow(() -> new EntidadeNaoEncontrada("Cliente não encontrado!"));
-    }
-
-    public Cliente atualizar(ClienteRequest request, Long id){
-        Cliente clienteExistente = repositoryPort.buscarPorId(ClienteId.of(id))
-                .orElseThrow(() -> new EntidadeNaoEncontrada("Cliente não encontrado!"));
-
-        ClienteCommand command = ClienteMapper.toCommand(request);
-
-        // Tratar cliente indicacao
-        if (request.getFkClienteIndicacao() != null) {
-            Cliente indicacao = repositoryPort.buscarPorId(ClienteId.of(request.getFkClienteIndicacao().longValue()))
-                    .orElseThrow(() -> new EntidadeNaoEncontrada("Cliente indicador não encontrado!"));
-            command = new ClienteCommand(
-                command.nome(),
-                command.cpf(),
-                command.rg(),
-                command.dataNascimento(),
-                command.naturalidade(),
-                command.nacionalidade(),
-                command.sexo(),
-                command.cep(),
-                command.enderecoResidencial(),
-                command.email(),
-                command.numeroCelular(),
-                command.fkEstadoCivil(),
-                indicacao,
-                command.responsavel(),
-                command.grauParentescoResponsavel()
-            );
-        }
-
-        // Tratar responsavel
-        if (request.getResponsavel() != null) {
-            ResponsavelRequest respDto = request.getResponsavel();
-            Cliente responsavel = null;
-
-            if (respDto.getIdCliente() != null) {
-                responsavel = repositoryPort.buscarPorId(ClienteId.of(respDto.getIdCliente()))
-                        .orElseThrow(() -> new EntidadeNaoEncontrada("Responsável não encontrado!"));
-            } else if (respDto.getCpf() != null && !respDto.getCpf().isBlank()) {
-                responsavel = repositoryPort.buscarPorCpf(respDto.getCpf())
-                        .orElseGet(() -> {
-                            ClienteCommand respCommand = new ClienteCommand(
-                                respDto.getNome(),
-                                respDto.getCpf(),
-                                respDto.getRg(),
-                                respDto.getDataNascimento(),
-                                respDto.getNaturalidade(),
-                                respDto.getNacionalidade(),
-                                respDto.getSexo(),
-                                respDto.getCep(),
-                                respDto.getEnderecoResidencial(),
-                                respDto.getEmail(),
-                                respDto.getNumeroCelular(),
-                                respDto.getFkEstadoCivil(),
-                                null,
-                                null,
-                                null
-                            );
-                            Cliente novoResp = Cliente.criar(respCommand);
-                            return repositoryPort.salvar(novoResp);
-                        });
-            }
-            
-            command = new ClienteCommand(
-                command.nome(),
-                command.cpf(),
-                command.rg(),
-                command.dataNascimento(),
-                command.naturalidade(),
-                command.nacionalidade(),
-                command.sexo(),
-                command.cep(),
-                command.enderecoResidencial(),
-                command.email(),
-                command.numeroCelular(),
-                command.fkEstadoCivil(),
-                command.clienteIndicacao(),
-                responsavel,
-                command.grauParentescoResponsavel()
-            );
-        }
-
-        Cliente clienteAtualizado = clienteExistente.atualizar(command);
-        return repositoryPort.salvar(clienteAtualizado);
-    }
-
-    public List<Anamnese> listarAnamnese(Integer id){
-        List<Anamnese> anamnese = anamneseRepository.findAnamneseByFkCliente_IdCliente(id);
-        if(anamnese.isEmpty()) throw new EntidadeNaoEncontrada("Anamnese não encontrada!") ;
-        return anamnese;
-    }
-
-    public Anamnese cadastrarAnamnese(Long id, AnamneseRequest request){
-        Cliente clienteDomain = repositoryPort.buscarPorId(ClienteId.of(id))
-                .orElseThrow(() -> new EntidadeNaoEncontrada("Cliente não encontrado!"));
-
-        com.lumina.backend.model.Cliente clienteModel = new com.lumina.backend.model.Cliente();
-        clienteModel.setIdCliente(id);
-        clienteModel.setNome(clienteDomain.getNome());
-        clienteModel.setCpf(clienteDomain.getCpf());
-        clienteModel.setRg(clienteDomain.getRg());
-        clienteModel.setDataNascimento(clienteDomain.getDataNascimento());
-        clienteModel.setNumeroCelular(clienteDomain.getNumeroCelular());
-        clienteModel.setEmail(clienteDomain.getEmail());
-        clienteModel.setSexo(clienteDomain.getSexo());
-        clienteModel.setNaturalidade(clienteDomain.getNaturalidade());
-        clienteModel.setNacionalidade(clienteDomain.getNacionalidade());
-        clienteModel.setFkEstadoCivil(clienteDomain.getFkEstadoCivil());
-        clienteModel.setEnderecoResidencial(clienteDomain.getEnderecoResidencial());
-        clienteModel.setCep(clienteDomain.getCep());
-        clienteModel.setGrauParentescoResponsavel(clienteDomain.getGrauParentescoResponsavel());
-
-        Anamnese anamnese = new Anamnese();
-        anamnese.setFkCliente(clienteModel);
-        anamnese.setIdAnamnese(request.getIdAnamnese());
-        anamnese.setDataAnamnese(request.getDataAnamnese() != null ? request.getDataAnamnese() : java.time.LocalDate.now());
-        anamnese.setFazendoTratamento(request.getFazendoTratamento());
-        anamnese.setDescricaoTratamento(request.getDescricaoTratamento());
-        anamnese.setDoresCabecaFaceAtm(request.getDoresCabecaFaceAtm());
-        anamnese.setAlergiaMedicamentos(request.getAlergiaMedicamentos());
-        anamnese.setDescricaoAlergiaMedicamentos(request.getDescricaoAlergiaMedicamentos());
-        anamnese.setReacaoAnestesiaLocal(request.getReacaoAnestesiaLocal());
-        anamnese.setSensibilidadeDentaria(request.getSensibilidadeDentaria());
-        anamnese.setBruxismoApertamento(request.getBruxismoApertamento());
-        anamnese.setSangramentoGengival(request.getSangramentoGengival());
-        anamnese.setPossuiHabito(request.getPossuiHabito());
-        anamnese.setDescricaoHabito(request.getDescricaoHabito());
-        anamnese.setHistoricoDiabetes(request.getHistoricoDiabetes());
-        anamnese.setSangramentoExcessivo(request.getSangramentoExcessivo());
-        anamnese.setProblemaCardiaco(request.getProblemaCardiaco());
-        anamnese.setDescricaoProblemaCardiaco(request.getDescricaoProblemaCardiaco());
-        anamnese.setPressaoArterialNormal(request.getPressaoArterialNormal());
-        anamnese.setDescricaoPressaoArterial(request.getDescricaoPressaoArterial());
-        anamnese.setHistoricoDesmaioConvulsao(request.getHistoricoDesmaioConvulsao());
-        anamnese.setGestante(request.getGestante());
-
-        anamneseRepository.save(anamnese);
-
-        return anamnese;
-
-    }
-
 }

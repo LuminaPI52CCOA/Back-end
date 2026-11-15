@@ -1,9 +1,8 @@
 package com.lumina.backend.controller;
 
-import com.lumina.backend.domain.usuario.UsuarioCommand;
-import com.lumina.backend.domain.usuario.Usuario;
 import com.lumina.backend.dto.usuario.*;
-import com.lumina.backend.service.Usuario.UsuarioService;
+import com.lumina.backend.model.Usuario;
+import com.lumina.backend.service.usuario.UsuarioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -72,21 +71,11 @@ public class UsuarioController {
                     content = @Content(schema = @Schema(implementation = UsuarioRequest.class)))
             @org.springframework.web.bind.annotation.RequestBody @Valid UsuarioRequest usuario) {
 
-        String senhaNova = passwordEncoder.encode(usuario.getSenha());
-        UsuarioCommand command = UsuarioMapper.toCommand(usuario);
-        UsuarioCommand commandComSenha = new UsuarioCommand(
-            command.nome(),
-            command.cpf(),
-            command.email(),
-            senhaNova,
-            command.fkPerfil(),
-            command.cro(),
-            command.ativo()
-        );
-        
-        Usuario usuarioDomain = Usuario.criar(commandComSenha);
-        Usuario usuariosCadastrados = service.salvar(usuarioDomain);
-        log.info("AUDIT: Usuario [{}] cadastrado com sucesso", usuario.getEmail());
+        String senhaNova = passwordEncoder.encode(usuario.senha());
+        Usuario novoUsuario = UsuarioMapper.of(usuario);
+        novoUsuario.setSenha(senhaNova);
+        Usuario usuariosCadastrados = service.salvar(novoUsuario);
+        log.info("AUDIT: Usuario [{}] cadastrado com sucesso", usuario.email());
 
         return ResponseEntity
                 .status(201)
@@ -110,13 +99,13 @@ public class UsuarioController {
             @Valid @org.springframework.web.bind.annotation.RequestBody UsuarioLoginDto usuarioLoginDto,
             HttpServletResponse response) {
 
-        final com.lumina.backend.model.Usuario usuario = UsuarioMapper.of(usuarioLoginDto);
+        final Usuario usuario = UsuarioMapper.of(usuarioLoginDto);
 
         // autenticar() gera o token internamente — precisamos dele apenas para o cookie
         UsuarioTokenDto autenticado = this.service.autenticar(usuario);
 
         // Token vai para o cookie HttpOnly — inacessível ao JavaScript (proteção XSS)
-        ResponseCookie cookie = ResponseCookie.from(COOKIE_NOME, autenticado.getToken())
+        ResponseCookie cookie = ResponseCookie.from(COOKIE_NOME, autenticado.token())
                 .httpOnly(true)                          // inacessível ao JavaScript
                 .secure(cookieSecure)                    // true em produção (exige HTTPS)
                 .sameSite("Strict")                      // bloqueia envio cross-site (mitiga CSRF)
@@ -202,7 +191,7 @@ public class UsuarioController {
             @RequestParam(required = false) String nome,
             @PageableDefault(page = 0, size = 20, sort = "nome", direction = Sort.Direction.ASC)
             Pageable pageable) {
-        Page<com.lumina.backend.model.Usuario> dentistas = service.listarDentistasAtivos(nome, pageable);
+        Page<Usuario> dentistas = service.listarDentistasAtivos(nome, pageable);
         if (dentistas.isEmpty()) {
             return ResponseEntity.noContent().build();
         }

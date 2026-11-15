@@ -1,11 +1,18 @@
 package com.lumina.backend.model;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
 @Entity
 @Table(name = "cliente_midia")
+@Getter
+@Setter
+@NoArgsConstructor
 public class ClienteMidia {
 
     @Id
@@ -66,9 +73,6 @@ public class ClienteMidia {
     @JoinColumn(name = "fk_usuario_exclusao")
     private Usuario usuarioExclusao;
 
-    public ClienteMidia() {
-    }
-
     @PrePersist
     protected void onCreate() {
         if (criadoEm == null) {
@@ -88,141 +92,5 @@ public class ClienteMidia {
     @PreUpdate
     protected void onUpdate() {
         atualizadoEm = LocalDateTime.now(ZoneId.of("America/Sao_Paulo"));
-    }
-
-    public Long getIdClienteMidia() {
-        return idClienteMidia;
-    }
-
-    public void setIdClienteMidia(Long idClienteMidia) {
-        this.idClienteMidia = idClienteMidia;
-    }
-
-    public Cliente getCliente() {
-        return cliente;
-    }
-
-    public void setCliente(Cliente cliente) {
-        this.cliente = cliente;
-    }
-
-    public Usuario getUsuario() {
-        return usuario;
-    }
-
-    public void setUsuario(Usuario usuario) {
-        this.usuario = usuario;
-    }
-
-    public TipoMidia getTipoMidia() {
-        return tipoMidia;
-    }
-
-    public void setTipoMidia(TipoMidia tipoMidia) {
-        this.tipoMidia = tipoMidia;
-    }
-
-    public Consulta getConsulta() {
-        return consulta;
-    }
-
-    public void setConsulta(Consulta consulta) {
-        this.consulta = consulta;
-    }
-
-    public String getChaveS3() {
-        return chaveS3;
-    }
-
-    public void setChaveS3(String chaveS3) {
-        this.chaveS3 = chaveS3;
-    }
-
-    public String getNomeOriginal() {
-        return nomeOriginal;
-    }
-
-    public void setNomeOriginal(String nomeOriginal) {
-        this.nomeOriginal = nomeOriginal;
-    }
-
-    public String getExtensao() {
-        return extensao;
-    }
-
-    public void setExtensao(String extensao) {
-        this.extensao = extensao;
-    }
-
-    public String getMimeType() {
-        return mimeType;
-    }
-
-    public void setMimeType(String mimeType) {
-        this.mimeType = mimeType;
-    }
-
-    public Long getTamanhoBytes() {
-        return tamanhoBytes;
-    }
-
-    public void setTamanhoBytes(Long tamanhoBytes) {
-        this.tamanhoBytes = tamanhoBytes;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public String getLegenda() {
-        return legenda;
-    }
-
-    public void setLegenda(String legenda) {
-        this.legenda = legenda;
-    }
-
-    public Boolean getAtivo() {
-        return ativo;
-    }
-
-    public void setAtivo(Boolean ativo) {
-        this.ativo = ativo;
-    }
-
-    public LocalDateTime getCriadoEm() {
-        return criadoEm;
-    }
-
-    public void setCriadoEm(LocalDateTime criadoEm) {
-        this.criadoEm = criadoEm;
-    }
-
-    public LocalDateTime getAtualizadoEm() {
-        return atualizadoEm;
-    }
-
-    public void setAtualizadoEm(LocalDateTime atualizadoEm) {
-        this.atualizadoEm = atualizadoEm;
-    }
-
-    public LocalDateTime getDataExclusao() {
-        return dataExclusao;
-    }
-
-    public void setDataExclusao(LocalDateTime dataExclusao) {
-        this.dataExclusao = dataExclusao;
-    }
-
-    public Usuario getUsuarioExclusao() {
-        return usuarioExclusao;
-    }
-
-    public void setUsuarioExclusao(Usuario usuarioExclusao) {
-        this.usuarioExclusao = usuarioExclusao;
     }
 }

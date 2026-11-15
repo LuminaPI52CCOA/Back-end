@@ -1,7 +1,7 @@
 package com.lumina.backend.service.alexa;
 
 import com.lumina.backend.dto.alexa.*;
-import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.exception.EntidadeNaoEncontradaException;
 import com.lumina.backend.model.Anamnese;
 import com.lumina.backend.model.Cliente;
 import com.lumina.backend.model.Consulta;
@@ -50,7 +50,7 @@ public class AlexaService {
     @Transactional
     public AlexaGerarPinResponse gerarPin(Long idUsuario) {
         Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new EntidadeNaoEncontrada("Usuário não encontrado"));
+                .orElseThrow(() -> new EntidadeNaoEncontradaException("Usuário não encontrado"));
 
         String pin = String.format("%06d", RANDOM.nextInt(1000000));
         LocalDateTime expiracao = LocalDateTime.now(ZONE_SAO_PAULO).plusMinutes(10);
@@ -79,29 +79,29 @@ public class AlexaService {
 
     @Transactional
     public AlexaVincularResponse vincular(AlexaVincularRequest request) {
-        if (request.getCodigo() == null || request.getCodigo().isBlank()) {
+        if (request.codigo() == null || request.codigo().isBlank()) {
             throw new IllegalArgumentException("Código de pareamento não informado");
         }
 
-        UsuarioAlexa vinculo = usuarioAlexaRepository.findByCodigoPareamento(request.getCodigo().trim())
-                .orElseThrow(() -> new EntidadeNaoEncontrada("Código de pareamento inválido ou não encontrado"));
+        UsuarioAlexa vinculo = usuarioAlexaRepository.findByCodigoPareamento(request.codigo().trim())
+                .orElseThrow(() -> new EntidadeNaoEncontradaException("Código de pareamento inválido ou não encontrado"));
 
         if (vinculo.getCodigoExpiracao() != null && vinculo.getCodigoExpiracao().isBefore(LocalDateTime.now(ZONE_SAO_PAULO))) {
             throw new IllegalStateException("Código de pareamento expirado. Por favor, gere um novo código no painel Lumina.");
         }
 
         // Se o alexaUserId já estiver vinculado a outro registro antigo, desativa-o para manter unicidade
-        Optional<UsuarioAlexa> vinculoExistente = usuarioAlexaRepository.findByAlexaUserIdAndAtivoTrue(request.getAlexaUserId());
+        Optional<UsuarioAlexa> vinculoExistente = usuarioAlexaRepository.findByAlexaUserIdAndAtivoTrue(request.alexaUserId());
         if (vinculoExistente.isPresent() && !vinculoExistente.get().getIdUsuarioAlexa().equals(vinculo.getIdUsuarioAlexa())) {
             UsuarioAlexa antigo = vinculoExistente.get();
             antigo.setAtivo(false);
             usuarioAlexaRepository.save(antigo);
-            log.info("ALEXA: Desativando vinculo anterior para o alexaUserId [{}]", request.getAlexaUserId());
+            log.info("ALEXA: Desativando vinculo anterior para o alexaUserId [{}]", request.alexaUserId());
         }
 
-        vinculo.setAlexaUserId(request.getAlexaUserId());
-        if (request.getApiEndpoint() != null && !request.getApiEndpoint().isBlank()) {
-            vinculo.setApiEndpoint(request.getApiEndpoint());
+        vinculo.setAlexaUserId(request.alexaUserId());
+        if (request.apiEndpoint() != null && !request.apiEndpoint().isBlank()) {
+            vinculo.setApiEndpoint(request.apiEndpoint());
         }
         vinculo.setCodigoPareamento(null);
         vinculo.setCodigoExpiracao(null);
@@ -109,9 +109,9 @@ public class AlexaService {
         usuarioAlexaRepository.save(vinculo);
 
         String dentistaNome = vinculo.getUsuario().getNome();
-        log.info("ALEXA: Dispositivo [{}] vinculado com sucesso ao Dr(a). [{}]", request.getAlexaUserId(), dentistaNome);
+        log.info("ALEXA: Dispositivo [{}] vinculado com sucesso ao Dr(a). [{}]", request.alexaUserId(), dentistaNome);
         log.info("AUDIT: Dispositivo Alexa [{}] vinculado com sucesso ao dentista ID [{}] (Nome: [{}])",
-                request.getAlexaUserId(), vinculo.getUsuario().getIdUsuario(), dentistaNome);
+                request.alexaUserId(), vinculo.getUsuario().getIdUsuario(), dentistaNome);
 
         return new AlexaVincularResponse(
                 true,
@@ -123,7 +123,7 @@ public class AlexaService {
     @Transactional(readOnly = true)
     public AlexaStatusResponse obterStatus(Long targetUserId) {
         Usuario dentista = usuarioRepository.findById(targetUserId)
-                .orElseThrow(() -> new EntidadeNaoEncontrada("Usuário não encontrado"));
+                .orElseThrow(() -> new EntidadeNaoEncontradaException("Usuário não encontrado"));
 
         Optional<UsuarioAlexa> vinculoOpt = usuarioAlexaRepository.findByUsuario_IdUsuarioAndAtivoTrue(targetUserId);
 
@@ -154,10 +154,10 @@ public class AlexaService {
     @Transactional
     public String desconectar(Long targetUserId) {
         Usuario dentista = usuarioRepository.findById(targetUserId)
-                .orElseThrow(() -> new EntidadeNaoEncontrada("Usuário não encontrado"));
+                .orElseThrow(() -> new EntidadeNaoEncontradaException("Usuário não encontrado"));
 
         UsuarioAlexa vinculo = usuarioAlexaRepository.findByUsuario_IdUsuarioAndAtivoTrue(targetUserId)
-                .orElseThrow(() -> new EntidadeNaoEncontrada("Nenhum dispositivo Alexa vinculado encontrado para este dentista"));
+                .orElseThrow(() -> new EntidadeNaoEncontradaException("Nenhum dispositivo Alexa vinculado encontrado para este dentista"));
 
         String alexaUserId = vinculo.getAlexaUserId();
         vinculo.setAtivo(false);
@@ -173,14 +173,14 @@ public class AlexaService {
         if (alexaUserId != null && !alexaUserId.isBlank()) {
             return usuarioAlexaRepository.findByAlexaUserIdAndAtivoTrue(alexaUserId.trim())
                     .map(UsuarioAlexa::getUsuario)
-                    .orElseThrow(() -> new EntidadeNaoEncontrada(
+                    .orElseThrow(() -> new EntidadeNaoEncontradaException(
                             "Dispositivo Alexa não vinculado. Por favor, gere o código de pareamento no painel web da Lumina e diga: 'vincular código seguido dos números'."
                     ));
         }
 
         if (idUsuarioAutenticado != null) {
             return usuarioRepository.findById(idUsuarioAutenticado)
-                    .orElseThrow(() -> new EntidadeNaoEncontrada("Usuário autenticado não encontrado"));
+                    .orElseThrow(() -> new EntidadeNaoEncontradaException("Usuário autenticado não encontrado"));
         }
 
         throw new IllegalStateException("Dentista não identificado para a consulta da Alexa");

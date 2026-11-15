@@ -51,8 +51,8 @@ class TipoMidiaServiceTest {
         List<TipoMidiaResponse> resultado = tipoMidiaService.listarDisponiveis(usuario);
 
         assertEquals(2, resultado.size());
-        assertFalse(resultado.get(0).getPersonalizado());
-        assertTrue(resultado.get(1).getPersonalizado());
+        assertFalse(resultado.get(0).personalizado());
+        assertTrue(resultado.get(1).personalizado());
         verify(tipoMidiaRepository, times(1)).findDisponiveisPorUsuario(1L);
     }
 
@@ -64,8 +64,8 @@ class TipoMidiaServiceTest {
         List<TipoMidiaResponse> resultado = tipoMidiaService.listarDisponiveis(null);
 
         assertEquals(1, resultado.size());
-        assertEquals("Foto Intraoral", resultado.get(0).getNome());
-        assertFalse(resultado.get(0).getPersonalizado());
+        assertEquals("Foto Intraoral", resultado.get(0).nome());
+        assertFalse(resultado.get(0).personalizado());
         verify(tipoMidiaRepository, times(1)).findGlobais();
     }
 
@@ -80,9 +80,9 @@ class TipoMidiaServiceTest {
         TipoMidiaResponse response = tipoMidiaService.criarPersonalizado(request, usuario);
 
         assertNotNull(response);
-        assertEquals(3L, response.getId());
-        assertEquals("Tomografia 3D Maxilar", response.getNome());
-        assertTrue(response.getPersonalizado());
+        assertEquals(3L, response.id());
+        assertEquals("Tomografia 3D Maxilar", response.nome());
+        assertTrue(response.personalizado());
         verify(tipoMidiaRepository, times(1)).save(any(TipoMidia.class));
     }
 }

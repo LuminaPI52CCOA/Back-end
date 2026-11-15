@@ -5,34 +5,24 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-public class UsuarioDetalhesDto implements UserDetails {
-
-    private final String nome;
-
-    private final String email;
-
-    private final String senha;
-
-    private final Integer fkPerfil;
+public record UsuarioDetalhesDto(
+        String nome,
+        String email,
+        String senha,
+        Integer fkPerfil
+) implements UserDetails {
 
     public UsuarioDetalhesDto(Usuario usuario) {
-        this.nome = usuario.getNome();
-        this.email = usuario.getEmail();
-        this.senha = usuario.getSenha();
-        this.fkPerfil = usuario.getPerfil() != null ? usuario.getPerfil().getIdPerfil() : null;
-    }
-
-    public String getNome() {
-        return nome;
-    }
-
-    public Integer getFkPerfil() {
-        return fkPerfil;
+        this(
+                usuario.getNome(),
+                usuario.getEmail(),
+                usuario.getSenha(),
+                usuario.getPerfil() != null ? usuario.getPerfil().getIdPerfil() : null
+        );
     }
 
     @Override

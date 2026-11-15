@@ -1,17 +1,12 @@
 package com.lumina.backend.service.cliente;
 
-import com.lumina.backend.domain.cliente.Cliente;
-import com.lumina.backend.domain.cliente.ClienteCommand;
-import com.lumina.backend.domain.cliente.ClienteId;
-import com.lumina.backend.domain.cliente.ClienteRepositoryPort;
-import com.lumina.backend.dto.anamnese.AnamneseRequest;
-import com.lumina.backend.dto.cliente.ClienteMapper;
 import com.lumina.backend.dto.cliente.ClienteRequest;
-import com.lumina.backend.dto.cliente.ResponsavelRequest;
-import com.lumina.backend.exception.*;
-import com.lumina.backend.model.Anamnese;
-import com.lumina.backend.model.EstadoCivil;
+import com.lumina.backend.exception.CpfDuplicadoException;
+import com.lumina.backend.exception.EmailDuplicadoException;
+import com.lumina.backend.exception.EntidadeNaoEncontradaException;
+import com.lumina.backend.model.Cliente;
 import com.lumina.backend.repository.AnamneseRepository;
+import com.lumina.backend.repository.ClienteRepository;
 import com.lumina.backend.repository.EstadoCivilRepository;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
@@ -33,19 +28,27 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 
 @ExtendWith(MockitoExtension.class)
 class ClienteServiceTest {
 
-    private Cliente criarClienteDomain(Long id, String nome, String cpf, String email) {
-        ClienteCommand command = new ClienteCommand(
-                nome, cpf, "RG-123", LocalDate.of(1998, 5, 21), "SP", "Brasileira",
-                'F', "01010-000", "Rua Flores", email, "(11) 98765-4321", 1, null, null, null
-        );
-        return Cliente.reconstruir(ClienteId.of(id), command);
+    private Cliente criarCliente(Long id, String nome, String cpf, String email) {
+        Cliente cliente = new Cliente();
+        cliente.setIdCliente(id);
+        cliente.setNome(nome);
+        cliente.setCpf(cpf);
+        cliente.setRg("RG-123");
+        cliente.setDataNascimento(LocalDate.of(1998, 5, 21));
+        cliente.setNaturalidade("SP");
+        cliente.setNacionalidade("Brasileira");
+        cliente.setSexo('F');
+        cliente.setCep("01010-000");
+        cliente.setEnderecoResidencial("Rua Flores");
+        cliente.setEmail(email);
+        cliente.setNumeroCelular("(11) 98765-4321");
+        cliente.setFkEstadoCivil(1);
+        return cliente;
     }
 
     @Nested
@@ -53,7 +56,7 @@ class ClienteServiceTest {
     class ListarTest {
 
         @Mock
-        private ClienteRepositoryPort repositoryPort;
+        private ClienteRepository clienteRepository;
 
         @Mock
         private AnamneseRepository anamneseRepository;
@@ -65,12 +68,12 @@ class ClienteServiceTest {
         private ClienteService clienteService;
 
         @Test
-        @DisplayName("1.1 Deve retornar uma lista cheia com 5 clientes")
+        @DisplayName("1.1 Deve retornar uma lista cheia")
         void deveRetornarUmaListaCheia() {
-            Cliente c1 = criarClienteDomain(1L, "Ana", "111.111.111-11", "ana@email.com");
-            Cliente c2 = criarClienteDomain(2L, "Bruno", "222.222.222-22", "bruno@email.com");
+            Cliente c1 = criarCliente(1L, "Ana", "111.111.111-11", "ana@email.com");
+            Cliente c2 = criarCliente(2L, "Bruno", "222.222.222-22", "bruno@email.com");
 
-            Mockito.when(repositoryPort.buscarTodos()).thenReturn(List.of(c1, c2));
+            Mockito.when(clienteRepository.findAll()).thenReturn(List.of(c1, c2));
 
             List<Cliente> resultado = clienteService.listar();
             Assertions.assertFalse(resultado.isEmpty());
@@ -80,7 +83,7 @@ class ClienteServiceTest {
         @Test
         @DisplayName("1.2 Deve retornar uma lista vazia.")
         void deveRetornarUmaListaVazia() {
-            Mockito.when(repositoryPort.buscarTodos()).thenReturn(Collections.emptyList());
+            Mockito.when(clienteRepository.findAll()).thenReturn(Collections.emptyList());
 
             List<Cliente> resultado = clienteService.listar();
             Assertions.assertTrue(resultado.isEmpty());
@@ -89,12 +92,12 @@ class ClienteServiceTest {
         @Test
         @DisplayName("1.3 Deve retornar uma página de clientes usando PageRequest e Sort")
         void deveRetornarPaginaDeClientes() {
-            Cliente c1 = criarClienteDomain(1L, "Ana", "111.111.111-11", "ana@email.com");
-            Cliente c2 = criarClienteDomain(2L, "Bruno", "222.222.222-22", "bruno@email.com");
+            Cliente c1 = criarCliente(1L, "Ana", "111.111.111-11", "ana@email.com");
+            Cliente c2 = criarCliente(2L, "Bruno", "222.222.222-22", "bruno@email.com");
             Pageable pageable = PageRequest.of(0, 6, Sort.by(Sort.Direction.ASC, "nome"));
             Page<Cliente> pageEsperada = new PageImpl<>(List.of(c1, c2), pageable, 2);
 
-            Mockito.when(repositoryPort.buscarTodos(pageable)).thenReturn(pageEsperada);
+            Mockito.when(clienteRepository.findAll(pageable)).thenReturn(pageEsperada);
 
             Page<Cliente> resultado = clienteService.listarComFiltrosPaginado(null, null, pageable);
             Assertions.assertFalse(resultado.isEmpty());
@@ -105,10 +108,10 @@ class ClienteServiceTest {
 
     @Nested
     @DisplayName("2. Teste de cadastro do cliente")
-    class cadatrarTest {
+    class CadastrarTest {
 
         @Mock
-        private ClienteRepositoryPort repositoryPort;
+        private ClienteRepository clienteRepository;
 
         @Mock
         private AnamneseRepository anamneseRepository;
@@ -122,30 +125,31 @@ class ClienteServiceTest {
         @Test
         @DisplayName("2.1 Cadastro deve ser realizado com sucesso")
         void deveCriarClienteCorretamente() {
-            ClienteRequest c1 = new ClienteRequest();
-            c1.setIdCliente(1L);
-            c1.setNome("Ana Souza Lima");
-            c1.setCpf("123.456.789-01");
-            c1.setRg("MG-12.345.678");
-            c1.setDataNascimento(LocalDate.of(1998, 5, 21));
-            c1.setNumeroCelular("(11) 98765-4321");
-            c1.setEmail("ana.souza@email.com");
-            c1.setSexo('F');
-            c1.setNaturalidade("São Paulo");
-            c1.setNacionalidade("Brasileira");
-            c1.setFkEstadoCivil(1);
-            c1.setEnderecoResidencial("Rua das Flores, 120");
-            c1.setCep("01010-000");
+            ClienteRequest c1 = ClienteRequest.builder()
+                    .idCliente(1L)
+                    .nome("Ana Souza Lima")
+                    .cpf("123.456.789-01")
+                    .rg("MG-12.345.678")
+                    .dataNascimento(LocalDate.of(1998, 5, 21))
+                    .numeroCelular("(11) 98765-4321")
+                    .email("ana.souza@email.com")
+                    .sexo('F')
+                    .naturalidade("São Paulo")
+                    .nacionalidade("Brasileira")
+                    .fkEstadoCivil(1)
+                    .enderecoResidencial("Rua das Flores, 120")
+                    .cep("01010-000")
+                    .build();
 
-            Cliente clienteDomain = criarClienteDomain(1L, "Ana Souza Lima", "123.456.789-01", "ana.souza@email.com");
+            Cliente clienteSalvo = criarCliente(1L, "Ana Souza Lima", "123.456.789-01", "ana.souza@email.com");
 
-            Mockito.when(repositoryPort.existePorEmail(any())).thenReturn(false);
-            Mockito.when(repositoryPort.existePorCpf(any())).thenReturn(false);
-            Mockito.when(repositoryPort.salvar(any(Cliente.class))).thenReturn(clienteDomain);
+            Mockito.when(clienteRepository.existsByEmail(any())).thenReturn(false);
+            Mockito.when(clienteRepository.existsByCpf(any())).thenReturn(false);
+            Mockito.when(clienteRepository.save(any(Cliente.class))).thenReturn(clienteSalvo);
 
             Cliente resultado = clienteService.cadastrar(c1);
 
-            Mockito.verify(repositoryPort, Mockito.times(1)).salvar(any(Cliente.class));
+            Mockito.verify(clienteRepository, Mockito.times(1)).save(any(Cliente.class));
             Assertions.assertNotNull(resultado);
             Assertions.assertEquals("Ana Souza Lima", resultado.getNome());
         }
@@ -153,10 +157,11 @@ class ClienteServiceTest {
         @Test
         @DisplayName("2.2 Deve retornar uma exception de email duplicado")
         void deveRetornarUmaExceptionEmailDuplicado() {
-            ClienteRequest c1 = new ClienteRequest();
-            c1.setEmail("teste@gmail.com");
+            ClienteRequest c1 = ClienteRequest.builder()
+                    .email("teste@gmail.com")
+                    .build();
 
-            Mockito.when(repositoryPort.existePorEmail("teste@gmail.com")).thenReturn(true);
+            Mockito.when(clienteRepository.existsByEmail("teste@gmail.com")).thenReturn(true);
 
             Assertions.assertThrows(EmailDuplicadoException.class, () -> clienteService.cadastrar(c1));
         }
@@ -164,12 +169,13 @@ class ClienteServiceTest {
         @Test
         @DisplayName("2.3 Deve retornar uma exception de CPF duplicado")
         void deveRetornarUmaExceptionCpfDuplicado() {
-            ClienteRequest c1 = new ClienteRequest();
-            c1.setEmail("teste@gmail.com");
-            c1.setCpf("123.456.789-00");
+            ClienteRequest c1 = ClienteRequest.builder()
+                    .email("teste@gmail.com")
+                    .cpf("123.456.789-00")
+                    .build();
 
-            Mockito.when(repositoryPort.existePorEmail("teste@gmail.com")).thenReturn(false);
-            Mockito.when(repositoryPort.existePorCpf("123.456.789-00")).thenReturn(true);
+            Mockito.when(clienteRepository.existsByEmail("teste@gmail.com")).thenReturn(false);
+            Mockito.when(clienteRepository.existsByCpf("123.456.789-00")).thenReturn(true);
 
             Assertions.assertThrows(CpfDuplicadoException.class, () -> clienteService.cadastrar(c1));
         }
@@ -180,7 +186,7 @@ class ClienteServiceTest {
     class BuscarPorIdTest {
 
         @Mock
-        private ClienteRepositoryPort repositoryPort;
+        private ClienteRepository clienteRepository;
 
         @Mock
         private AnamneseRepository anamneseRepository;
@@ -194,8 +200,8 @@ class ClienteServiceTest {
         @Test
         @DisplayName("3.1 Deve retornar cliente quando o ID existir")
         void deveRetornarClienteQuandoIdExistir() {
-            Cliente clienteDomain = criarClienteDomain(1L, "Ana", "111.111.111-11", "ana@email.com");
-            Mockito.when(repositoryPort.buscarPorId(ClienteId.of(1L))).thenReturn(Optional.of(clienteDomain));
+            Cliente cliente = criarCliente(1L, "Ana", "111.111.111-11", "ana@email.com");
+            Mockito.when(clienteRepository.findById(1L)).thenReturn(Optional.of(cliente));
 
             Cliente resultado = clienteService.buscarPorId(1L);
 
@@ -204,11 +210,11 @@ class ClienteServiceTest {
         }
 
         @Test
-        @DisplayName("3.2 Deve lançar EntidadeNaoEncontrada quando ID não existir")
+        @DisplayName("3.2 Deve lançar EntidadeNaoEncontradaException quando ID não existir")
         void deveLancarExcecaoQuandoIdNaoExistir() {
-            Mockito.when(repositoryPort.buscarPorId(ClienteId.of(99L))).thenReturn(Optional.empty());
+            Mockito.when(clienteRepository.findById(99L)).thenReturn(Optional.empty());
 
-            Assertions.assertThrows(EntidadeNaoEncontrada.class, () -> clienteService.buscarPorId(99L));
+            Assertions.assertThrows(EntidadeNaoEncontradaException.class, () -> clienteService.buscarPorId(99L));
         }
     }
 }

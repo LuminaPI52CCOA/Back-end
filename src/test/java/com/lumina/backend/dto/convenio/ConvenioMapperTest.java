@@ -29,7 +29,7 @@ class ConvenioMapperTest {
         entity.setIdConvenio(1L);
         List<ConvenioResponse> responses = ConvenioMapper.toResponse(List.of(entity));
         assertEquals(1, responses.size());
-        assertEquals(1L, responses.get(0).getId());
-        assertEquals("Unimed", responses.get(0).getNome());
+        assertEquals(1L, responses.get(0).id());
+        assertEquals("Unimed", responses.get(0).nome());
     }
 }

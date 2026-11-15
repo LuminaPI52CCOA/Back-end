@@ -2,7 +2,7 @@ package com.lumina.backend.service.notificacao;
 
 import com.lumina.backend.dto.notificacao.ConfirmacaoConsultaResponse;
 import com.lumina.backend.dto.notificacao.NotificacaoWhatsappResponse;
-import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.exception.EntidadeNaoEncontradaException;
 import com.lumina.backend.model.Cliente;
 import com.lumina.backend.model.Consulta;
 import com.lumina.backend.model.NotificacaoWhatsapp;
@@ -67,7 +67,7 @@ public class NotificacaoWhatsappService {
     @Transactional
     public NotificacaoWhatsappResponse marcarComoDisparado(Long idNotificacao, Long idUsuarioDisparo) {
         NotificacaoWhatsapp notificacao = notificacaoWhatsappRepository.findById(idNotificacao)
-                .orElseThrow(() -> new EntidadeNaoEncontrada("Notificação WhatsApp não encontrada"));
+                .orElseThrow(() -> new EntidadeNaoEncontradaException("Notificação WhatsApp não encontrada"));
 
         if (NotificacaoWhatsapp.STATUS_CANCELADO.equalsIgnoreCase(notificacao.getStatus())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível disparar uma notificação cancelada.");
@@ -92,11 +92,11 @@ public class NotificacaoWhatsappService {
     @Transactional
     public ConfirmacaoConsultaResponse confirmarConsultaPorToken(String token) {
         NotificacaoWhatsapp notificacao = notificacaoWhatsappRepository.findByTokenConfirmacao(token)
-                .orElseThrow(() -> new EntidadeNaoEncontrada("Token de confirmação não encontrado."));
+                .orElseThrow(() -> new EntidadeNaoEncontradaException("Token de confirmação não encontrado."));
 
         Consulta consulta = notificacao.getConsulta();
         if (consulta == null) {
-            throw new EntidadeNaoEncontrada("Consulta vinculada ao token não encontrada.");
+            throw new EntidadeNaoEncontradaException("Consulta vinculada ao token não encontrada.");
         }
 
         if (NotificacaoWhatsapp.STATUS_CANCELADO.equalsIgnoreCase(notificacao.getStatus())

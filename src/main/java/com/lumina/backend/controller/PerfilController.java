@@ -1,7 +1,7 @@
 package com.lumina.backend.controller;
 
 import com.lumina.backend.model.Perfil;
-import com.lumina.backend.service.Perfil.PerfilService;
+import com.lumina.backend.service.perfil.PerfilService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

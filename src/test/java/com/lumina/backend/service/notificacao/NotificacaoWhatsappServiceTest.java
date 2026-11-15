@@ -2,7 +2,7 @@ package com.lumina.backend.service.notificacao;
 
 import com.lumina.backend.dto.notificacao.ConfirmacaoConsultaResponse;
 import com.lumina.backend.dto.notificacao.NotificacaoWhatsappResponse;
-import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.exception.EntidadeNaoEncontradaException;
 import com.lumina.backend.model.Cliente;
 import com.lumina.backend.model.Consulta;
 import com.lumina.backend.model.NotificacaoWhatsapp;
@@ -169,7 +169,7 @@ class NotificacaoWhatsappServiceTest {
     @DisplayName("Deve lançar 404 quando token não existir e 400 quando expirado ou cancelado")
     void deveValidarTokenInexistenteExpiradoOuCancelado() {
         when(notificacaoWhatsappRepository.findByTokenConfirmacao("inexistente")).thenReturn(Optional.empty());
-        assertThrows(EntidadeNaoEncontrada.class, () -> service.confirmarConsultaPorToken("inexistente"));
+        assertThrows(EntidadeNaoEncontradaException.class, () -> service.confirmarConsultaPorToken("inexistente"));
 
         // Token expirado
         Consulta consulta = new Consulta();

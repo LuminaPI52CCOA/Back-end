@@ -14,6 +14,9 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -32,6 +35,9 @@ import java.time.ZoneId;
                 @Index(name = "idx_notificacao_token", columnList = "token_confirmacao")
         }
 )
+@Getter
+@Setter
+@NoArgsConstructor
 public class NotificacaoWhatsapp {
 
     public static final String STATUS_PENDENTE = "PENDENTE";
@@ -101,9 +107,6 @@ public class NotificacaoWhatsapp {
     @JoinColumn(name = "fk_usuario_disparo")
     private Usuario usuarioDisparo;
 
-    public NotificacaoWhatsapp() {
-    }
-
     @PrePersist
     protected void onCreate() {
         LocalDateTime agora = LocalDateTime.now(ZONE_SAO_PAULO);
@@ -121,149 +124,5 @@ public class NotificacaoWhatsapp {
     @PreUpdate
     protected void onUpdate() {
         this.atualizadoEm = LocalDateTime.now(ZONE_SAO_PAULO);
-    }
-
-    public Long getIdNotificacao() {
-        return idNotificacao;
-    }
-
-    public void setIdNotificacao(Long idNotificacao) {
-        this.idNotificacao = idNotificacao;
-    }
-
-    public Consulta getConsulta() {
-        return consulta;
-    }
-
-    public void setConsulta(Consulta consulta) {
-        this.consulta = consulta;
-    }
-
-    public Cliente getCliente() {
-        return cliente;
-    }
-
-    public void setCliente(Cliente cliente) {
-        this.cliente = cliente;
-    }
-
-    public Cliente getDestinatario() {
-        return destinatario;
-    }
-
-    public void setDestinatario(Cliente destinatario) {
-        this.destinatario = destinatario;
-    }
-
-    public String getNomeDestinatario() {
-        return nomeDestinatario;
-    }
-
-    public void setNomeDestinatario(String nomeDestinatario) {
-        this.nomeDestinatario = nomeDestinatario;
-    }
-
-    public String getGrauParentesco() {
-        return grauParentesco;
-    }
-
-    public void setGrauParentesco(String grauParentesco) {
-        this.grauParentesco = grauParentesco;
-    }
-
-    public String getNumeroTelefoneHigienizado() {
-        return numeroTelefoneHigienizado;
-    }
-
-    public void setNumeroTelefoneHigienizado(String numeroTelefoneHigienizado) {
-        this.numeroTelefoneHigienizado = numeroTelefoneHigienizado;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public String getMotivoFalha() {
-        return motivoFalha;
-    }
-
-    public void setMotivoFalha(String motivoFalha) {
-        this.motivoFalha = motivoFalha;
-    }
-
-    public LocalDate getDataConsulta() {
-        return dataConsulta;
-    }
-
-    public void setDataConsulta(LocalDate dataConsulta) {
-        this.dataConsulta = dataConsulta;
-    }
-
-    public LocalTime getHorarioConsulta() {
-        return horarioConsulta;
-    }
-
-    public void setHorarioConsulta(LocalTime horarioConsulta) {
-        this.horarioConsulta = horarioConsulta;
-    }
-
-    public String getTokenConfirmacao() {
-        return tokenConfirmacao;
-    }
-
-    public void setTokenConfirmacao(String tokenConfirmacao) {
-        this.tokenConfirmacao = tokenConfirmacao;
-    }
-
-    public LocalDateTime getLimiteConfirmacaoEm() {
-        return limiteConfirmacaoEm;
-    }
-
-    public void setLimiteConfirmacaoEm(LocalDateTime limiteConfirmacaoEm) {
-        this.limiteConfirmacaoEm = limiteConfirmacaoEm;
-    }
-
-    public LocalDateTime getConfirmadoEm() {
-        return confirmadoEm;
-    }
-
-    public void setConfirmadoEm(LocalDateTime confirmadoEm) {
-        this.confirmadoEm = confirmadoEm;
-    }
-
-    public LocalDateTime getCriadoEm() {
-        return criadoEm;
-    }
-
-    public void setCriadoEm(LocalDateTime criadoEm) {
-        this.criadoEm = criadoEm;
-    }
-
-    public LocalDateTime getAtualizadoEm() {
-        return atualizadoEm;
-    }
-
-    public void setAtualizadoEm(LocalDateTime atualizadoEm) {
-        this.atualizadoEm = atualizadoEm;
-    }
-
-    public LocalDateTime getDisparadoEm() {
-        return disparadoEm;
-    }
-
-    public void setDisparadoEm(LocalDateTime disparadoEm) {
-        this.disparadoEm = disparadoEm;
-    }
-
-    public Usuario getUsuarioDisparo() {
-        return usuarioDisparo;
-    }
-
-    public void setUsuarioDisparo(Usuario usuarioDisparo) {
-        this.usuarioDisparo = usuarioDisparo;
     }
 }

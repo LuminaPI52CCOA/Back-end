@@ -3,11 +3,11 @@ package com.lumina.backend.service.anamnese;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumina.backend.dto.anamnese.AnamneseMapper;
-import com.lumina.backend.exception.AnamneseVazio;
-import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.exception.AnamneseVazioException;
+import com.lumina.backend.exception.EntidadeNaoEncontradaException;
 import com.lumina.backend.model.Anamnese;
 import com.lumina.backend.repository.AnamneseRepository;
-import com.lumina.backend.service.openIA.GeminiAIService;
+import com.lumina.backend.service.gemini.GeminiAIService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -145,7 +145,7 @@ class AnamneseServiceTest {
 		    new byte[0]
 	    );
 
-	    assertThrows(AnamneseVazio.class, () -> anamneseService.processImage(arquivoVazio));
+	    assertThrows(AnamneseVazioException.class, () -> anamneseService.processImage(arquivoVazio));
 
 	    Mockito.verifyNoInteractions(textractClient);
 	    Mockito.verifyNoInteractions(geminiAIService);
@@ -242,7 +242,7 @@ class AnamneseServiceTest {
 	    Mockito.when(repository.findById(anyInt()))
 		    .thenReturn(Optional.empty());
 
-	    assertThrows(EntidadeNaoEncontrada.class, () -> anamneseService.buscarPorId(99));
+	    assertThrows(EntidadeNaoEncontradaException.class, () -> anamneseService.buscarPorId(99));
 
 	    Mockito.verify(repository, Mockito.times(1)).findById(99);
 	}

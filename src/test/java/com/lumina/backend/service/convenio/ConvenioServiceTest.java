@@ -2,7 +2,7 @@ package com.lumina.backend.service.convenio;
 
 import com.lumina.backend.dto.convenio.ConvenioMapper;
 import com.lumina.backend.dto.convenio.ConvenioRequest;
-import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.exception.EntidadeNaoEncontradaException;
 import com.lumina.backend.model.ClienteConvenio;
 import com.lumina.backend.model.Convenio;
 import com.lumina.backend.repository.ClienteConvenioRepository;
@@ -90,8 +90,7 @@ class ConvenioServiceTest {
         @Test
         @DisplayName("2.1 Cadastro deve ser realizado com sucesso")
         void deveCriarConvenioCorretamente() {
-            ConvenioRequest convenioRequest = new ConvenioRequest();
-            convenioRequest.setNome("Unimed");
+            ConvenioRequest convenioRequest = new ConvenioRequest("Unimed");
 
             Convenio convenio = ConvenioMapper.toEntity(convenioRequest);
             convenio.setIdConvenio(1L);
@@ -122,8 +121,7 @@ class ConvenioServiceTest {
         @Test
         @DisplayName("3.1 Deve atualizar o convênio com sucesso")
         void deveAtualizarOConvenioComSucesso() {
-            ConvenioRequest convenioRequest = new ConvenioRequest();
-            convenioRequest.setNome("Unimed Atualizado");
+            ConvenioRequest convenioRequest = new ConvenioRequest("Unimed Atualizado");
 
             Convenio convenioExistente = new Convenio();
             convenioExistente.setIdConvenio(1L);
@@ -151,16 +149,15 @@ class ConvenioServiceTest {
         }
 
         @Test
-        @DisplayName("3.2 Deve lançar EntidadeNaoEncontrada ao tentar atualizar um convênio inexistente")
+        @DisplayName("3.2 Deve lançar EntidadeNaoEncontradaException ao tentar atualizar um convênio inexistente")
         void deveLancarExcecaoAoAtualizarOConvenioInexistente() {
-            ConvenioRequest convenioRequest = new ConvenioRequest();
-            convenioRequest.setNome("Unimed");
+            ConvenioRequest convenioRequest = new ConvenioRequest("Unimed");
 
             Mockito.when(convenioRepository.findById(1L))
                     .thenReturn(Optional.empty());
 
             assertThrows(
-                    EntidadeNaoEncontrada.class,
+                    EntidadeNaoEncontradaException.class,
                     () -> convenioService.atualizar(1L, convenioRequest)
             );
 
@@ -199,13 +196,13 @@ class ConvenioServiceTest {
         }
 
         @Test
-        @DisplayName("4.2 Deve lançar EntidadeNaoEncontrada ao tentar deletar um convênio inexistente")
+        @DisplayName("4.2 Deve lançar EntidadeNaoEncontradaException ao tentar deletar um convênio inexistente")
         void deveLancarExcecaoAoDeletarOConvenioInexistente() {
             Mockito.when(convenioRepository.findById(1L))
                     .thenReturn(Optional.empty());
 
             assertThrows(
-                    EntidadeNaoEncontrada.class,
+                    EntidadeNaoEncontradaException.class,
                     () -> convenioService.deletar(1L)
             );
 

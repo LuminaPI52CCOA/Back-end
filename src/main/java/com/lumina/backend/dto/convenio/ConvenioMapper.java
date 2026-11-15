@@ -5,8 +5,9 @@ import com.lumina.backend.model.Convenio;
 import java.util.List;
 
 public class ConvenioMapper {
+
     public static ConvenioResponse toResponse(Convenio convenio) {
-        if(convenio == null) {
+        if (convenio == null) {
             return null;
         }
 
@@ -23,12 +24,10 @@ public class ConvenioMapper {
     }
 
     public static Convenio toEntity(ConvenioRequest convenioRequest) {
-        if(convenioRequest == null) {
+        if (convenioRequest == null) {
             return null;
         }
 
-        return new Convenio(
-                convenioRequest.getNome()
-        );
+        return new Convenio(convenioRequest.nome());
     }
 }

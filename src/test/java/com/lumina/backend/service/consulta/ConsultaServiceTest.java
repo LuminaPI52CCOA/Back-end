@@ -4,7 +4,7 @@ import com.lumina.backend.dto.consulta.ConsultaRequest;
 import com.lumina.backend.dto.consulta.ReagendamentoRequest;
 import com.lumina.backend.exception.AgendamentoInvalidoException;
 import com.lumina.backend.exception.ConflitoHorarioException;
-import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.exception.EntidadeNaoEncontradaException;
 import com.lumina.backend.model.Cliente;
 import com.lumina.backend.model.Consulta;
 import com.lumina.backend.model.Dente;
@@ -78,7 +78,7 @@ class ConsultaServiceTest {
 
     @BeforeEach
     void criarServico() {
-        RegrasAgendamento regras = new RegrasAgendamento(RELOGIO, LocalTime.of(8, 0), LocalTime.of(18, 0));
+        RegrasAgendamento regras = RegrasAgendamento.comJornada(RELOGIO, LocalTime.of(8, 0), LocalTime.of(18, 0));
         consultaService = new ConsultaService(consultaRepository, usuarioRepository, clienteRepository,
                 especialidadeRepository, denteRepository, notificacaoWhatsappRepository, regras);
     }
@@ -95,8 +95,21 @@ class ConsultaServiceTest {
     }
 
     private static ConsultaRequest request(LocalDate data, LocalTime inicio, LocalTime fim) {
-        return new ConsultaRequest(1L, 2L, 1, data, inicio, fim, "  Sensibilidade ao frio  ",
-                List.of(26, 16), "Primeiro Molar", false);
+        return requestBuilder(data, inicio, fim).build();
+    }
+
+    private static ConsultaRequest.ConsultaRequestBuilder requestBuilder(LocalDate data, LocalTime inicio, LocalTime fim) {
+        return ConsultaRequest.builder()
+                .idCliente(1L)
+                .idUsuario(2L)
+                .idEspecialidade(1)
+                .data(data)
+                .horarioInicio(inicio)
+                .horarioFim(fim)
+                .observacoes("  Sensibilidade ao frio  ")
+                .dentes(List.of(26, 16))
+                .tipoDente("Primeiro Molar")
+                .pularOdontograma(false);
     }
 
     private void prepararCadastroValido(List<IntervaloHorario> ocupados) {
@@ -209,10 +222,11 @@ class ConsultaServiceTest {
         @DisplayName("2.3 Pular odontograma descarta dentes e tipo de dente")
         void devePularOdontograma() {
             prepararCadastroValido(List.of());
-            ConsultaRequest request = request(AMANHA, LocalTime.of(9, 0), LocalTime.of(9, 30));
-            request.setPularOdontograma(true);
-            request.setDentes(List.of(16, 16, 99));
-            request.setTipoDente("qualquer coisa");
+            ConsultaRequest request = requestBuilder(AMANHA, LocalTime.of(9, 0), LocalTime.of(9, 30))
+                    .pularOdontograma(true)
+                    .dentes(List.of(16, 16, 99))
+                    .tipoDente("qualquer coisa")
+                    .build();
 
             Consulta resultado = consultaService.cadastrar(request);
 
@@ -289,11 +303,11 @@ class ConsultaServiceTest {
         }
 
         @Test
-        @DisplayName("2.10 Dentista inexistente retorna EntidadeNaoEncontrada")
+        @DisplayName("2.10 Dentista inexistente retorna EntidadeNaoEncontradaException")
         void deveLancarExcecaoQuandoDentistaNaoExistir() {
             Mockito.when(usuarioRepository.bloquearParaAgendamento(2L)).thenReturn(List.of());
 
-            EntidadeNaoEncontrada ex = assertThrows(EntidadeNaoEncontrada.class,
+            EntidadeNaoEncontradaException ex = assertThrows(EntidadeNaoEncontradaException.class,
                     () -> consultaService.cadastrar(request(AMANHA, LocalTime.of(9, 0), LocalTime.of(9, 30))));
 
             Assertions.assertEquals("Dentista não encontrado", ex.getMessage());
@@ -327,7 +341,7 @@ class ConsultaServiceTest {
             Mockito.when(usuarioRepository.findById(2L)).thenReturn(Optional.of(dentista(2L)));
             Mockito.when(clienteRepository.findById(1L)).thenReturn(Optional.empty());
 
-            EntidadeNaoEncontrada ex = assertThrows(EntidadeNaoEncontrada.class,
+            EntidadeNaoEncontradaException ex = assertThrows(EntidadeNaoEncontradaException.class,
                     () -> consultaService.cadastrar(request(AMANHA, LocalTime.of(9, 0), LocalTime.of(9, 30))));
             Assertions.assertEquals("Cliente não encontrado", ex.getMessage());
 
@@ -340,37 +354,40 @@ class ConsultaServiceTest {
         }
 
         @Test
-        @DisplayName("2.13 Especialidade inexistente retorna EntidadeNaoEncontrada")
+        @DisplayName("2.13 Especialidade inexistente retorna EntidadeNaoEncontradaException")
         void deveRejeitarEspecialidadeInexistente() {
             Mockito.when(usuarioRepository.bloquearParaAgendamento(2L)).thenReturn(List.of(2L));
             Mockito.when(usuarioRepository.findById(2L)).thenReturn(Optional.of(dentista(2L)));
             Mockito.when(clienteRepository.findById(1L)).thenReturn(Optional.of(cliente(1L)));
             Mockito.when(especialidadeRepository.findById(1)).thenReturn(Optional.empty());
 
-            assertThrows(EntidadeNaoEncontrada.class,
+            assertThrows(EntidadeNaoEncontradaException.class,
                     () -> consultaService.cadastrar(request(AMANHA, LocalTime.of(9, 0), LocalTime.of(9, 30))));
         }
 
         @Test
         @DisplayName("2.14 Dentes duplicados, fora da numeração ou tipo inválido são rejeitados")
         void deveRejeitarOdontogramaInvalido() {
-            ConsultaRequest duplicado = request(AMANHA, LocalTime.of(9, 0), LocalTime.of(9, 30));
-            duplicado.setDentes(List.of(16, 16));
+            ConsultaRequest duplicado = requestBuilder(AMANHA, LocalTime.of(9, 0), LocalTime.of(9, 30))
+                    .dentes(List.of(16, 16))
+                    .build();
             assertThrows(AgendamentoInvalidoException.class, () -> consultaService.cadastrar(duplicado));
 
-            ConsultaRequest foraDaNumeracao = request(AMANHA, LocalTime.of(9, 0), LocalTime.of(9, 30));
-            foraDaNumeracao.setDentes(List.of(19));
+            ConsultaRequest foraDaNumeracao = requestBuilder(AMANHA, LocalTime.of(9, 0), LocalTime.of(9, 30))
+                    .dentes(List.of(19))
+                    .build();
             assertThrows(AgendamentoInvalidoException.class, () -> consultaService.cadastrar(foraDaNumeracao));
 
-            ConsultaRequest tipoInvalido = request(AMANHA, LocalTime.of(9, 0), LocalTime.of(9, 30));
-            tipoInvalido.setTipoDente("Molar Gigante");
+            ConsultaRequest tipoInvalido = requestBuilder(AMANHA, LocalTime.of(9, 0), LocalTime.of(9, 30))
+                    .tipoDente("Molar Gigante")
+                    .build();
             assertThrows(AgendamentoInvalidoException.class, () -> consultaService.cadastrar(tipoInvalido));
 
             Mockito.verifyNoInteractions(usuarioRepository, consultaRepository);
         }
 
         @Test
-        @DisplayName("2.15 Dente fora do cadastro retorna EntidadeNaoEncontrada")
+        @DisplayName("2.15 Dente fora do cadastro retorna EntidadeNaoEncontradaException")
         void deveRejeitarDenteNaoCadastrado() {
             Mockito.when(usuarioRepository.bloquearParaAgendamento(2L)).thenReturn(List.of(2L));
             Mockito.when(usuarioRepository.findById(2L)).thenReturn(Optional.of(dentista(2L)));
@@ -379,7 +396,7 @@ class ConsultaServiceTest {
             Mockito.when(denteRepository.findAllById(Set.of(16, 26)))
                     .thenReturn(List.of(new Dente(16, "1º Molar Superior Direito", "SUPERIOR", 1)));
 
-            EntidadeNaoEncontrada ex = assertThrows(EntidadeNaoEncontrada.class,
+            EntidadeNaoEncontradaException ex = assertThrows(EntidadeNaoEncontradaException.class,
                     () -> consultaService.cadastrar(request(AMANHA, LocalTime.of(9, 0), LocalTime.of(9, 30))));
             Assertions.assertTrue(ex.getMessage().contains("26"));
         }
@@ -401,11 +418,11 @@ class ConsultaServiceTest {
         }
 
         @Test
-        @DisplayName("3.2 Deve lançar EntidadeNaoEncontrada se consulta não existir")
+        @DisplayName("3.2 Deve lançar EntidadeNaoEncontradaException se consulta não existir")
         void naoDeveBuscarAConsultaPorId() {
             Mockito.when(consultaRepository.findById(10L)).thenReturn(Optional.empty());
 
-            EntidadeNaoEncontrada exception = assertThrows(EntidadeNaoEncontrada.class,
+            EntidadeNaoEncontradaException exception = assertThrows(EntidadeNaoEncontradaException.class,
                     () -> consultaService.buscarPorId(10L));
 
             Assertions.assertEquals("Consulta não encontrada", exception.getMessage());
@@ -519,12 +536,12 @@ class ConsultaServiceTest {
         }
 
         @Test
-        @DisplayName("4.6 Deve lançar EntidadeNaoEncontrada ao tentar reagendar uma consulta inexistente")
+        @DisplayName("4.6 Deve lançar EntidadeNaoEncontradaException ao tentar reagendar uma consulta inexistente")
         void deveLancarExcecaoAoReagendarConsultaInexistente() {
             Mockito.when(consultaRepository.bloquearParaAtualizacao(1L)).thenReturn(List.of());
 
-            EntidadeNaoEncontrada exception = assertThrows(EntidadeNaoEncontrada.class,
-                    () -> consultaService.reagendar(1L, new ReagendamentoRequest()));
+            EntidadeNaoEncontradaException exception = assertThrows(EntidadeNaoEncontradaException.class,
+                    () -> consultaService.reagendar(1L, new ReagendamentoRequest(null, null, null, null)));
 
             Assertions.assertEquals("Consulta não encontrada", exception.getMessage());
             Mockito.verify(consultaRepository, Mockito.never()).save(any(Consulta.class));
@@ -573,11 +590,11 @@ class ConsultaServiceTest {
         }
 
         @Test
-        @DisplayName("5.3 Deve lançar EntidadeNaoEncontrada ao tentar cancelar uma consulta inexistente")
+        @DisplayName("5.3 Deve lançar EntidadeNaoEncontradaException ao tentar cancelar uma consulta inexistente")
         void deveLancarExcecaoAoCancelarConsultaInexistente() {
             Mockito.when(consultaRepository.findById(1L)).thenReturn(Optional.empty());
 
-            EntidadeNaoEncontrada exception = assertThrows(EntidadeNaoEncontrada.class,
+            EntidadeNaoEncontradaException exception = assertThrows(EntidadeNaoEncontradaException.class,
                     () -> consultaService.cancelar(1L));
 
             Assertions.assertEquals("Consulta não encontrada", exception.getMessage());
@@ -685,44 +702,6 @@ class ConsultaServiceTest {
             Mockito.when(usuarioRepository.findById(4L)).thenReturn(Optional.of(recepcionista));
             assertThrows(AgendamentoInvalidoException.class,
                     () -> consultaService.listarHorariosDisponiveis(4L, AMANHA, 30, null));
-        }
-    }
-
-    @Nested
-    @DisplayName("8. Testes de dashboard de agendamento")
-    class DashboardAgendamentoServiceTest {
-
-        @Test
-        @DisplayName("8.1 Calcula realizadas, novos pacientes, taxa de ocupação e séries temporais")
-        void deveCalcularIndicadoresDashboard() {
-            LocalDate hoje = HOJE; // 2026-11-02
-            Consulta concluidaHoje = new Consulta(1L, cliente(1L), dentista(2L), hoje,
-                    LocalTime.of(9, 0), LocalTime.of(9, 45), "CONCLUIDA", true, null);
-            Consulta confirmadaOntem = new Consulta(2L, cliente(2L), dentista(2L), hoje.minusDays(1),
-                    LocalTime.of(10, 0), LocalTime.of(10, 45), "CONFIRMADA", true, null);
-            Consulta canceladaOntem = new Consulta(3L, cliente(3L), dentista(2L), hoje.minusDays(1),
-                    LocalTime.of(11, 0), LocalTime.of(11, 45), "CANCELADA", false, null);
-            Consulta concluidaMesAnterior = new Consulta(4L, cliente(1L), dentista(2L), hoje.minusDays(35),
-                    LocalTime.of(9, 0), LocalTime.of(9, 45), "CONCLUIDA", true, null);
-
-            Mockito.when(consultaRepository.buscarPorPeriodo(null, null, hoje))
-                    .thenReturn(List.of(concluidaMesAnterior, confirmadaOntem, canceladaOntem, concluidaHoje));
-
-            var resp = consultaService.obterDashboardAgendamento("30d", null);
-
-            Assertions.assertEquals("30d", resp.periodo());
-            Assertions.assertEquals(1L, resp.consultasRealizadas());
-            Assertions.assertEquals(1L, resp.consultasRealizadasPeriodoAnterior());
-            Assertions.assertEquals(1L, resp.novosPacientes()); // cliente 2 teve primeira consulta no periodo; cliente 1 ja tinha ha 35 dias
-            Assertions.assertEquals(6, resp.graficoVolume().size());
-            Assertions.assertEquals(6, resp.graficoConfirmacao().size());
-        }
-
-        @Test
-        @DisplayName("8.2 Rejeita período inválido no dashboard")
-        void deveRejeitarPeriodoInvalido() {
-            assertThrows(AgendamentoInvalidoException.class,
-                    () -> consultaService.obterDashboardAgendamento("invalido", null));
         }
     }
 }

@@ -27,20 +27,20 @@ class GlobalExceptionHandlerTest {
     private GlobalExceptionHandler handler;
 
     @Test
-    @DisplayName("Deve tratar EntidadeNaoEncontrada com status 404")
+    @DisplayName("Deve tratar EntidadeNaoEncontradaException com status 404")
     void deveTratarEntidadeNaoEncontrada() {
         when(request.getRequestURI()).thenReturn("/clientes/99");
 
         ResponseEntity<ErroRespostaDto> resposta = handler.handleEntidadeNaoEncontrada(
-                new EntidadeNaoEncontrada("Cliente não encontrado!"),
+                new EntidadeNaoEncontradaException("Cliente não encontrado!"),
                 request
         );
 
         assertEquals(HttpStatus.NOT_FOUND, resposta.getStatusCode());
         assertNotNull(resposta.getBody());
-        assertEquals(404, resposta.getBody().getStatus());
-        assertEquals("Cliente não encontrado!", resposta.getBody().getMensagem());
-        assertEquals("/clientes/99", resposta.getBody().getCaminho());
+        assertEquals(404, resposta.getBody().status());
+        assertEquals("Cliente não encontrado!", resposta.getBody().mensagem());
+        assertEquals("/clientes/99", resposta.getBody().caminho());
     }
 
     @Test
@@ -55,8 +55,8 @@ class GlobalExceptionHandlerTest {
 
         assertEquals(HttpStatus.CONFLICT, resposta.getStatusCode());
         assertNotNull(resposta.getBody());
-        assertEquals(409, resposta.getBody().getStatus());
-        assertEquals("CPF já existe", resposta.getBody().getMensagem());
+        assertEquals(409, resposta.getBody().status());
+        assertEquals("CPF já existe", resposta.getBody().mensagem());
     }
 
     @Test
@@ -71,7 +71,7 @@ class GlobalExceptionHandlerTest {
 
         assertEquals(HttpStatus.FORBIDDEN, resposta.getStatusCode());
         assertNotNull(resposta.getBody());
-        assertEquals(403, resposta.getBody().getStatus());
+        assertEquals(403, resposta.getBody().status());
     }
 
     @Test
@@ -86,7 +86,7 @@ class GlobalExceptionHandlerTest {
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, resposta.getStatusCode());
         assertNotNull(resposta.getBody());
-        assertEquals(500, resposta.getBody().getStatus());
-        assertEquals("Ocorreu um erro interno no servidor. Por favor, tente novamente mais tarde.", resposta.getBody().getMensagem());
+        assertEquals(500, resposta.getBody().status());
+        assertEquals("Ocorreu um erro interno no servidor. Por favor, tente novamente mais tarde.", resposta.getBody().mensagem());
     }
 }

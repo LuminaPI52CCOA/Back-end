@@ -3,7 +3,7 @@ package com.lumina.backend.controller.convenio;
 import com.lumina.backend.controller.ConvenioController;
 import com.lumina.backend.dto.convenio.ConvenioRequest;
 import com.lumina.backend.dto.convenio.ConvenioResponse;
-import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.exception.EntidadeNaoEncontradaException;
 import com.lumina.backend.model.Convenio;
 import com.lumina.backend.service.convenio.ConvenioService;
 import org.junit.jupiter.api.Assertions;
@@ -88,8 +88,7 @@ class ConvenioControllerTest {
         @Test
         @DisplayName("2.1 Deve cadastrar convênio com sucesso e retornar status 201")
         void deveCadastrarConvenioComSucesso() {
-            ConvenioRequest request = new ConvenioRequest();
-            request.setNome("Unimed");
+            ConvenioRequest request = new ConvenioRequest("Unimed");
 
             Convenio convenioSalvo = new Convenio();
             convenioSalvo.setIdConvenio(1L);
@@ -101,8 +100,8 @@ class ConvenioControllerTest {
 
             Assertions.assertEquals(201, response.getStatusCodeValue());
             Assertions.assertNotNull(response.getBody());
-            Assertions.assertEquals("Unimed", response.getBody().getNome());
-            Assertions.assertEquals(1L, response.getBody().getId());
+            Assertions.assertEquals("Unimed", response.getBody().nome());
+            Assertions.assertEquals(1L, response.getBody().id());
 
             Mockito.verify(convenioService, Mockito.times(1)).cadastrar(any(ConvenioRequest.class));
         }
@@ -115,8 +114,7 @@ class ConvenioControllerTest {
         @Test
         @DisplayName("3.1 Deve atualizar convênio com sucesso e retornar status 200")
         void deveAtualizarConvenioComSucesso() {
-            ConvenioRequest request = new ConvenioRequest();
-            request.setNome("Unimed Atualizado");
+            ConvenioRequest request = new ConvenioRequest("Unimed Atualizado");
 
             Convenio convenioAtualizado = new Convenio();
             convenioAtualizado.setIdConvenio(1L);
@@ -129,22 +127,21 @@ class ConvenioControllerTest {
 
             Assertions.assertEquals(200, response.getStatusCodeValue());
             Assertions.assertNotNull(response.getBody());
-            Assertions.assertEquals("Unimed Atualizado", response.getBody().getNome());
+            Assertions.assertEquals("Unimed Atualizado", response.getBody().nome());
 
             Mockito.verify(convenioService, Mockito.times(1)).atualizar(anyLong(), any(ConvenioRequest.class));
         }
 
         @Test
-        @DisplayName("3.2 Deve lançar EntidadeNaoEncontrada ao tentar atualizar convênio inexistente")
+        @DisplayName("3.2 Deve lançar EntidadeNaoEncontradaException ao tentar atualizar convênio inexistente")
         void deveLancarExcecaoAoAtualizarConvenioInexistente() {
-            ConvenioRequest request = new ConvenioRequest();
-            request.setNome("Teste");
+            ConvenioRequest request = new ConvenioRequest("Teste");
 
             Mockito.when(convenioService.atualizar(anyLong(), any(ConvenioRequest.class)))
-                    .thenThrow(new EntidadeNaoEncontrada("Convênio não encontrado!"));
+                    .thenThrow(new EntidadeNaoEncontradaException("Convênio não encontrado!"));
 
-            EntidadeNaoEncontrada exception = assertThrows(
-                    EntidadeNaoEncontrada.class,
+            EntidadeNaoEncontradaException exception = assertThrows(
+                    EntidadeNaoEncontradaException.class,
                     () -> convenioController.atualizar(99L, request)
             );
 
@@ -170,13 +167,13 @@ class ConvenioControllerTest {
         }
 
         @Test
-        @DisplayName("4.2 Deve lançar EntidadeNaoEncontrada ao tentar deletar convênio inexistente")
+        @DisplayName("4.2 Deve lançar EntidadeNaoEncontradaException ao tentar deletar convênio inexistente")
         void deveLancarExcecaoAoDeletarConvenioInexistente() {
-            Mockito.doThrow(new EntidadeNaoEncontrada("Convênio não encontrado!"))
+            Mockito.doThrow(new EntidadeNaoEncontradaException("Convênio não encontrado!"))
                     .when(convenioService).deletar(99L);
 
-            EntidadeNaoEncontrada exception = assertThrows(
-                    EntidadeNaoEncontrada.class,
+            EntidadeNaoEncontradaException exception = assertThrows(
+                    EntidadeNaoEncontradaException.class,
                     () -> convenioController.deletar(99L)
             );
 

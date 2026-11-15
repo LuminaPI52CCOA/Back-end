@@ -40,12 +40,13 @@ class AnamneseMapperTest {
         cliente.setIdCliente(1L);
         when(repositorioCliente.getReferenceById(1L)).thenReturn(cliente);
 
-        AnamneseRequest request = new AnamneseRequest();
-        request.setIdAnamnese(10L);
-        request.setFkCliente(1L);
-        request.setDataAnamnese(LocalDate.of(2026, 10, 22));
-        request.setAlergiaMedicamentos(true);
-        request.setDescricaoAlergiaMedicamentos("Penicilina");
+        AnamneseRequest request = AnamneseRequest.builder()
+                .idAnamnese(10L)
+                .fkCliente(1L)
+                .dataAnamnese(LocalDate.of(2026, 10, 22))
+                .alergiaMedicamentos(true)
+                .descricaoAlergiaMedicamentos("Penicilina")
+                .build();
 
         Anamnese entity = mapper.toEntity(request);
 
@@ -80,10 +81,10 @@ class AnamneseMapperTest {
 
         assertEquals(1, dtos.size());
         AnamneseResponse dto = dtos.get(0);
-        assertEquals(10L, dto.getIdAnamnese());
-        assertEquals("Ana", dto.getAnamneseCliente().getNome());
-        assertEquals(2, dto.getAnamneseCliente().getFkClienteIndicacao());
-        assertEquals(3, dto.getAnamneseCliente().getFkResponsavel());
-        assertFalse(dto.getGestante());
+        assertEquals(10L, dto.idAnamnese());
+        assertEquals("Ana", dto.anamneseCliente().nome());
+        assertEquals(2, dto.anamneseCliente().fkClienteIndicacao());
+        assertEquals(3, dto.anamneseCliente().fkResponsavel());
+        assertFalse(dto.gestante());
     }
 }

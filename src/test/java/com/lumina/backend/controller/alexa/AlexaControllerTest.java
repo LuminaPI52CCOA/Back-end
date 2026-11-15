@@ -6,7 +6,7 @@ import com.lumina.backend.dto.alexa.AlexaStatusResponse;
 import com.lumina.backend.dto.alexa.AlexaVincularRequest;
 import com.lumina.backend.dto.alexa.AlexaVincularResponse;
 import com.lumina.backend.model.Usuario;
-import com.lumina.backend.repository.UsuarioRepository;
+import com.lumina.backend.service.usuario.UsuarioLogadoService;
 import com.lumina.backend.service.alexa.AlexaService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -38,7 +38,7 @@ class AlexaControllerTest {
     private AlexaService alexaService;
 
     @Mock
-    private UsuarioRepository usuarioRepository;
+    private UsuarioLogadoService usuarioLogadoService;
 
     @InjectMocks
     private AlexaController alexaController;
@@ -71,14 +71,14 @@ class AlexaControllerTest {
             usuario.setIdUsuario(5L);
             usuario.setEmail("dentista@lumina.com");
 
-            when(usuarioRepository.findByEmail("dentista@lumina.com")).thenReturn(Optional.of(usuario));
+            when(usuarioLogadoService.buscarPorEmail("dentista@lumina.com")).thenReturn(Optional.of(usuario));
             when(alexaService.gerarPin(5L)).thenReturn(new AlexaGerarPinResponse("654321", 10, "Instruções"));
 
             ResponseEntity<AlexaGerarPinResponse> response = alexaController.gerarPin(null);
 
             assertNotNull(response);
             assertEquals(200, response.getStatusCode().value());
-            assertEquals("654321", response.getBody().getCodigo());
+            assertEquals("654321", response.getBody().codigo());
             verify(alexaService).gerarPin(5L);
         }
 
@@ -91,7 +91,7 @@ class AlexaControllerTest {
             admin.setIdUsuario(1L);
             admin.setEmail("admin@lumina.com");
 
-            when(usuarioRepository.findByEmail("admin@lumina.com")).thenReturn(Optional.of(admin));
+            when(usuarioLogadoService.buscarPorEmail("admin@lumina.com")).thenReturn(Optional.of(admin));
             when(alexaService.gerarPin(10L)).thenReturn(new AlexaGerarPinResponse("112233", 10, "Instruções"));
 
             ResponseEntity<AlexaGerarPinResponse> response = alexaController.gerarPin(10L);
@@ -110,7 +110,7 @@ class AlexaControllerTest {
             dentista.setIdUsuario(5L);
             dentista.setEmail("dentista1@lumina.com");
 
-            when(usuarioRepository.findByEmail("dentista1@lumina.com")).thenReturn(Optional.of(dentista));
+            when(usuarioLogadoService.buscarPorEmail("dentista1@lumina.com")).thenReturn(Optional.of(dentista));
 
             assertThrows(AccessDeniedException.class, () -> alexaController.gerarPin(9L));
             verifyNoInteractions(alexaService);
@@ -138,15 +138,15 @@ class AlexaControllerTest {
                     "Dr. Ricardo"
             );
 
-            when(usuarioRepository.findByEmail("dentista@lumina.com")).thenReturn(Optional.of(dentista));
+            when(usuarioLogadoService.buscarPorEmail("dentista@lumina.com")).thenReturn(Optional.of(dentista));
             when(alexaService.obterStatus(5L)).thenReturn(statusResponse);
 
             ResponseEntity<AlexaStatusResponse> response = alexaController.obterStatus(null);
 
             assertNotNull(response);
             assertEquals(200, response.getStatusCode().value());
-            assertTrue(response.getBody().getConectado());
-            assertEquals("Dr. Ricardo", response.getBody().getDentistaNome());
+            assertTrue(response.getBody().conectado());
+            assertEquals("Dr. Ricardo", response.getBody().dentistaNome());
             verify(alexaService).obterStatus(5L);
         }
 
@@ -167,14 +167,14 @@ class AlexaControllerTest {
                     "Dra. Beatriz"
             );
 
-            when(usuarioRepository.findByEmail("admin@lumina.com")).thenReturn(Optional.of(admin));
+            when(usuarioLogadoService.buscarPorEmail("admin@lumina.com")).thenReturn(Optional.of(admin));
             when(alexaService.obterStatus(12L)).thenReturn(statusResponse);
 
             ResponseEntity<AlexaStatusResponse> response = alexaController.obterStatus(12L);
 
             assertNotNull(response);
             assertEquals(200, response.getStatusCode().value());
-            assertFalse(response.getBody().getConectado());
+            assertFalse(response.getBody().conectado());
             verify(alexaService).obterStatus(12L);
         }
 
@@ -187,7 +187,7 @@ class AlexaControllerTest {
             dentista.setIdUsuario(5L);
             dentista.setEmail("dentista@lumina.com");
 
-            when(usuarioRepository.findByEmail("dentista@lumina.com")).thenReturn(Optional.of(dentista));
+            when(usuarioLogadoService.buscarPorEmail("dentista@lumina.com")).thenReturn(Optional.of(dentista));
 
             assertThrows(AccessDeniedException.class, () -> alexaController.obterStatus(8L));
             verifyNoInteractions(alexaService);
@@ -207,7 +207,7 @@ class AlexaControllerTest {
             dentista.setIdUsuario(5L);
             dentista.setEmail("dentista@lumina.com");
 
-            when(usuarioRepository.findByEmail("dentista@lumina.com")).thenReturn(Optional.of(dentista));
+            when(usuarioLogadoService.buscarPorEmail("dentista@lumina.com")).thenReturn(Optional.of(dentista));
             when(alexaService.desconectar(5L)).thenReturn("amzn1.ask.account.TESTE");
 
             ResponseEntity<Void> response = alexaController.desconectar(null);
@@ -226,7 +226,7 @@ class AlexaControllerTest {
             admin.setIdUsuario(1L);
             admin.setEmail("admin@lumina.com");
 
-            when(usuarioRepository.findByEmail("admin@lumina.com")).thenReturn(Optional.of(admin));
+            when(usuarioLogadoService.buscarPorEmail("admin@lumina.com")).thenReturn(Optional.of(admin));
             when(alexaService.desconectar(15L)).thenReturn("amzn1.ask.account.ANOTHER");
 
             ResponseEntity<Void> response = alexaController.desconectar(15L);
@@ -245,7 +245,7 @@ class AlexaControllerTest {
             dentista.setIdUsuario(5L);
             dentista.setEmail("dentista@lumina.com");
 
-            when(usuarioRepository.findByEmail("dentista@lumina.com")).thenReturn(Optional.of(dentista));
+            when(usuarioLogadoService.buscarPorEmail("dentista@lumina.com")).thenReturn(Optional.of(dentista));
 
             assertThrows(AccessDeniedException.class, () -> alexaController.desconectar(8L));
             verifyNoInteractions(alexaService);
@@ -266,8 +266,8 @@ class AlexaControllerTest {
 
             assertNotNull(response);
             assertEquals(200, response.getStatusCode().value());
-            assertTrue(response.getBody().isSucesso());
-            assertEquals("Dra. Maria", response.getBody().getDentistaNome());
+            assertTrue(response.getBody().sucesso());
+            assertEquals("Dra. Maria", response.getBody().dentistaNome());
         }
     }
 }

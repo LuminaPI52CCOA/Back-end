@@ -11,61 +11,59 @@ import java.time.Duration;
 import java.util.List;
 
 public class ConsultaMapper {
+
     public static ConsultaResponse toResponse(Consulta consulta) {
-        if(consulta == null) {
+        if (consulta == null) {
             return null;
         }
 
         UsuarioResponse usuario = UsuarioMapper.toDto(consulta.getUsuario());
-        if (usuario != null) {
-            // O hash da senha do dentista nao deve trafegar na agenda.
-            usuario.setSenha(null);
-        }
+        UsuarioResponse usuarioSemSenha = usuario != null ? usuario.semSenha() : null;
 
-        ConsultaResponse response = new ConsultaResponse(
+        Integer duracaoMinutos = (consulta.getHorarioInicio() != null && consulta.getHorarioFim() != null)
+                ? (int) Duration.between(consulta.getHorarioInicio(), consulta.getHorarioFim()).toMinutes()
+                : null;
+
+        List<Integer> dentesOrdenados = consulta.getDentes() == null
+                ? List.of()
+                : consulta.getDentes().stream().sorted().toList();
+
+        return new ConsultaResponse(
                 consulta.getIdConsulta(),
                 ClienteMapper.toDto(consulta.getCliente()),
-                usuario,
+                usuarioSemSenha,
                 consulta.getData(),
                 consulta.getHorarioInicio(),
-                consulta.getHorarioFim()
+                consulta.getHorarioFim(),
+                duracaoMinutos,
+                StatusConsulta.de(consulta.getStatus()).name(),
+                EspecialidadeResponse.of(consulta.getEspecialidade()),
+                consulta.getObservacoes(),
+                dentesOrdenados,
+                consulta.getTipoDente(),
+                Boolean.TRUE.equals(consulta.getPularOdontograma())
         );
-
-        if (consulta.getHorarioInicio() != null && consulta.getHorarioFim() != null) {
-            response.setDuracaoMinutos((int) Duration.between(consulta.getHorarioInicio(), consulta.getHorarioFim()).toMinutes());
-        }
-        response.setStatus(StatusConsulta.de(consulta.getStatus()).name());
-        response.setEspecialidade(EspecialidadeResponse.of(consulta.getEspecialidade()));
-        response.setObservacoes(consulta.getObservacoes());
-        response.setDentes(consulta.getDentes() == null
-                ? List.of()
-                : consulta.getDentes().stream().sorted().toList());
-        response.setTipoDente(consulta.getTipoDente());
-        response.setPularOdontograma(Boolean.TRUE.equals(consulta.getPularOdontograma()));
-
-        return response;
     }
 
     public static List<ConsultaResponse> toResponse(List<Consulta> consultas) {
         return consultas.stream()
                 .map(ConsultaMapper::toResponse)
                 .toList();
-
     }
 
     public static Consulta toEntity(ConsultaRequest consulta) {
-        if(consulta == null) {
+        if (consulta == null) {
             return null;
         }
 
         Consulta consultaEntidade = new Consulta();
-        consultaEntidade.setData(consulta.getData());
-        consultaEntidade.setHorarioFim(consulta.getHorarioFim());
-        consultaEntidade.setHorarioInicio(consulta.getHorarioInicio());
-        consultaEntidade.setObservacoes(consulta.getObservacoes());
-        consultaEntidade.setTipoDente(consulta.getTipoDente());
-        consultaEntidade.setPularOdontograma(Boolean.TRUE.equals(consulta.getPularOdontograma()));
-        consultaEntidade.setDentes(consulta.getDentes());
+        consultaEntidade.setData(consulta.data());
+        consultaEntidade.setHorarioFim(consulta.horarioFim());
+        consultaEntidade.setHorarioInicio(consulta.horarioInicio());
+        consultaEntidade.setObservacoes(consulta.observacoes());
+        consultaEntidade.setTipoDente(consulta.tipoDente());
+        consultaEntidade.setPularOdontograma(Boolean.TRUE.equals(consulta.pularOdontograma()));
+        consultaEntidade.setDentes(consulta.dentes());
 
         return consultaEntidade;
     }

@@ -2,7 +2,7 @@ package com.lumina.backend.controller.perfil;
 
 import com.lumina.backend.controller.PerfilController;
 import com.lumina.backend.model.Perfil;
-import com.lumina.backend.service.Perfil.PerfilService;
+import com.lumina.backend.service.perfil.PerfilService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

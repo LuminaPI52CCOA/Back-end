@@ -25,8 +25,8 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(EntidadeNaoEncontrada.class)
-    public ResponseEntity<ErroRespostaDto> handleEntidadeNaoEncontrada(EntidadeNaoEncontrada ex, HttpServletRequest request) {
+    @ExceptionHandler(EntidadeNaoEncontradaException.class)
+    public ResponseEntity<ErroRespostaDto> handleEntidadeNaoEncontrada(EntidadeNaoEncontradaException ex, HttpServletRequest request) {
         log.warn("Recurso não encontrado: {} no caminho {}", ex.getMessage(), request.getRequestURI());
         ErroRespostaDto erro = new ErroRespostaDto(
                 HttpStatus.NOT_FOUND.value(),
@@ -37,8 +37,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(erro);
     }
 
-    @ExceptionHandler(AnamneseVazio.class)
-    public ResponseEntity<ErroRespostaDto> handleAnamneseVazio(AnamneseVazio ex, HttpServletRequest request) {
+    @ExceptionHandler(AnamneseVazioException.class)
+    public ResponseEntity<ErroRespostaDto> handleAnamneseVazioException(AnamneseVazioException ex, HttpServletRequest request) {
         log.warn("Anamnese vazia: {} no caminho {}", ex.getMessage(), request.getRequestURI());
         ErroRespostaDto erro = new ErroRespostaDto(
                 HttpStatus.NOT_FOUND.value(),

@@ -3,7 +3,7 @@ package com.lumina.backend.controller;
 import com.lumina.backend.dto.notificacao.NotificacaoWhatsappResponse;
 import com.lumina.backend.dto.notificacao.ProcessamentoD1Response;
 import com.lumina.backend.model.Usuario;
-import com.lumina.backend.repository.UsuarioRepository;
+import com.lumina.backend.service.usuario.UsuarioLogadoService;
 import com.lumina.backend.service.notificacao.LembretePublicadorService;
 import com.lumina.backend.service.notificacao.NotificacaoWhatsappService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,14 +33,14 @@ public class NotificacaoWhatsappController {
 
     private final LembretePublicadorService lembretePublicadorService;
     private final NotificacaoWhatsappService notificacaoWhatsappService;
-    private final UsuarioRepository usuarioRepository;
+    private final UsuarioLogadoService usuarioLogadoService;
 
     public NotificacaoWhatsappController(LembretePublicadorService lembretePublicadorService,
                                          NotificacaoWhatsappService notificacaoWhatsappService,
-                                         UsuarioRepository usuarioRepository) {
+                                         UsuarioLogadoService usuarioLogadoService) {
         this.lembretePublicadorService = lembretePublicadorService;
         this.notificacaoWhatsappService = notificacaoWhatsappService;
-        this.usuarioRepository = usuarioRepository;
+        this.usuarioLogadoService = usuarioLogadoService;
     }
 
     @PostMapping("/processar-d1")
@@ -85,7 +85,7 @@ public class NotificacaoWhatsappController {
                 && auth.getName() != null
                 && !auth.getName().isBlank()
                 && !"anonymousUser".equalsIgnoreCase(auth.getName())) {
-            return usuarioRepository.findByEmail(auth.getName())
+            return usuarioLogadoService.buscarPorEmail(auth.getName())
                     .map(Usuario::getIdUsuario)
                     .orElse(null);
         }

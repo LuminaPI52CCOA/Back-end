@@ -1,18 +1,16 @@
 package com.lumina.backend.controller.cliente;
 
 import com.lumina.backend.controller.ClienteController;
-import com.lumina.backend.domain.cliente.Cliente;
-import com.lumina.backend.domain.cliente.ClienteCommand;
-import com.lumina.backend.domain.cliente.ClienteId;
 import com.lumina.backend.dto.anamnese.AnamneseRequest;
 import com.lumina.backend.dto.anamnese.AnamneseResponse;
 import com.lumina.backend.dto.cliente.ClienteRequest;
 import com.lumina.backend.dto.cliente.ClienteResponse;
 import com.lumina.backend.dto.convenio.ConvenioResponse;
-import com.lumina.backend.dto.estado_civil.EstadoCivilResponse;
+import com.lumina.backend.dto.estadocivil.EstadoCivilResponse;
 import com.lumina.backend.exception.EmailDuplicadoException;
-import com.lumina.backend.exception.EntidadeNaoEncontrada;
+import com.lumina.backend.exception.EntidadeNaoEncontradaException;
 import com.lumina.backend.model.Anamnese;
+import com.lumina.backend.model.Cliente;
 import com.lumina.backend.model.Convenio;
 import com.lumina.backend.model.EstadoCivil;
 import com.lumina.backend.service.cliente.ClienteService;
@@ -52,10 +50,10 @@ class ClienteControllerTest {
     private ConvenioService convenioService;
 
     @Mock
-    private com.lumina.backend.repository.UsuarioRepository usuarioRepository;
+    private com.lumina.backend.service.usuario.UsuarioLogadoService usuarioLogadoService;
 
     @Mock
-    private com.lumina.backend.repository.ConsultaRepository consultaRepository;
+    private com.lumina.backend.service.consulta.ConsultaService consultaService;
 
     @InjectMocks
     private ClienteController clienteController;
@@ -74,11 +72,21 @@ class ClienteControllerTest {
     }
 
     private Cliente criarClienteDomain(Long id, String nome, String cpf, String email) {
-        ClienteCommand command = new ClienteCommand(
-                nome, cpf, "RG-123", LocalDate.of(1998, 5, 21), "SP", "Brasileira",
-                'F', "01010-000", "Rua Flores", email, "(11) 98765-4321", 1, null, null, null
-        );
-        return Cliente.reconstruir(ClienteId.of(id), command);
+        Cliente cliente = new Cliente();
+        cliente.setIdCliente(id);
+        cliente.setNome(nome);
+        cliente.setCpf(cpf);
+        cliente.setRg("RG-123");
+        cliente.setDataNascimento(LocalDate.of(1998, 5, 21));
+        cliente.setNaturalidade("SP");
+        cliente.setNacionalidade("Brasileira");
+        cliente.setSexo('F');
+        cliente.setCep("01010-000");
+        cliente.setEnderecoResidencial("Rua Flores");
+        cliente.setEmail(email);
+        cliente.setNumeroCelular("(11) 98765-4321");
+        cliente.setFkEstadoCivil(1);
+        return cliente;
     }
 
     @Nested
@@ -140,7 +148,7 @@ class ClienteControllerTest {
             com.lumina.backend.model.Consulta consulta = new com.lumina.backend.model.Consulta();
             consulta.setCliente(clienteModel);
             consulta.setData(LocalDate.of(2026, 10, 25));
-            Mockito.when(consultaRepository.findConsultasFuturasPorClientes(Mockito.eq(List.of(1L)), Mockito.any(LocalDate.class)))
+            Mockito.when(consultaService.listarConsultasFuturasPorClientes(Mockito.eq(List.of(1L)), Mockito.any(LocalDate.class)))
                     .thenReturn(List.of(consulta));
 
             ResponseEntity<Page<ClienteResponse>> response = clienteController.listar(null, null, pageable);
@@ -148,9 +156,9 @@ class ClienteControllerTest {
             Assertions.assertEquals(200, response.getStatusCodeValue());
             Assertions.assertNotNull(response.getBody());
             ClienteResponse resp = response.getBody().getContent().get(0);
-            Assertions.assertEquals("Amil Dental", resp.getPlano());
-            Assertions.assertEquals(List.of("Amil Dental"), resp.getConvenios());
-            Assertions.assertEquals(LocalDate.of(2026, 10, 25), resp.getProximaConsulta());
+            Assertions.assertEquals("Amil Dental", resp.plano());
+            Assertions.assertEquals(List.of("Amil Dental"), resp.convenios());
+            Assertions.assertEquals(LocalDate.of(2026, 10, 25), resp.proximaConsulta());
         }
     }
 
@@ -161,11 +169,12 @@ class ClienteControllerTest {
         @Test
         @DisplayName("2.1 Deve cadastrar cliente com sucesso e retornar status 201")
         void deveCadastrarClienteComSucesso() {
-            ClienteRequest request = new ClienteRequest();
-            request.setIdCliente(1L);
-            request.setNome("Ana Souza Lima");
-            request.setCpf("123.456.789-01");
-            request.setEmail("ana.souza@email.com");
+            ClienteRequest request = ClienteRequest.builder()
+                    .idCliente(1L)
+                    .nome("Ana Souza Lima")
+                    .cpf("123.456.789-01")
+                    .email("ana.souza@email.com")
+                    .build();
 
             Cliente clienteSalvo = criarClienteDomain(1L, "Ana Souza Lima", "123.456.789-01", "ana.souza@email.com");
 
@@ -175,7 +184,7 @@ class ClienteControllerTest {
 
             Assertions.assertEquals(201, response.getStatusCodeValue());
             Assertions.assertNotNull(response.getBody());
-            Assertions.assertEquals("Ana Souza Lima", response.getBody().getNome());
+            Assertions.assertEquals("Ana Souza Lima", response.getBody().nome());
 
             Mockito.verify(clienteService, Mockito.times(1)).cadastrar(any(ClienteRequest.class));
         }
@@ -183,8 +192,9 @@ class ClienteControllerTest {
         @Test
         @DisplayName("2.2 Deve lançar EmailDuplicadoException ao tentar cadastrar cliente com email duplicado")
         void deveLancarExcecaoEmailDuplicado() {
-            ClienteRequest request = new ClienteRequest();
-            request.setEmail("teste@gmail.com");
+            ClienteRequest request = ClienteRequest.builder()
+                    .email("teste@gmail.com")
+                    .build();
 
             Mockito.doThrow(new EmailDuplicadoException("Email já cadastrado"))
                     .when(clienteService).cadastrar(any(ClienteRequest.class));
@@ -214,20 +224,20 @@ class ClienteControllerTest {
 
             Assertions.assertEquals(200, response.getStatusCodeValue());
             Assertions.assertNotNull(response.getBody());
-            Assertions.assertEquals("Ana Souza Lima", response.getBody().getNome());
-            Assertions.assertEquals(1L, response.getBody().getIdCliente());
+            Assertions.assertEquals("Ana Souza Lima", response.getBody().nome());
+            Assertions.assertEquals(1L, response.getBody().idCliente());
 
             Mockito.verify(clienteService, Mockito.times(1)).buscarPorId(1L);
         }
 
         @Test
-        @DisplayName("3.2 Deve lançar EntidadeNaoEncontrada quando cliente não existir")
+        @DisplayName("3.2 Deve lançar EntidadeNaoEncontradaException quando cliente não existir")
         void deveLancarExcecaoQuandoClienteNaoEncontrado() {
             Mockito.when(clienteService.buscarPorId(1L))
-                    .thenThrow(new EntidadeNaoEncontrada("Cliente não encontrado"));
+                    .thenThrow(new EntidadeNaoEncontradaException("Cliente não encontrado"));
 
-            EntidadeNaoEncontrada exception = assertThrows(
-                    EntidadeNaoEncontrada.class,
+            EntidadeNaoEncontradaException exception = assertThrows(
+                    EntidadeNaoEncontradaException.class,
                     () -> clienteController.buscarPorId(1L)
             );
 
@@ -243,10 +253,11 @@ class ClienteControllerTest {
         @Test
         @DisplayName("4.1 Deve atualizar cliente com sucesso e retornar status 200")
         void deveAtualizarClienteComSucesso() {
-            ClienteRequest request = new ClienteRequest();
-            request.setIdCliente(1L);
-            request.setNome("Ana Souza Atualizado");
-            request.setEmail("ana.atualizado@email.com");
+            ClienteRequest request = ClienteRequest.builder()
+                    .idCliente(1L)
+                    .nome("Ana Souza Atualizado")
+                    .email("ana.atualizado@email.com")
+                    .build();
 
             Cliente clienteAtualizado = criarClienteDomain(1L, "Ana Souza Atualizado", "123.456.789-01", "ana.atualizado@email.com");
 
@@ -257,22 +268,23 @@ class ClienteControllerTest {
 
             Assertions.assertEquals(200, response.getStatusCodeValue());
             Assertions.assertNotNull(response.getBody());
-            Assertions.assertEquals("Ana Souza Atualizado", response.getBody().getNome());
+            Assertions.assertEquals("Ana Souza Atualizado", response.getBody().nome());
 
             Mockito.verify(clienteService, Mockito.times(1)).atualizar(any(ClienteRequest.class), anyLong());
         }
 
         @Test
-        @DisplayName("4.2 Deve lançar EntidadeNaoEncontrada ao tentar atualizar cliente inexistente")
+        @DisplayName("4.2 Deve lançar EntidadeNaoEncontradaException ao tentar atualizar cliente inexistente")
         void deveLancarExcecaoAoAtualizarClienteInexistente() {
-            ClienteRequest request = new ClienteRequest();
-            request.setNome("Teste");
+            ClienteRequest request = ClienteRequest.builder()
+                    .nome("Teste")
+                    .build();
 
             Mockito.when(clienteService.atualizar(any(ClienteRequest.class), anyLong()))
-                    .thenThrow(new EntidadeNaoEncontrada("Cliente não encontrado"));
+                    .thenThrow(new EntidadeNaoEncontradaException("Cliente não encontrado"));
 
-            EntidadeNaoEncontrada exception = assertThrows(
-                    EntidadeNaoEncontrada.class,
+            EntidadeNaoEncontradaException exception = assertThrows(
+                    EntidadeNaoEncontradaException.class,
                     () -> clienteController.atualizar(request, 1L)
             );
 
@@ -360,13 +372,13 @@ class ClienteControllerTest {
         }
 
         @Test
-        @DisplayName("6.2 Deve lançar EntidadeNaoEncontrada quando não houver anamneses")
+        @DisplayName("6.2 Deve lançar EntidadeNaoEncontradaException quando não houver anamneses")
         void deveLancarExcecaoQuandoNaoHouverAnamneses() {
             Mockito.when(clienteService.listarAnamnese(1))
-                    .thenThrow(new EntidadeNaoEncontrada("Anamneses não encontradas"));
+                    .thenThrow(new EntidadeNaoEncontradaException("Anamneses não encontradas"));
 
-            EntidadeNaoEncontrada exception = assertThrows(
-                    EntidadeNaoEncontrada.class,
+            EntidadeNaoEncontradaException exception = assertThrows(
+                    EntidadeNaoEncontradaException.class,
                     () -> clienteController.listarAnamnese(1)
             );
 
@@ -385,12 +397,13 @@ class ClienteControllerTest {
             com.lumina.backend.model.Cliente cliente = new com.lumina.backend.model.Cliente();
             cliente.setIdCliente(1L);
 
-            AnamneseRequest request = new AnamneseRequest();
-            request.setIdAnamnese(100L);
-            request.setDataAnamnese(LocalDate.now());
-            request.setFazendoTratamento(true);
-            request.setDescricaoTratamento("Cardíaco");
-            request.setAlergiaMedicamentos(false);
+            AnamneseRequest request = AnamneseRequest.builder()
+                    .idAnamnese(100L)
+                    .dataAnamnese(LocalDate.now())
+                    .fazendoTratamento(true)
+                    .descricaoTratamento("Cardíaco")
+                    .alergiaMedicamentos(false)
+                    .build();
 
             Anamnese anamneseSalva = new Anamnese();
             anamneseSalva.setIdAnamnese(100L);
@@ -405,22 +418,22 @@ class ClienteControllerTest {
 
             Assertions.assertEquals(200, response.getStatusCodeValue());
             Assertions.assertNotNull(response.getBody());
-            Assertions.assertEquals("Cardíaco", response.getBody().getDescricaoTratamento());
-            Assertions.assertTrue(response.getBody().getFazendoTratamento());
+            Assertions.assertEquals("Cardíaco", response.getBody().descricaoTratamento());
+            Assertions.assertTrue(response.getBody().fazendoTratamento());
 
             Mockito.verify(clienteService, Mockito.times(1)).cadastrarAnamnese(anyLong(), any(AnamneseRequest.class));
         }
 
         @Test
-        @DisplayName("7.2 Deve lançar EntidadeNaoEncontrada ao tentar cadastrar anamnese para cliente inexistente")
+        @DisplayName("7.2 Deve lançar EntidadeNaoEncontradaException ao tentar cadastrar anamnese para cliente inexistente")
         void deveLancarExcecaoAoCadastrarAnamneseParaClienteInexistente() {
-            AnamneseRequest request = new AnamneseRequest();
+            AnamneseRequest request = AnamneseRequest.builder().build();
 
             Mockito.when(clienteService.cadastrarAnamnese(anyLong(), any(AnamneseRequest.class)))
-                    .thenThrow(new EntidadeNaoEncontrada("Cliente não encontrado"));
+                    .thenThrow(new EntidadeNaoEncontradaException("Cliente não encontrado"));
 
-            EntidadeNaoEncontrada exception = assertThrows(
-                    EntidadeNaoEncontrada.class,
+            EntidadeNaoEncontradaException exception = assertThrows(
+                    EntidadeNaoEncontradaException.class,
                     () -> clienteController.cadastroAnamnese(99L, request)
             );
 
@@ -447,7 +460,7 @@ class ClienteControllerTest {
             Assertions.assertEquals(200, response.getStatusCodeValue());
             Assertions.assertNotNull(response.getBody());
             Assertions.assertEquals(2, response.getBody().size());
-            Assertions.assertEquals("Solteiro(a)", response.getBody().get(0).getDescricao());
+            Assertions.assertEquals("Solteiro(a)", response.getBody().get(0).descricao());
 
             Mockito.verify(clienteService, Mockito.times(1)).listarEstadosCivis();
         }

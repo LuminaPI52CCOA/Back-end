@@ -4,7 +4,7 @@ import com.lumina.backend.dto.usuario.UsuarioDetalhesDto;
 import com.lumina.backend.model.Perfil;
 import com.lumina.backend.model.Usuario;
 import com.lumina.backend.repository.UsuarioRepository;
-import com.lumina.backend.service.Usuario.AutenticacaoService;
+import com.lumina.backend.service.usuario.AutenticacaoService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

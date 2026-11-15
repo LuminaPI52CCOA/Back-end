@@ -1,6 +1,6 @@
 package com.lumina.backend.controller;
 
-import com.lumina.backend.domain.cliente.Cliente;
+import com.lumina.backend.model.Cliente;
 import com.lumina.backend.dto.anamnese.AnamneseMapper;
 import com.lumina.backend.dto.anamnese.AnamneseRequest;
 import com.lumina.backend.dto.anamnese.AnamneseResponse;
@@ -9,15 +9,16 @@ import com.lumina.backend.dto.cliente.ClienteRequest;
 import com.lumina.backend.dto.cliente.ClienteResponse;
 import com.lumina.backend.dto.convenio.ConvenioMapper;
 import com.lumina.backend.dto.convenio.ConvenioResponse;
-import com.lumina.backend.dto.estado_civil.EstadoCivilMapper;
-import com.lumina.backend.dto.estado_civil.EstadoCivilResponse;
+import com.lumina.backend.dto.estadocivil.EstadoCivilMapper;
+import com.lumina.backend.dto.estadocivil.EstadoCivilResponse;
 import com.lumina.backend.model.Anamnese;
 import com.lumina.backend.model.Consulta;
 import com.lumina.backend.model.Convenio;
 import com.lumina.backend.model.EstadoCivil;
 import com.lumina.backend.model.Usuario;
-import com.lumina.backend.repository.UsuarioRepository;
+import com.lumina.backend.service.usuario.UsuarioLogadoService;
 import com.lumina.backend.service.cliente.ClienteService;
+import com.lumina.backend.service.consulta.ConsultaService;
 import com.lumina.backend.service.convenio.ConvenioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -30,6 +31,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -55,14 +57,14 @@ public class ClienteController {
 
     private final ClienteService service;
     private final ConvenioService convenioService;
-    private final UsuarioRepository usuarioRepository;
-    private final com.lumina.backend.repository.ConsultaRepository consultaRepository;
+    private final UsuarioLogadoService usuarioLogadoService;
+    private final ConsultaService consultaService;
 
-    public ClienteController(ClienteService service, ConvenioService convenioService, UsuarioRepository usuarioRepository, com.lumina.backend.repository.ConsultaRepository consultaRepository){
+    public ClienteController(ClienteService service, ConvenioService convenioService, UsuarioLogadoService usuarioLogadoService, ConsultaService consultaService){
         this.service = service;
         this.convenioService = convenioService;
-        this.usuarioRepository = usuarioRepository;
-        this.consultaRepository = consultaRepository;
+        this.usuarioLogadoService = usuarioLogadoService;
+        this.consultaService = consultaService;
     }
 
     @GetMapping("/estado-civil")
@@ -117,8 +119,8 @@ public class ClienteController {
             return ResponseEntity.noContent().build();
         }
         Page<ClienteResponse> response = clientesPage.map(ClienteMapper::toDto);
-        enriquecerClientesComConveniosEConsultas(response.getContent());
-        return ResponseEntity.ok(response);
+        List<ClienteResponse> enriquecidos = enriquecerClientesComConveniosEConsultas(response.getContent());
+        return ResponseEntity.ok(new PageImpl<>(enriquecidos, response.getPageable(), response.getTotalElements()));
     }
 
     @PostMapping
@@ -144,7 +146,7 @@ public class ClienteController {
         String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
         Cliente clienteCadastrado = service.cadastrar(request);
         ClienteResponse response = ClienteMapper.toDto(clienteCadastrado);
-        log.info("AUDIT: Usuario [{}] cadastrou novo cliente ID [{}] CPF [{}]", usuario, response.getIdCliente(), clienteCadastrado.getCpf());
+        log.info("AUDIT: Usuario [{}] cadastrou novo cliente ID [{}] CPF [{}]", usuario, response.idCliente(), clienteCadastrado.getCpf());
         return ResponseEntity.status(201).body(response);
     }
 
@@ -169,7 +171,7 @@ public class ClienteController {
         Long usuarioLogadoId = obterUsuarioIdAutenticado();
 
         if (isApenasDentista) {
-            boolean temConsulta = consultaRepository.existsByClienteIdClienteAndUsuarioIdUsuario(id, usuarioLogadoId);
+            boolean temConsulta = consultaService.dentistaAtendeCliente(id, usuarioLogadoId);
             if (!temConsulta) {
                 return ResponseEntity.status(403).build();
             }
@@ -177,8 +179,7 @@ public class ClienteController {
         String usuario = (auth != null) ? auth.getName() : "ANONYMOUS";
         log.info("AUDIT: Usuario [{}] consultou dados do cliente ID [{}]", usuario, id);
         Cliente cliente = service.buscarPorId(id);
-        ClienteResponse response = ClienteMapper.toDto(cliente);
-        enriquecerClienteComConveniosEConsulta(response);
+        ClienteResponse response = enriquecerClienteComConveniosEConsulta(ClienteMapper.toDto(cliente));
         return ResponseEntity.ok(response);
     }
 
@@ -241,7 +242,7 @@ public class ClienteController {
         if (isApenasDentista) {
             Long usuarioLogadoId = obterUsuarioIdAutenticado();
             if (usuarioLogadoId == null
-                    || !consultaRepository.existsByClienteIdClienteAndUsuarioIdUsuario(id.longValue(), usuarioLogadoId)) {
+                    || !consultaService.dentistaAtendeCliente(id.longValue(), usuarioLogadoId)) {
                 return ResponseEntity.status(403).build();
             }
         }
@@ -266,25 +267,25 @@ public class ClienteController {
     private Long obterUsuarioIdAutenticado() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getName() != null && !auth.getName().isBlank() && !"anonymousUser".equalsIgnoreCase(auth.getName())) {
-            return usuarioRepository.findByEmail(auth.getName())
+            return usuarioLogadoService.buscarPorEmail(auth.getName())
                     .map(Usuario::getIdUsuario)
                     .orElse(null);
         }
         return null;
     }
 
-    private void enriquecerClientesComConveniosEConsultas(List<ClienteResponse> responses) {
+    private List<ClienteResponse> enriquecerClientesComConveniosEConsultas(List<ClienteResponse> responses) {
         if (responses == null || responses.isEmpty()) {
-            return;
+            return responses;
         }
 
         List<Long> ids = responses.stream()
-                .map(ClienteResponse::getIdCliente)
+                .map(ClienteResponse::idCliente)
                 .filter(Objects::nonNull)
                 .toList();
 
         if (ids.isEmpty()) {
-            return;
+            return responses;
         }
 
         Map<Long, List<Convenio>> conveniosPorCliente = Collections.emptyMap();
@@ -294,41 +295,41 @@ public class ClienteController {
                 if (conveniosPorCliente == null) {
                     conveniosPorCliente = Collections.emptyMap();
                 }
-            } catch (Exception e) {
+            } catch (RuntimeException e) {
                 log.warn("Erro ao carregar convenios dos clientes em lote: {}", e.getMessage());
             }
         }
 
         Map<Long, LocalDate> proximaConsultaPorCliente = Collections.emptyMap();
-        if (consultaRepository != null) {
-            try {
-                List<Consulta> consultasFuturas = consultaRepository.findConsultasFuturasPorClientes(ids, LocalDate.now());
-                if (consultasFuturas != null) {
-                    proximaConsultaPorCliente = consultasFuturas.stream()
-                            .filter(c -> c.getCliente() != null && c.getCliente().getIdCliente() != null && c.getData() != null)
-                            .collect(Collectors.toMap(
-                                    c -> c.getCliente().getIdCliente(),
-                                    Consulta::getData,
-                                    (primeira, segunda) -> primeira
-                            ));
-                }
-            } catch (Exception e) {
-                log.warn("Erro ao carregar proximas consultas dos clientes em lote: {}", e.getMessage());
+        try {
+            List<Consulta> consultasFuturas = consultaService.listarConsultasFuturasPorClientes(ids, LocalDate.now());
+            if (consultasFuturas != null) {
+                proximaConsultaPorCliente = consultasFuturas.stream()
+                        .filter(c -> c.getCliente() != null && c.getCliente().getIdCliente() != null && c.getData() != null)
+                        .collect(Collectors.toMap(
+                                c -> c.getCliente().getIdCliente(),
+                                Consulta::getData,
+                                (primeira, segunda) -> primeira
+                        ));
             }
+        } catch (RuntimeException e) {
+            log.warn("Erro ao carregar proximas consultas dos clientes em lote: {}", e.getMessage());
         }
 
-        for (ClienteResponse resp : responses) {
-            List<Convenio> convs = conveniosPorCliente.getOrDefault(resp.getIdCliente(), Collections.emptyList());
+        final Map<Long, List<Convenio>> conveniosMap = conveniosPorCliente;
+        final Map<Long, LocalDate> consultasMap = proximaConsultaPorCliente;
+        return responses.stream().map(resp -> {
+            List<Convenio> convs = conveniosMap.getOrDefault(resp.idCliente(), Collections.emptyList());
             List<String> nomesConvs = convs.stream().map(Convenio::getNome).filter(Objects::nonNull).toList();
-            resp.setConvenios(nomesConvs);
-            resp.setPlano(nomesConvs.isEmpty() ? "Particular" : nomesConvs.get(0));
-            resp.setProximaConsulta(proximaConsultaPorCliente.get(resp.getIdCliente()));
-        }
+            String plano = nomesConvs.isEmpty() ? "Particular" : nomesConvs.get(0);
+            return resp.withEnriquecimento(plano, nomesConvs, consultasMap.get(resp.idCliente()));
+        }).toList();
     }
 
-    private void enriquecerClienteComConveniosEConsulta(ClienteResponse response) {
-        if (response != null) {
-            enriquecerClientesComConveniosEConsultas(List.of(response));
+    private ClienteResponse enriquecerClienteComConveniosEConsulta(ClienteResponse response) {
+        if (response == null) {
+            return null;
         }
+        return enriquecerClientesComConveniosEConsultas(List.of(response)).get(0);
     }
 }
