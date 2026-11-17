@@ -40,6 +40,26 @@ services:
       retries: 5
 
   # ============================================================================
+  # Cache Redis (agenda do dia/semana). So cache: sem persistencia em disco.
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: lumina-redis
+    restart: always
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-lumina-redis-dev}
+    command: >
+      sh -c 'exec redis-server --requirepass "$$REDIS_PASSWORD"
+      --maxmemory 128mb --maxmemory-policy allkeys-lru --save "" --appendonly no'
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
   # 3. Aplicação Backend (Spring Boot + Java 21)
   # ============================================================================
   backend:
@@ -57,6 +77,10 @@ services:
       SPRING_RABBITMQ_USERNAME: ${SPRING_RABBITMQ_USERNAME:-guest}
       SPRING_RABBITMQ_PASSWORD: ${SPRING_RABBITMQ_PASSWORD:-guest}
       APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost:5173}
+      SPRING_DATA_REDIS_HOST: ${SPRING_DATA_REDIS_HOST:-redis}
+      SPRING_DATA_REDIS_PORT: ${SPRING_DATA_REDIS_PORT:-6379}
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-lumina-redis-dev}
+      LUMINA_CACHE_AGENDA_ENABLED: ${LUMINA_CACHE_AGENDA_ENABLED:-true}
       LOGGING_FILE_NAME: /var/log/backend/app.log
       LOGGING_PATTERN_FILE: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level %pid --- [%t] %-40.40logger{39} : %m%n"
     ports:
@@ -68,6 +92,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      redis:
+        condition: service_started
 
   # ============================================================================
   # 3. Nginx (Proxy Reverso e Geração de Logs de Acesso/Erro)

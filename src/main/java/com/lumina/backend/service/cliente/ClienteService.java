@@ -16,6 +16,8 @@ import com.lumina.backend.model.Anamnese;
 import com.lumina.backend.model.EstadoCivil;
 import com.lumina.backend.repository.AnamneseRepository;
 import com.lumina.backend.repository.EstadoCivilRepository;
+import com.lumina.backend.service.consulta.AgendaCacheService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -32,6 +34,13 @@ public class ClienteService {
     private final ClienteRepositoryPort repositoryPort;
     private final AnamneseRepository anamneseRepository;
     private final EstadoCivilRepository estadoCivilRepository;
+    private AgendaCacheService agendaCache = AgendaCacheService.desativado();
+
+    /** Cache da agenda: cada consulta cacheada leva junto os dados do paciente. */
+    @Autowired
+    public void setAgendaCache(AgendaCacheService agendaCache) {
+        this.agendaCache = agendaCache;
+    }
 
     public ClienteService(ClienteRepositoryPort repositoryPort,
                           AnamneseRepository anamneseRepository,
@@ -274,7 +283,9 @@ public class ClienteService {
         }
 
         Cliente clienteAtualizado = clienteExistente.atualizar(command);
-        return repositoryPort.salvar(clienteAtualizado);
+        Cliente salvo = repositoryPort.salvar(clienteAtualizado);
+        agendaCache.invalidarTudo();
+        return salvo;
     }
 
     public List<Anamnese> listarAnamnese(Integer id){

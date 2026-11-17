@@ -68,3 +68,11 @@ spring.rabbitmq.listener.simple.retry.multiplier=2.0
 lumina.agenda.fuso-horario=${AGENDA_FUSO_HORARIO:America/Sao_Paulo}
 lumina.agenda.inicio-jornada=${AGENDA_INICIO_JORNADA:08:00}
 lumina.agenda.fim-jornada=${AGENDA_FIM_JORNADA:18:00}
+
+# Cache Redis da agenda (dia/semana). Desligado por padrao: a API funciona so com o MySQL.
+lumina.cache.agenda.enabled=${LUMINA_CACHE_AGENDA_ENABLED:false}
+lumina.cache.agenda.ttl-segundos=${LUMINA_CACHE_AGENDA_TTL_SEGUNDOS:1200}
+lumina.cache.agenda.max-dias=${LUMINA_CACHE_AGENDA_MAX_DIAS:31}
+spring.data.redis.host=${SPRING_DATA_REDIS_HOST:localhost}
+spring.data.redis.port=${SPRING_DATA_REDIS_PORT:6379}
+spring.data.redis.password=${SPRING_DATA_REDIS_PASSWORD:}

@@ -10,6 +10,8 @@ import com.lumina.backend.model.Usuario;
 import com.lumina.backend.repository.ConsultaRepository;
 import com.lumina.backend.repository.NotificacaoWhatsappRepository;
 import com.lumina.backend.repository.UsuarioRepository;
+import com.lumina.backend.service.consulta.AgendaCacheService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -35,11 +37,23 @@ public class NotificacaoWhatsappService {
     private final ConsultaRepository consultaRepository;
     private final UsuarioRepository usuarioRepository;
     private final String appPublicUrl;
+    private final AgendaCacheService agendaCache;
 
     public NotificacaoWhatsappService(NotificacaoWhatsappRepository notificacaoWhatsappRepository,
                                       ConsultaRepository consultaRepository,
                                       UsuarioRepository usuarioRepository,
-                                      @Value("${app.public-url:http://localhost:5173}") String appPublicUrl) {
+                                      String appPublicUrl) {
+        this(notificacaoWhatsappRepository, consultaRepository, usuarioRepository, appPublicUrl,
+                AgendaCacheService.desativado());
+    }
+
+    @Autowired
+    public NotificacaoWhatsappService(NotificacaoWhatsappRepository notificacaoWhatsappRepository,
+                                      ConsultaRepository consultaRepository,
+                                      UsuarioRepository usuarioRepository,
+                                      @Value("${app.public-url:http://localhost:5173}") String appPublicUrl,
+                                      AgendaCacheService agendaCache) {
+        this.agendaCache = agendaCache;
         this.notificacaoWhatsappRepository = notificacaoWhatsappRepository;
         this.consultaRepository = consultaRepository;
         this.usuarioRepository = usuarioRepository;
@@ -135,6 +149,8 @@ public class NotificacaoWhatsappService {
 
         consulta.setStatus("CONFIRMADA");
         consultaRepository.save(consulta);
+        // A confirmacao pelo link muda o status exibido na agenda.
+        agendaCache.invalidar(consulta.getData());
 
         notificacao.setConfirmadoEm(agora);
         notificacaoWhatsappRepository.save(notificacao);

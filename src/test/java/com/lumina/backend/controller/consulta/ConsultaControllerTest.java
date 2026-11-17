@@ -2,6 +2,7 @@ package com.lumina.backend.controller.consulta;
 
 import com.lumina.backend.controller.ConsultaController;
 import com.lumina.backend.dto.consulta.AlterarStatusConsultaRequest;
+import com.lumina.backend.dto.consulta.ConsultaMapper;
 import com.lumina.backend.dto.consulta.ConsultaRequest;
 import com.lumina.backend.dto.consulta.ConsultaResponse;
 import com.lumina.backend.dto.consulta.HorarioDisponivelResponse;
@@ -102,8 +103,8 @@ class ConsultaControllerTest {
         @Test
         @DisplayName("1.1 Deve retornar lista de consultas com status 200")
         void deveRetornarListaDeConsultasComSucesso() {
-            Mockito.when(consultaService.listar(null, null))
-                    .thenReturn(List.of(consultaDoDentista(1L, 1L), consultaDoDentista(2L, 1L)));
+            Mockito.when(consultaService.listarAgenda(null, null, null))
+                    .thenReturn(ConsultaMapper.toResponse(List.of(consultaDoDentista(1L, 1L), consultaDoDentista(2L, 1L))));
 
             ResponseEntity<List<ConsultaResponse>> response = consultaController.listar(null, null);
 
@@ -115,7 +116,7 @@ class ConsultaControllerTest {
         @Test
         @DisplayName("1.2 Deve retornar lista vazia de consultas com status 200")
         void deveRetornarListaVaziaDeConsultas() {
-            Mockito.when(consultaService.listar(null, null)).thenReturn(Collections.emptyList());
+            Mockito.when(consultaService.listarAgenda(null, null, null)).thenReturn(Collections.emptyList());
 
             ResponseEntity<List<ConsultaResponse>> response = consultaController.listar(null, null);
 
@@ -128,7 +129,8 @@ class ConsultaControllerTest {
         void deveRepassarPeriodo() {
             LocalDate inicio = LocalDate.of(2026, 11, 2);
             LocalDate fim = LocalDate.of(2026, 11, 8);
-            Mockito.when(consultaService.listar(inicio, fim)).thenReturn(List.of(consultaDoDentista(1L, 1L)));
+            Mockito.when(consultaService.listarAgenda(null, inicio, fim))
+                    .thenReturn(ConsultaMapper.toResponse(List.of(consultaDoDentista(1L, 1L))));
 
             Assertions.assertEquals(1, consultaController.listar(inicio, fim).getBody().size());
         }
@@ -146,7 +148,8 @@ class ConsultaControllerTest {
         @DisplayName("1.5 Dentista só lista a própria agenda")
         void dentistaListaSomenteAPropriaAgenda() {
             autenticarDentista(1L);
-            Mockito.when(consultaService.listarPorDentista(1L, null, null)).thenReturn(List.of(consultaDoDentista(1L, 1L)));
+            Mockito.when(consultaService.listarAgenda(1L, null, null))
+                    .thenReturn(ConsultaMapper.toResponse(List.of(consultaDoDentista(1L, 1L))));
 
             Assertions.assertEquals(200, consultaController.listarConsultasDentista(1L, null, null).getStatusCode().value());
             Assertions.assertEquals(403, consultaController.listarConsultasDentista(2L, null, null).getStatusCode().value());
