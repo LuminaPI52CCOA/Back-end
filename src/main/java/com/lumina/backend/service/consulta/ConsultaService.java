@@ -2,6 +2,7 @@ package com.lumina.backend.service.consulta;
 
 import com.lumina.backend.dto.consulta.ConsultaMapper;
 import com.lumina.backend.dto.consulta.ConsultaRequest;
+import com.lumina.backend.dto.consulta.ConsultaResponse;
 import com.lumina.backend.dto.consulta.DashboardAgendamentoResponse;
 import com.lumina.backend.dto.consulta.DashboardAgendamentoResponse.ItemDistribuicao;
 import com.lumina.backend.dto.consulta.DashboardAgendamentoResponse.PontoGrafico;
@@ -62,6 +63,7 @@ public class ConsultaService {
     private final NotificacaoWhatsappRepository notificacaoWhatsappRepository;
     private final ClienteConvenioRepository clienteConvenioRepository;
     private final RegrasAgendamento regrasAgendamento;
+    private final AgendaCacheService agendaCache;
 
     public ConsultaService(ConsultaRepository consultaRepository,
                            UsuarioRepository usuarioRepository,
@@ -75,7 +77,6 @@ public class ConsultaService {
                 null, regrasAgendamento);
     }
 
-    @Autowired
     public ConsultaService(ConsultaRepository consultaRepository,
                            UsuarioRepository usuarioRepository,
                            ClienteRepository clienteRepository,
@@ -84,6 +85,21 @@ public class ConsultaService {
                            NotificacaoWhatsappRepository notificacaoWhatsappRepository,
                            ClienteConvenioRepository clienteConvenioRepository,
                            RegrasAgendamento regrasAgendamento) {
+        this(consultaRepository, usuarioRepository, clienteRepository,
+                especialidadeRepository, denteRepository, notificacaoWhatsappRepository,
+                clienteConvenioRepository, regrasAgendamento, AgendaCacheService.desativado());
+    }
+
+    @Autowired
+    public ConsultaService(ConsultaRepository consultaRepository,
+                           UsuarioRepository usuarioRepository,
+                           ClienteRepository clienteRepository,
+                           EspecialidadeRepository especialidadeRepository,
+                           DenteRepository denteRepository,
+                           NotificacaoWhatsappRepository notificacaoWhatsappRepository,
+                           ClienteConvenioRepository clienteConvenioRepository,
+                           RegrasAgendamento regrasAgendamento,
+                           AgendaCacheService agendaCache) {
         this.consultaRepository = consultaRepository;
         this.usuarioRepository = usuarioRepository;
         this.clienteRepository = clienteRepository;
@@ -92,6 +108,7 @@ public class ConsultaService {
         this.notificacaoWhatsappRepository = notificacaoWhatsappRepository;
         this.clienteConvenioRepository = clienteConvenioRepository;
         this.regrasAgendamento = regrasAgendamento;
+        this.agendaCache = agendaCache;
     }
 
     public List<Consulta> listar() {
@@ -116,6 +133,24 @@ public class ConsultaService {
         }
         validarPeriodo(dataInicio, dataFim);
         return consultaRepository.buscarPorPeriodo(idUsuario, dataInicio, dataFim);
+    }
+
+    /**
+     * Agenda no formato de resposta da API. Periodos fechados e curtos (dia, semana, mes) sao
+     * servidos pelo cache Redis; o restante vai direto ao banco.
+     *
+     * @param idUsuario dentista a filtrar, ou {@code null} para a agenda geral
+     */
+    public List<ConsultaResponse> listarAgenda(Long idUsuario, LocalDate dataInicio, LocalDate dataFim) {
+        // Valida antes de consultar o cache: periodo invalido tem de falhar mesmo com cache quente.
+        validarPeriodo(dataInicio, dataFim);
+        if (!agendaCache.cacheavel(dataInicio, dataFim)) {
+            return ConsultaMapper.toResponse(idUsuario == null
+                    ? listar(dataInicio, dataFim)
+                    : listarPorDentista(idUsuario, dataInicio, dataFim));
+        }
+        return agendaCache.obterPeriodo(dataInicio, dataFim, idUsuario,
+                () -> ConsultaMapper.toResponse(consultaRepository.buscarPorPeriodo(null, dataInicio, dataFim)));
     }
 
     @Transactional(readOnly = true)
@@ -424,6 +459,7 @@ public class ConsultaService {
         consultaEntidade.setStatus(StatusConsulta.AGENDADA.name());
         consultaEntidade.setLembreteEnviado(false);
 
+        agendaCache.invalidar(consultaEntidade.getData());
         return consultaRepository.save(consultaEntidade);
     }
 
@@ -456,6 +492,7 @@ public class ConsultaService {
         bloquearAgendaDoDentista(idDentista);
 
         Consulta consultaExistente = buscarPorId(id);
+        LocalDate dataAnterior = consultaExistente.getData();
         StatusConsulta status = StatusConsulta.de(consultaExistente.getStatus());
         if (status.finalizado()) {
             throw new AgendamentoInvalidoException("Consulta " + status.name() + " não pode ser reagendada.");
@@ -489,6 +526,7 @@ public class ConsultaService {
             atualizarNotificacaoAposReagendamento(consultaExistente);
         }
 
+        agendaCache.invalidar(dataAnterior, consultaExistente.getData());
         return consultaRepository.save(consultaExistente);
     }
 
@@ -517,6 +555,7 @@ public class ConsultaService {
                         notificacaoWhatsappRepository.save(notificacao);
                     });
         }
+        agendaCache.invalidar(consulta.getData());
         return consultaRepository.save(consulta);
     }
 
@@ -543,6 +582,7 @@ public class ConsultaService {
                     notificacao.setStatus(NotificacaoWhatsapp.STATUS_CANCELADO);
                     notificacaoWhatsappRepository.save(notificacao);
                 });
+        agendaCache.invalidar(consulta.getData());
         return consultaRepository.save(consulta);
     }
 

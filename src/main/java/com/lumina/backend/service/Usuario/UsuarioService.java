@@ -9,6 +9,7 @@ import com.lumina.backend.dto.usuario.UsuarioRequest;
 import com.lumina.backend.dto.usuario.UsuarioTokenDto;
 import com.lumina.backend.exception.EntidadeNaoEncontrada;
 import com.lumina.backend.repository.UsuarioRepository;
+import com.lumina.backend.service.consulta.AgendaCacheService;
 import com.lumina.backend.swagger.GerenciadorTokenJwt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -34,6 +35,13 @@ public class UsuarioService {
     private GerenciadorTokenJwt gerenciadorTokenJwt;
     private AuthenticationManager authenticationManager;
     private UsuarioRepositoryPort repositoryPort;
+    private AgendaCacheService agendaCache = AgendaCacheService.desativado();
+
+    /** Cache da agenda: cada consulta cacheada leva junto os dados do dentista. */
+    @Autowired
+    public void setAgendaCache(AgendaCacheService agendaCache) {
+        this.agendaCache = agendaCache;
+    }
 
     @Autowired
     public UsuarioService(@Autowired(required = false) UsuarioRepositoryPort repositoryPort,
@@ -177,6 +185,7 @@ public class UsuarioService {
             }
             usuarioRepository.logicalDelete(ativo, id);
         }
+        agendaCache.invalidarTudo();
     }
 
     public Usuario atualizar(UsuarioRequest usuarios, Long id) {
@@ -202,7 +211,9 @@ public class UsuarioService {
             );
             Usuario usuarioAtualizado = usuarioExistente.atualizar(command);
 
-            return repositoryPort.salvar(usuarioAtualizado);
+            Usuario salvo = repositoryPort.salvar(usuarioAtualizado);
+            agendaCache.invalidarTudo();
+            return salvo;
         } else if (usuarioRepository != null) {
             com.lumina.backend.model.Usuario usuarioExistente = usuarioRepository.findById(id)
                     .orElseThrow(() -> new EntidadeNaoEncontrada("Usuario de id: %d não encontrado".formatted(id)));
@@ -221,6 +232,7 @@ public class UsuarioService {
             if (usuarios.getAtivo() != null) usuarioExistente.setAtivo(usuarios.getAtivo());
 
             com.lumina.backend.model.Usuario saved = usuarioRepository.save(usuarioExistente);
+            agendaCache.invalidarTudo();
             return toDomain(saved);
         }
         throw new EntidadeNaoEncontrada("Usuario de id: %d não encontrado".formatted(id));

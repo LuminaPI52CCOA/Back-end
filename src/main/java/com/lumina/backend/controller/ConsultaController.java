@@ -76,7 +76,7 @@ public class ConsultaController {
             return ResponseEntity.status(403).build();
         }
 
-        return ResponseEntity.status(200).body(ConsultaMapper.toResponse(consultaService.listar(dataInicio, dataFim)));
+        return ResponseEntity.status(200).body(consultaService.listarAgenda(null, dataInicio, dataFim));
     }
 
     @GetMapping("/dashboard")
@@ -124,7 +124,7 @@ public class ConsultaController {
             return ResponseEntity.status(403).build();
         }
 
-        return ResponseEntity.status(200).body(ConsultaMapper.toResponse(consultaService.listarPorDentista(id, dataInicio, dataFim)));
+        return ResponseEntity.status(200).body(consultaService.listarAgenda(id, dataInicio, dataFim));
     }
 
     @GetMapping("/horarios-disponiveis")
